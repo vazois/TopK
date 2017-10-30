@@ -13,10 +13,14 @@
 template<class T>
 class Input{
 public:
+	Input(){};
 	Input(std::string fname);
 	~Input();
 
 	void init();
+	uint64_t get_n(){ return this->n; }
+	uint64_t get_d(){ return this->d; }
+	T* get_dt(){ return this->data; }
 
 private:
 	void count();
