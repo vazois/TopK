@@ -14,6 +14,7 @@ class FA : public AA<T>{
 template<class T>
 void FA<T>::findTopK(){
 	std::cout << "Computing TopK with TA Algorithm!!!"<< std::endl;
+
 }
 
 #endif

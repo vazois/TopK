@@ -22,15 +22,17 @@ public:
 	uint64_t get_d(){ return this->d; }
 	T* get_dt(){ return this->data; }
 
-private:
+protected:
 	void count();
 	void read_scanf();
+	void read_scanf_t();
 	int fetch(float *&p, uint64_t d, FILE *f);
 
 	T *data;
 	std::string fname;
 	uint64_t n;
 	uint64_t d;
+	bool gpu;
 };
 
 template<class T>
@@ -39,11 +41,12 @@ Input<T>::Input(std::string fname){
 	this->n=0;
 	this->d=0;
 	this->data=NULL;
+	this->gpu=false;
 }
 
 template<class T>
 Input<T>::~Input(){
-	if(this->data!=NULL){
+	if(this->data!=NULL && !this->gpu){
 		free(data);
 	}
 }
@@ -51,8 +54,8 @@ Input<T>::~Input(){
 template<class T>
 void Input<T>::init(){
 	this->count();
-
 	this->data = (T*)malloc(sizeof(T) * (this->n) * (this->d));
+
 	Time<msecs> t;
 	t.start();
 	this->read_scanf();
