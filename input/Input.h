@@ -18,14 +18,16 @@ public:
 	~Input();
 
 	void init();
+	void sample(){ this->sample(10); };
+	void sample(uint64_t limit);
+	void read_scanf();
+
 	uint64_t get_n(){ return this->n; }
 	uint64_t get_d(){ return this->d; }
 	T* get_dt(){ return this->data; }
 
 protected:
 	void count();
-	void read_scanf();
-	void read_scanf_t();
 	int fetch(float *&p, uint64_t d, FILE *f);
 
 	T *data;
@@ -94,7 +96,7 @@ void Input<T>::read_scanf(){
 	while(fetch(ptr,d,f) > 0){
 		i+=(d);
 		ptr = &data[i];
-	};
+	}
 
 	fclose(f);
 }
@@ -134,6 +136,14 @@ int Input<T>::fetch(float *&p, uint64_t d, FILE *f){
 	return count;
 }
 
-
+template<class T>
+void Input<T>::sample(uint64_t limit){
+	for(uint64_t i = 0; i < ( limit < this->n ? limit : this->n ); i++){
+		for(uint64_t j = 0; j < this->d; j++){
+			std::cout << this->data[i * this->d + j] << " ";
+		}
+		std::cout << std::endl;
+	}
+}
 
 #endif

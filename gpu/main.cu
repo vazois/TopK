@@ -4,10 +4,10 @@
 
 
 int main(int argc, char **argv){
-	Time<msecs> t;
-	GInput<float> input("data/d_16777216_4_i");
+	GInput<float> input("data/d_1048576_4_i");
 
 	input.init();
+	input.sample();
 
 	return 0;
 }
