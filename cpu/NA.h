@@ -1,7 +1,7 @@
 #ifndef NA_H
 #define NA_H
 
-#include "NA.h"
+#include "AA.h"
 
 /*
  * Naive algorithm for aggregation
@@ -47,16 +47,22 @@ void NA<T>::init(){
 template<class T>
 void NA<T>::findTopK(uint64_t k){
 	std::cout << this->algo << " find topK ..." << std::endl;
-	this->res.resize(k);
+	//this->res.resize(k);
 
 	this->t.start();
+	//this->res.push_back(tuple<T>(5,322));
 	std::sort(this->tuples.begin(),this->tuples.end(),cmp_score<T>);
 	for(uint64_t i = 0;i <(k < this->tuples.size() ? k : this->tuples.size() ) ;i++){
-		//std::cout << "t: " << this->tuples[i].tid << ", (" << this->tuples[i].score << ")" <<std::endl;
-		this->res.push_back(this->tuples[i]);
+		//if(i < 10) std::cout << "t: " << this->tuples[i].tid << ", (" << this->tuples[i].score << ")" <<std::endl;
+		this->res.push_back(tuple<T>(this->tuples[i].tid,this->tuples[i].score));
+		//if(i < 10) std::cout << "t: " << this->res[i].tid << ", (" << this->res[i].score << ")" <<std::endl;
 	}
 	this->tt_processing = this->t.lap();
-	//std::cout << "tt_processing: " << this->tt_processing << std::endl;
+
+//	for(uint64_t i = 0; i < this->res.size(); i++){
+//		if(i < 10) std::cout << "t: " << this->res[i].tid << ", (" << this->res[i].score << ")" <<std::endl;
+//	}
+
 }
 
 #endif

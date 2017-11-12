@@ -44,8 +44,9 @@ class AA{
 		AA(Input<T>* input);
 		~AA();
 
-		void cmp_res(AA<T> b);
-		void get_res(){ return this->res; };
+		void compare(AA<T> b);
+		std::vector<tuple<T>> get_res(){ return this->res; };
+		std::string get_algo(){ return this->algo; };
 
 		void benchmark();
 
@@ -76,8 +77,16 @@ AA<T>::~AA(){ }
  * cmp results to check correctness
  */
 template<class T>
-void AA<T>::cmp_res(AA<T> b){
+void AA<T>::compare(AA<T> b){
 
+	std::string cmp = "PASSED";
+	for(uint64_t i = 0;i < this->res.size();i++){
+		if (this->res[i].tid != b.get_res()[i].tid){
+			//std::cout <<"i:(" << i << ") "<<this->res[i].tid << "," << b.get_res()[i].tid << std::endl;
+			cmp  = "FAILED";
+		}
+	}
+	std::cout << "(" <<this->algo <<") != (" << b.get_algo() << ") ( "<< cmp <<" )" << std::endl;
 }
 
 /*

@@ -5,6 +5,8 @@
 #include "cpu/NA.h"
 #include "cpu/FA.h"
 
+
+
 int main(int argc, char **argv){
 	Time<msecs> t;
 	//Input<float> input("data/d_16777216_4_i");
@@ -22,6 +24,8 @@ int main(int argc, char **argv){
 	fa.init();
 	fa.findTopK(1000);
 	fa.benchmark();
+
+	fa.compare(na);
 
 	return 0;
 }
