@@ -55,6 +55,9 @@ class AA{
 
 		std::string algo;
 		std::vector<tuple<T>> res;
+		T *cdata;
+		uint64_t n;
+		uint64_t d;
 
 		Time<msecs> t;
 		double tt_init;//initialization time
@@ -68,6 +71,9 @@ AA<T>::AA(Input<T>* input){
 	this->tt_init = 0;
 	this->tt_processing = 0;
 	this->eval_count = 0;
+	this->n = this->input->get_n();
+	this->d = this->input->get_d();
+	this->cdata = this->input->get_dt();
 }
 
 template<class T>

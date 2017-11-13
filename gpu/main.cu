@@ -1,13 +1,18 @@
 #include "CudaHelper.h"
 #include "time/Time.h"
 #include "input/GInput.h"
-
+#include "GPA.h"
 
 int main(int argc, char **argv){
-	GInput<float> input("data/d_1048576_4_i");
+	GInput<float> ginput("data/d_1048576_4_i");
 
-	input.init();
-	input.sample();
+	ginput.init();
+	ginput.sample();
+
+	GPA<float> gpa(&ginput);
+	gpa.init();
+
+	ginput.sample();
 
 	return 0;
 }

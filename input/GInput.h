@@ -23,9 +23,7 @@ class GInput : public Input<T>{
 
 template<class T>
 GInput<T>::~GInput(){
-	if(this->data != NULL){
-		cudaFreeHost(this->data);
-	}
+	if(this->data != NULL){ cudaFreeHost(this->data); }
 }
 
 template<class T>
