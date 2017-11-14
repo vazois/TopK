@@ -20,7 +20,7 @@ cpu_cc:
 	$(CC) $(CC_FLAGS) $(CC_OPT_FLAGS) $(CC_MAIN) -o $(CC_EXE)
 
 gpu_cc:
-	$(NVCC) -std=c++11 $(ARCH) $(GC_MAIN) -o $(GC_EXE)
+	$(NVCC) -std=c++11 $(ARCH) $(GC_MAIN) -o $(GC_EXE) -I cub-1.7.4/
 	
 clean:
 	rm -rf $(CC_EXE)

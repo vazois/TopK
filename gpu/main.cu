@@ -14,5 +14,7 @@ int main(int argc, char **argv){
 
 	ginput.sample();
 
+	gpa.findTopK(1000);
+
 	return 0;
 }
