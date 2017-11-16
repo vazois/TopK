@@ -6,6 +6,7 @@
 #include "reorder_attr_cpu.h"
 
 #include <list>
+#include <queue>
 
 
 template<class T>
@@ -72,18 +73,39 @@ template<class T>
 T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 	typename std::list< cpred<T> >::iterator it = this->tupples.begin();
 	uint64_t i = 0;
-	this->t.start();
-	this->tupples.sort(cmp_max_cpred<T>);
-	this->t.lap("<sort>");
+	std::priority_queue<T, std::vector<T>, std::greater<T>> q;
 
 	this->t.start();
-	while( it != this->tupples.end() && i < k){
-		//std::cout << "<< "<<i<<"," << it->total << std::endl;
-		i++; it++;
+	while( it != this->tupples.end() ){
+		if(q.size() < k){
+			q.push(it->total);
+		}else if(q.top()<it->total){
+			q.pop();
+			q.push(it->total);
+		}
+		//if(q.size() == k){ q.pop(); }
+		it++;
 	}
-	this->t.lap("<find k>");
-	T threshold = (it--)->total;
-	//std::cout << "threshold: " << threshold << std::endl;
+	this->t.lap("<find k - priority_queue>");
+	T threshold = q.top();
+//	std::cout << "pq threshold: " << threshold << std::endl;
+//	q.pop();
+//	std::cout << "B: " << q.top() << std::endl;
+
+/*Sort based q finder*/
+//	this->t.start();
+//	this->tupples.sort(cmp_max_cpred<T>);
+//	this->t.lap("<sort>");
+//
+//	it = this->tupples.begin();
+//	this->t.start();
+//	while( it != this->tupples.end() && i < k){
+//		//std::cout << "<< "<<i<<"," << it->total << std::endl;
+//		i++; it++;
+//	}
+//	this->t.lap("<find k>");
+//	T threshold = (it--)->total;
+//	std::cout << "threshold: " << threshold << std::endl;
 
 	this->t.start();
 	it=this->tupples.begin();
@@ -112,9 +134,8 @@ T CBA<T>::find(uint64_t k){
 template<class T>
 void CBA<T>::findTopK(uint64_t k){
 
-	//this->t.start();
+	this->t.start();
 	for(uint64_t j = 0; j < this->d-1; j++){
-
 		findAndPrune(k,j);
 		//this->t.lap("<>");
 	//	findAndPrune(k,1);
@@ -122,7 +143,7 @@ void CBA<T>::findTopK(uint64_t k){
 	}
 	//findAndPrune(k,3);
 	this->tupples.sort(cmp_max_cpred<T>);
-	//this->tt_processing = this->t.lap();
+	this->tt_processing = this->t.lap("<>");
 
 	uint64_t i = 0;
 	typename std::list< cpred<T> >::iterator it;
