@@ -143,7 +143,7 @@ namespace cutil{
 	template<typename DATA_T, typename SIZE_T>
 	__host__ void safeCopyToHost(DATA_T *to, DATA_T *from, SIZE_T size, std::string msg){
 		error = cudaMemcpy(to, from, size, cudaMemcpyDeviceToHost);
-		cudaCheckErr(error, "Error Copying to device " + msg);
+		cudaCheckErr(error, "Error Copying to host " + msg);
 	}
 
 	/*

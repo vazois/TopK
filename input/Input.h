@@ -20,13 +20,15 @@ public:
 	void init();
 	void sample(){ this->sample(10); };
 	void sample(uint64_t limit);
-	void read_scanf();
+	void transpose(bool tenable){ this->tenable = tenable; }
 
 	uint64_t get_n(){ return this->n; }
 	uint64_t get_d(){ return this->d; }
 	T* get_dt(){ return this->data; }
 
 protected:
+	void read_scanf();
+	void read_scanf_t();
 	void count();
 	int fetch(float *&p, uint64_t d, FILE *f);
 
@@ -34,7 +36,9 @@ protected:
 	std::string fname;
 	uint64_t n;
 	uint64_t d;
+	bool tenable;
 	bool gpu;
+
 };
 
 template<class T>
@@ -43,14 +47,13 @@ Input<T>::Input(std::string fname){
 	this->n=0;
 	this->d=0;
 	this->data=NULL;
-	this->gpu=false;
+	this->tenable=false;
+	this->gpu = false;
 }
 
 template<class T>
 Input<T>::~Input(){
-	if(this->data!=NULL && !this->gpu){
-		free(data);
-	}
+	if(this->data!=NULL && !this->gpu){ free(data); }
 }
 
 template<class T>
@@ -60,7 +63,8 @@ void Input<T>::init(){
 
 	Time<msecs> t;
 	t.start();
-	this->read_scanf();
+	if(!tenable) this->read_scanf();
+	else this->read_scanf_t();
 	t.lap("Read elapsed time (ms)!!!");
 }
 
@@ -96,6 +100,25 @@ void Input<T>::read_scanf(){
 	while(fetch(ptr,d,f) > 0){
 		i+=(d);
 		ptr = &data[i];
+	}
+
+	fclose(f);
+}
+
+template<class T>
+void Input<T>::read_scanf_t(){
+	std::cout << "Read scanf transpose..." << std::endl;
+	FILE *f;
+	f = fopen(this->fname.c_str(), "r");
+	uint64_t i = 0;
+
+	float *buffer = (T*)malloc(sizeof(T) * this->d);
+	float *ptr = &(this->data[i]);
+	while(this->fetch(buffer,this->d,f) > 0){
+		for(uint64_t j = 0; j < this->d; j++){
+			ptr[ j * this->n + i ] = buffer[j];
+		}
+		i++;
 	}
 
 	fclose(f);
@@ -138,11 +161,22 @@ int Input<T>::fetch(float *&p, uint64_t d, FILE *f){
 
 template<class T>
 void Input<T>::sample(uint64_t limit){
-	for(uint64_t i = 0; i < ( limit < this->n ? limit : this->n ); i++){
-		for(uint64_t j = 0; j < this->d; j++){
-			std::cout << this->data[i * this->d + j] << " ";
+	if(!this->tenable){
+		std::cout << "Sample row-wise ... " << std::endl;
+		for(uint64_t i = 0; i < ( limit < this->n ? limit : this->n ); i++){
+			for(uint64_t j = 0; j < this->d; j++){
+				std::cout << this->data[i * this->d + j] << " ";
+			}
+			std::cout << std::endl;
 		}
-		std::cout << std::endl;
+	}else{
+		std::cout << "Sample column-wise ... " << std::endl;
+		for(uint64_t i = 0; i < ( limit < this->n ? limit : this->n); i++){
+			for(uint64_t j = 0; j < this->d; j++){
+				std::cout << this->data[ j * this->n + i ] << " ";
+			}
+			std::cout << std::endl;
+		}
 	}
 }
 

@@ -1,6 +1,3 @@
-#include "CudaHelper.h"
-#include "time/Time.h"
-#include "input/GInput.h"
 #include "GPA.h"
 
 int main(int argc, char **argv){
@@ -11,7 +8,6 @@ int main(int argc, char **argv){
 
 	GPA<float> gpa(&ginput);
 	gpa.init();
-
 	ginput.sample();
 
 	gpa.findTopK(1000);
