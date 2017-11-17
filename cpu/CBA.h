@@ -44,7 +44,27 @@ template<class T>
 void CBA<T>::init(){
 	std::cout << this->algo <<" initialize: " << "(" << this->n << "," << this->d << ")"<< std::endl;
 
-	reorder_attr_4(this->cdata,this->n);
+	this->t.start();
+	switch(this->d){
+		case 4:
+			reorder_attr_4(this->cdata,this->n);
+			break;
+		case 6:
+			reorder_attr_6(this->cdata,this->n);
+			break;
+		case 8:
+			reorder_attr_8(this->cdata,this->n);
+			break;
+		case 10:
+			reorder_attr_10(this->cdata,this->n);
+			break;
+		case 16:
+			reorder_attr_16(this->cdata,this->n);
+			break;
+		default:
+			break;
+	}
+	this->tt_init = this->t.lap();
 	this->check_order();//TODO: Comment
 
 	for(uint64_t i = 0; i < this->n; i++){ this->tupples.push_back(cpred<T>(i,this->cdata[i])); }
@@ -60,13 +80,14 @@ void CBA<T>::check_order(){
 
 		if(!ordered){
 			passed = "(FAILED)";
-			std::cout << "i: ";
+			std::cout << "i: <" << i << "> ";
 			for(uint64_t j = 0; j < this->d; j++) std::cout << this->cdata[j * this->n + i] << " ";
 			std::cout << std::endl;
+			std::cout << "check_order: " << passed << std::endl;
+			exit(1);
 		}
 		//if(i < 10){ for(uint64_t j = 0; j < this->d; j++){ std::cout << this->cdata[j * this->n + i] << " "; } std::cout << std::endl;}
 	}
-	std::cout << "check_order: " << passed << std::endl;
 }
 
 template<class T>
@@ -75,7 +96,7 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 	uint64_t i = 0;
 	std::priority_queue<T, std::vector<T>, std::greater<T>> q;
 
-	this->t.start();
+	//this->t.start();
 	while( it != this->tupples.end() ){
 		if(q.size() < k){
 			q.push(it->total);
@@ -86,7 +107,7 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 		//if(q.size() == k){ q.pop(); }
 		it++;
 	}
-	this->t.lap("<find k - priority_queue>");
+	//this->t.lap("<find k - priority_queue>");
 	T threshold = q.top();
 //	std::cout << "pq threshold: " << threshold << std::endl;
 //	q.pop();
@@ -107,7 +128,7 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 //	T threshold = (it--)->total;
 //	std::cout << "threshold: " << threshold << std::endl;
 
-	this->t.start();
+	//this->t.start();
 	it=this->tupples.begin();
 	uint64_t mult =this->d-(r+1);
 	while(it != this->tupples.end()){
@@ -117,11 +138,12 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 			T next_attr = this->cdata[(r+1) * this->n + it->tid];
 			it->total += next_attr;
 			it->curr_attr = next_attr;
+			this->eval_count++;
 			it++;
 		}
 
 	}
-	this->t.lap("<prune>");
+	//this->t.lap("<prune>");
 	std::cout << "tupples: " << this->tupples.size() << std::endl;
 }
 
@@ -135,14 +157,14 @@ template<class T>
 void CBA<T>::findTopK(uint64_t k){
 
 	this->t.start();
-	for(uint64_t j = 0; j < this->d-1; j++){
+	for(uint64_t j = 0; j < this->d; j++){//d-1
 		findAndPrune(k,j);
 		//this->t.lap("<>");
 	//	findAndPrune(k,1);
 	//	findAndPrune(k,2);
 	}
 	//findAndPrune(k,3);
-	this->tupples.sort(cmp_max_cpred<T>);
+	//this->tupples.sort(cmp_max_cpred<T>);//sort when d-1
 	this->tt_processing = this->t.lap("<>");
 
 	uint64_t i = 0;

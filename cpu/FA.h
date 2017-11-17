@@ -69,7 +69,7 @@ void FA<T>::findTopK(uint64_t k){
 		T score = 0;
 		for(uint64_t j = 0; j < this->d; j++){ score+= this->cdata[tid * this->d + j]; }
 		res.push_back(tuple<T>(it->first,score));
-		this->eval_count++;
+		this->eval_count+=this->d;
 	}
 	std::sort(res.begin(),res.end(),cmp_score<T>);
 	this->tt_processing = this->t.lap();
