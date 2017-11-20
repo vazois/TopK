@@ -88,18 +88,21 @@ void AA<T>::compare(AA<T> b){
 	std::string cmp = "PASSED";
 	std::map<uint64_t,T> tmap;
 
+	/*create map with tuple ids*/
 	for(uint64_t i = 0;i < this->res.size();i++){
 		tmap[this->res[i].tid] = this->res[i].score;
 	}
-	for(uint64_t i = 0;i < this->res.size();i++){
-		if (tmap.find(b.get_res()[i].tid) == tmap.end()){
+
+	/*check if ids in b exist in my result*/
+	for(uint64_t i = 0;i < b.res.size();i++){
+		if (tmap.find(b.get_res()[i].tid) == tmap.end()){//find if id of b does not exist in map
 			std::cout <<"i:(" << i << ") "<<this->res[i].tid << " = " << this->res[i].score << "," << b.get_res()[i].tid << " = " << b.get_res()[i].score << std::endl;
 			cmp  = "FAILED";
 			std::cout << "(" <<this->algo <<") != (" << b.get_algo() << ") ( "<< cmp <<" )" << std::endl;
 			exit(1);
 		}
 	}
-	std::cout << "(" <<this->algo <<") != (" << b.get_algo() << ") ( "<< cmp <<" )" << std::endl;
+	std::cout << "(" <<this->algo <<") compare result to (" << b.get_algo() << ") ( "<< cmp <<" )" << std::endl;
 }
 
 /*

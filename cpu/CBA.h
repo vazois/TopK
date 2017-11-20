@@ -42,7 +42,7 @@ class CBA : public AA<T>{
 
 template<class T>
 void CBA<T>::init(){
-	std::cout << this->algo <<" initialize: " << "(" << this->n << "," << this->d << ")"<< std::endl;
+	//std::cout << this->algo <<" initialize: " << "(" << this->n << "," << this->d << ")"<< std::endl;
 
 	this->t.start();
 	switch(this->d){
@@ -96,7 +96,7 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 	uint64_t i = 0;
 	std::priority_queue<T, std::vector<T>, std::greater<T>> q;
 
-	//this->t.start();
+	/*Find current k-largest score*/
 	while( it != this->tupples.end() ){
 		if(q.size() < k){
 			q.push(it->total);
@@ -104,11 +104,10 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 			q.pop();
 			q.push(it->total);
 		}
-		//if(q.size() == k){ q.pop(); }
 		it++;
 	}
-	//this->t.lap("<find k - priority_queue>");
 	T threshold = q.top();
+
 //	std::cout << "pq threshold: " << threshold << std::endl;
 //	q.pop();
 //	std::cout << "B: " << q.top() << std::endl;
@@ -128,7 +127,8 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 //	T threshold = (it--)->total;
 //	std::cout << "threshold: " << threshold << std::endl;
 
-	//this->t.start();
+
+	/*Prune tuples that cannot surpass the threshold*/
 	it=this->tupples.begin();
 	uint64_t mult =this->d-(r+1);
 	while(it != this->tupples.end()){
@@ -143,8 +143,7 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 		}
 
 	}
-	//this->t.lap("<prune>");
-	std::cout << "tupples: " << this->tupples.size() << std::endl;
+	//std::cout << "tupples: " << this->tupples.size() << std::endl;
 }
 
 template<class T>
@@ -155,7 +154,7 @@ T CBA<T>::find(uint64_t k){
 
 template<class T>
 void CBA<T>::findTopK(uint64_t k){
-
+	std::cout << this->algo << " find topK ..." << std::endl;
 	this->t.start();
 	for(uint64_t j = 0; j < this->d; j++){//d-1
 		findAndPrune(k,j);
@@ -165,7 +164,7 @@ void CBA<T>::findTopK(uint64_t k){
 	}
 	//findAndPrune(k,3);
 	//this->tupples.sort(cmp_max_cpred<T>);//sort when d-1
-	this->tt_processing = this->t.lap("<>");
+	this->tt_processing = this->t.lap("");
 
 	uint64_t i = 0;
 	typename std::list< cpred<T> >::iterator it;
@@ -176,7 +175,7 @@ void CBA<T>::findTopK(uint64_t k){
 		if(i > k-1) break;
 	}
 
-	std::cout << "list_size: " << tupples.size() << std::endl;
+	//std::cout << "list_size: " << tupples.size() << std::endl;
 
 }
 

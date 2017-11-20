@@ -29,7 +29,6 @@ void reorder_attr_4(T *&data,uint64_t n){
 	}
 }
 
-
 template<class T>
 void reorder_attr_6(T *&data,uint64_t n){
 	for(uint64_t i = 0;i < n;i++){
