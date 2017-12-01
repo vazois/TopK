@@ -12,7 +12,7 @@ def genData(N,D,distr):
     global scale
     #print time.time()
     filename = "d_"+str(N)+"_"+str(D)+"_"+distr
-    print "Generate: " + filename
+    #print filename
     #Call d
     f = open(filename, "w")
     arg_call = ["./randdataset", "-"+distr,"-n",str(N),"-d",str(D),"-s",str(int(time.time()))]
@@ -166,6 +166,7 @@ def genData3(N,D,distr):
         fw.close()
         f.close()
 
+#print "Hello" ,N,D,distr 
 genData(N,D,distr)
 
 

@@ -58,13 +58,16 @@ void CBA<T>::init(){
 		case 10:
 			reorder_attr_10(this->cdata,this->n);
 			break;
+		case 12:
+			reorder_attr_12(this->cdata,this->n);
+			break;
 		case 16:
 			reorder_attr_16(this->cdata,this->n);
 			break;
 		default:
 			break;
 	}
-	this->tt_init = this->t.lap();
+	this->tt_init = this->t.lap("<>");
 	this->check_order();//TODO: Comment
 
 	for(uint64_t i = 0; i < this->n; i++){ this->tupples.push_back(cpred<T>(i,this->cdata[i])); }

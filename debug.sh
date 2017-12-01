@@ -4,8 +4,8 @@
 
 START_N=$((1024 * 1024))
 END_N=$((1024 * 1024))
-START_D=4
-END_D=10
+START_D=12
+END_D=12
 
 distr=i
 
@@ -15,8 +15,12 @@ do
 	do
 		fname='d_'$n'_'$d'_'$distr
 		#echo "Processing ... "$fname
-		cd data/; python skydata.py $n $d $distr ; cd .. ; make cpu_cc
-		./cpu_run -f=data/$fname
+		if [ ! -f data/$fname ]; then
+    		echo "Creating file <"$fname">"
+			cd data/; python skydata.py $n $d $distr ; cd ..
+		fi
+		
+		make cpu_cc ; ./cpu_run -f=data/$fname
 		
 		if [ $? -eq 1 ]
 		then
