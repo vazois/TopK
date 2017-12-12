@@ -110,6 +110,7 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 		it++;
 	}
 	T threshold = q.top();
+	std::cout << "threshold: " << threshold << std::endl;
 
 //	std::cout << "pq threshold: " << threshold << std::endl;
 //	q.pop();

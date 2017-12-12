@@ -1,11 +1,11 @@
 #ifndef GPA_H
 #define GPA_H
 
-#include <cub/cub.cuh>
 #include "CudaHelper.h"
 #include "reorder_attr.h"
 #include "init_tupples.h"
 #include "radix_select.h"
+#include "prune_tupples.h"
 
 #include <inttypes.h>
 #include <algorithm>
@@ -13,6 +13,7 @@
 
 
 #define BLOCK_SIZE 512
+#define DEBUG false
 
 template<class T>
 class GPA{
@@ -170,33 +171,58 @@ void GPA<T>::findTopK(uint64_t k){
 	dim3 grid(this->n/BLOCK_SIZE,1,1);
 	dim3 block(BLOCK_SIZE,1,1);
 	uint32_t *col_ui, *gcol_ui;
+	Tupple<T> tupples;
 
-	cutil::safeMallocHost<uint32_t,uint64_t>(&(col_ui),sizeof(uint32_t)*this->n,"col_ui alloc");
+	alloc_tupples<T>(tupples,this->n);
+	init_tupples<T,BLOCK_SIZE><<<grid,block>>>(tupples.tupple_ids,tupples.scores,tupples.last,this->gdata,this->n);
+	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_tupples");
+
+	if(DEBUG) cutil::safeMallocHost<uint32_t,uint64_t>(&(col_ui),sizeof(uint32_t)*this->n,"col_ui alloc");
 	cutil::safeMalloc<uint32_t,uint64_t>(&(gcol_ui),sizeof(uint32_t)*this->n,"gcol_ui alloc");
 
-	//test
-	for(int i = 0;i<d;i++){
-		printf("test: %d column\n",i);
-		extract_bin<BLOCK_SIZE><<<grid,block>>>(gcol_ui,&this->gdata[i*n],this->n);
-		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing extract_bin");
-		{
-			cutil::safeCopyToHost<uint32_t,uint64_t>(col_ui,gcol_ui,sizeof(uint32_t)*this->n, " copy from gcol_ui to col_ui ");
-			uint32_t prefix_cpu=this->radix_select_findK(col_ui,this->n,this->n - k);
-			printf("kcpu: 0x%08x\n",prefix_cpu);
+	/////////////////////
+	//Debug Code
+	if(DEBUG){
+		for(int i = 0;i<d;i++){
+			printf("test: %d column\n",i);
+			extract_bin<BLOCK_SIZE><<<grid,block>>>(gcol_ui,&this->gdata[i*n],this->n);
+			cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing extract_bin");
+			{
+				cutil::safeCopyToHost<uint32_t,uint64_t>(col_ui,gcol_ui,sizeof(uint32_t)*this->n, " copy from gcol_ui to col_ui ");
+				uint32_t prefix_cpu=this->radix_select_findK(col_ui,this->n,this->n - k);
+				printf("kcpu: 0x%08x\n",prefix_cpu);
 
-			std::vector<uint32_t> myvector (col_ui, col_ui+this->n);
-			std::sort (myvector.begin(), myvector.begin()+this->n);
-			uint32_t sK = myvector[this->n - k];
+				std::vector<uint32_t> myvector (col_ui, col_ui+this->n);
+				std::sort (myvector.begin(), myvector.begin()+this->n);
+				uint32_t sK = myvector[this->n - k];
 
-			printf("scpu: 0x%08x\n",sK);
+				printf("scpu: 0x%08x\n",sK);
+
+				uint32_t gpu_prefix = radix_select_gpu_findK(gcol_ui,n,this->n - k);
+				float gpu_prefixf = *(float*)&gpu_prefix;
+				printf("kgpu: 0x%08x, %f\n",gpu_prefix,gpu_prefixf);
+			}
+		}
+	/////////////
+	}else{
+		uint64_t suffix_len = this->d - 1;
+		for(uint64_t i = 0; i < 1;i++){
+			extract_bin<BLOCK_SIZE><<<grid,block>>>(gcol_ui,tupples.scores,this->n);
+			cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing extract_bin");
 
 			uint32_t gpu_prefix = radix_select_gpu_findK(gcol_ui,n,this->n - k);
-			printf("kgpu: 0x%08x\n",gpu_prefix);
+			float threshold = *(float*)&gpu_prefix;
+			printf("kgpu: 0x%08x, %f\n",gpu_prefix,threshold);
+
+			prune_tupples<T>(tupples.tupple_ids,tupples.scores,tupples.last,this->n,threshold, suffix_len);
+			suffix_len--;
 		}
+
 	}
 
-	cudaFreeHost(col_ui);
+	if(DEBUG) cudaFreeHost(col_ui);
 	cudaFree(gcol_ui);
+	free_tupples<T>(tupples);
 }
 
 #endif

@@ -4,8 +4,8 @@
 
 START_N=$((1024 * 1024))
 END_N=$((1024 * 1024))
-START_D=4
-END_D=4
+START_D=8
+END_D=8
 
 distr=i
 
@@ -21,6 +21,7 @@ do
 		fi
 		
 		make cpu_cc ; ./cpu_run -f=data/$fname
+		make gpu_cc ; ./gpu_run -f=data/$fname
 		
 		if [ $? -eq 1 ]
 		then
