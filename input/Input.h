@@ -27,6 +27,7 @@ public:
 	T* get_dt(){ return this->data; }
 
 protected:
+	void line_specifier();
 	void read_scanf();
 	void read_scanf_t();
 	void count();
@@ -38,6 +39,9 @@ protected:
 	uint64_t d;
 	bool tenable;
 	bool gpu;
+	char delimiter;
+	std::string frow;
+	const char *fetch_row;
 
 };
 
@@ -49,6 +53,7 @@ Input<T>::Input(std::string fname){
 	this->data=NULL;
 	this->tenable=false;
 	this->gpu = false;
+	this->delimiter=',';
 }
 
 template<class T>
@@ -66,6 +71,25 @@ void Input<T>::init(){
 	if(!tenable) this->read_scanf();
 	else this->read_scanf_t();
 	t.lap("Read elapsed time (ms)!!!");
+}
+
+template<class T>
+void Input<T>::line_specifier(){
+	//create fscanf line specifier
+	this->frow="";
+	for(uint64_t i = 0; i<d-1;i++){
+		if( std::is_same<T,float>::value ){
+			this->frow+="%f,";
+		}else if( std::is_same<T,uint64_t>::value ){
+			this->frow+="%d,";
+		}
+	}
+	if( std::is_same<T,float>::value ){
+		this->frow+="%f";
+	}else if( std::is_same<T,uint64_t>::value ){
+		this->frow+="%d";
+	}
+	this->fetch_row=this->frow.c_str();
 }
 
 template<class T>

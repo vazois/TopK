@@ -61,9 +61,9 @@ void CBA<T>::init(){
 		case 12:
 			reorder_attr_12(this->cdata,this->n);
 			break;
-		case 16:
-			reorder_attr_16(this->cdata,this->n);
-			break;
+//		case 16:
+//			reorder_attr_16(this->cdata,this->n);
+//			break;
 		default:
 			break;
 	}

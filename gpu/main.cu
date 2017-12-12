@@ -1,16 +1,17 @@
 #include "GPA.h"
+#include "input/File.h"
 
 int main(int argc, char **argv){
-	GInput<float> ginput("data/d_1048576_4_i");
+	File<float> f("data/d_1048576_12_i",true);
+	GPA<float> gpa;
 
-	ginput.init();
-	ginput.sample();
 
-	GPA<float> gpa(&ginput);
+	gpa.alloc(f.items(),f.rows());
+	f.set_transpose(true);
+	f.load(gpa.get_cdata());
+	f.sample();
 	gpa.init();
-	ginput.sample();
-
-	gpa.findTopK(1000);
+	gpa.findTopK(100);
 
 	return 0;
 }
