@@ -17,6 +17,7 @@ int main(int argc, char **argv){
 
 	gpa.alloc(f.items(),f.rows());
 	f.set_transpose(true);
+	std::cout << "Loading data..." << std::endl;
 	f.load(gpa.get_cdata());
 	//f.sample();
 	gpa.init();
