@@ -22,8 +22,6 @@ class GPA{
 		~GPA(){
 			if(this->cdata!=NULL){ cudaFreeHost(this->cdata); }
 			if(this->gdata!=NULL){ cudaFree(this->gdata); }
-			if(this->gtupples!=NULL){ cudaFree(this->gtupples); }
-			if(this->ctupples!=NULL){ cudaFree(this->ctupples); }
 		};
 
 		void init();
@@ -33,8 +31,6 @@ class GPA{
 		T*& get_cdata(){ return this->cdata; }
 
 	protected:
-		uint64_t *ctupples = NULL;//cpu tupples id
-		uint64_t *gtupples = NULL;//gpu tupples id
 		T *gdata = NULL;//column major tupple data
 		T *cdata;
 
@@ -52,9 +48,6 @@ void GPA<T>::alloc(uint64_t items, uint64_t rows){
 	this->d = items; this->n=rows;
 
 	cutil::safeMalloc<T,uint64_t>(&(this->gdata),sizeof(T)*this->n*this->d,"gdata alloc");
-	cutil::safeMalloc<uint64_t,uint64_t>(&(this->gtupples),sizeof(uint64_t)*this->n,"gtupples alloc");
-	cutil::safeMallocHost<uint64_t,uint64_t>(&(this->ctupples),sizeof(uint64_t)*this->n,"ctupples alloc");
-
 	cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");
 }
 
@@ -66,8 +59,10 @@ void GPA<T>::init(){
 	dim3 block(BLOCK_SIZE,1,1);
 
 	switch(this->d){
+		case 2:
+			reorder_max_2_full<T,BLOCK_SIZE><<<grid,block>>>(this->gdata,this->n,this->d);
+			break;
 		case 4:
-			//init_tupples_4<BLOCK_SIZE><<<grid,block>>>(this->gtupples,this->n);//
 			reorder_max_4_full<T,BLOCK_SIZE><<<grid,block>>>(this->gdata,this->n,this->d);
 			break;
 		case 6:
@@ -110,7 +105,6 @@ void GPA<T>::check_order(){
 	}
 }
 
-
 template<class T>
 uint32_t GPA<T>::radix_select_count(uint32_t *col_ui,uint64_t n,uint64_t &k,uint32_t prefix, uint32_t prefix_mask,uint32_t digit_mask, uint32_t digit_shf){
 	uint32_t bins[16];
@@ -131,17 +125,6 @@ uint32_t GPA<T>::radix_select_count(uint32_t *col_ui,uint64_t n,uint64_t &k,uint
 		}
 	}
 	return 0xF;
-
-//	for(int i = 1;i < 16;i++) bins[i]+=bins[i-1];
-//	for(int i = 0;i < 16;i++) printf("%d | ",bins[i]);
-//	printf("\n");
-//	for(int i = 0;i < 16;i++){
-//		if( bins[i] > k ){// >= or >
-//			k = k-bins[i-1];
-//			return i;
-//		}
-//	}
-//	return 0xF;
 }
 
 template<class T>
@@ -206,7 +189,7 @@ void GPA<T>::findTopK(uint64_t k){
 		}
 	/////////////
 	}else{
-		cutil::safeMallocHost<uint32_t,uint64_t>(&(col_ui),sizeof(uint32_t)*this->n,"col_ui alloc");
+		cutil::safeMallocHost<uint32_t,uint64_t>(&(col_ui),sizeof(uint32_t)*this->n,"col_ui alloc");//Debug
 		cutil::safeMalloc<uint32_t,uint64_t>(&(gcol_ui),sizeof(uint32_t)*this->n,"gcol_ui alloc");
 
 		CompactConfig<T> cconfig;
@@ -220,7 +203,7 @@ void GPA<T>::findTopK(uint64_t k){
 
 			uint32_t gpu_prefix = radix_select_gpu_findK(gcol_ui,tmpN,tmpN - k);
 			float threshold = *(float*)&gpu_prefix;
-			printf("kgpu: 0x%08x, %f\n",gpu_prefix,threshold);
+			printf("kgpu: 0x%08x, %f\n",gpu_prefix,threshold);//Debug
 
 			cconfig.prune_tupples(tupples.tupple_ids,tupples.scores,&this->gdata[i*n],&this->gdata[(i+1)*n],tmpN,threshold,suffix_len);
 

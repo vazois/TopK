@@ -10,7 +10,7 @@
 template<class T>
 class FA : public AA<T>{
 	public:
-		FA(Input<T>* input) : AA<T>(input){ this->algo = "FA"; };
+		FA(uint64_t n,uint64_t d) : AA<T>(n,d){ this->algo = "FA"; };
 
 		void init();
 		void findTopK(uint64_t k);

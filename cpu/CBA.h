@@ -2,7 +2,6 @@
 #define CBA_H
 
 #include "AA.h"
-#include "../input/Input.h"
 #include "reorder_attr_cpu.h"
 
 #include <list>
@@ -25,10 +24,11 @@ static bool cmp_max_cpred(const cpred<T> &a, const cpred<T> &b){ return a.total 
 template<class T>
 class CBA : public AA<T>{
 	public:
-		CBA(Input<T>* input) : AA<T>(input){ this->algo = "CBA"; };
+		CBA(uint64_t n,uint64_t d) : AA<T>(n,d){ this->algo = "CBA"; };
 		~CBA(){ };
 
 		void init();
+		void transpose();
 		void findTopK(uint64_t k);
 
 	protected:
@@ -46,6 +46,9 @@ void CBA<T>::init(){
 
 	this->t.start();
 	switch(this->d){
+		case 2:
+			reorder_attr_2(this->cdata,this->n);
+			break;
 		case 4:
 			reorder_attr_4(this->cdata,this->n);
 			break;
@@ -61,17 +64,30 @@ void CBA<T>::init(){
 		case 12:
 			reorder_attr_12(this->cdata,this->n);
 			break;
-//		case 16:
-//			reorder_attr_16(this->cdata,this->n);
-//			break;
 		default:
 			break;
 	}
-	this->tt_init = this->t.lap("<>");
+	this->tt_init = this->t.lap("");
 	this->check_order();//TODO: Comment
 
 	for(uint64_t i = 0; i < this->n; i++){ this->tupples.push_back(cpred<T>(i,this->cdata[i])); }
 	//this->sort(cmp_max_cpred<T>);
+}
+
+template<class T>
+void CBA<T>::transpose(){
+	T *tmp = (T*)malloc(sizeof(T) * (this->n) * (this->d));
+
+	for(uint64_t i = 0; i < this->n; i++){
+		for(uint64_t j = 0; j < this->d; j++){
+			tmp[ j * this->n + i ] = this->cdata[i * this->d + j];
+		}
+	}
+
+	for(uint64_t i = 0; i < this->n * this->d; i++){
+		this->cdata[i] = tmp[i];
+	}
+	free(tmp);
 }
 
 template<class T>
@@ -112,26 +128,6 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 	T threshold = q.top();
 	std::cout << "threshold: " << threshold << std::endl;
 
-//	std::cout << "pq threshold: " << threshold << std::endl;
-//	q.pop();
-//	std::cout << "B: " << q.top() << std::endl;
-
-/*Sort based q finder*/
-//	this->t.start();
-//	this->tupples.sort(cmp_max_cpred<T>);
-//	this->t.lap("<sort>");
-//
-//	it = this->tupples.begin();
-//	this->t.start();
-//	while( it != this->tupples.end() && i < k){
-//		//std::cout << "<< "<<i<<"," << it->total << std::endl;
-//		i++; it++;
-//	}
-//	this->t.lap("<find k>");
-//	T threshold = (it--)->total;
-//	std::cout << "threshold: " << threshold << std::endl;
-
-
 	/*Prune tuples that cannot surpass the threshold*/
 	it=this->tupples.begin();
 	uint64_t mult =this->d-(r+1);
@@ -140,25 +136,13 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 			it = this->tupples.erase(it);
 		}else{
 			T next_attr = this->cdata[(r+1) * this->n + it->tid];
-//			if(r == 2){
-//				//std::cout << it->tid << ": " << (it->total) << " + " << next_attr << "=" <<it->total + next_attr<< std::endl;
-//				//if(it->tid <= 1045810 && it->tid >1045801){
-////				if(it->tid == 2438){
-//					//std::cout << it->tid << ": " << (it->total+next_attr) << std::endl;
-////					std::cout << it->tid << ": " << (it->total) << " + " << next_attr << "=" <<it->total + next_attr<< std::endl;
-////				}
-////				//}
-////				std::cout << it->tid << ": " << std::endl;
-//			}
 			it->total += next_attr;
 			it->curr_attr = next_attr;
 			this->eval_count++;
 			it++;
 		}
 	}
-	//if(r==2) exit(1);
 	std::cout << "tupples: " << this->tupples.size() << std::endl;
-
 }
 
 template<class T>

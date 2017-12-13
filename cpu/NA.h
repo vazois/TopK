@@ -9,7 +9,7 @@
 template<class T>
 class NA : public AA<T>{
 	public:
-		NA(Input<T>* input) : AA<T>(input){ this->algo = "NA"; };
+		NA(uint64_t n,uint64_t d) : AA<T>(n,d){ this->algo = "NA"; };
 
 		void init();
 		void findTopK(uint64_t k);
@@ -23,7 +23,7 @@ class NA : public AA<T>{
  */
 template<class T>
 void NA<T>::init(){
-	this->tuples.resize(this->input->get_n());
+	this->tuples.resize(this->n);
 	this->t.start();
 	for(uint64_t i = 0; i < this->n; i++ ){
 		T score = 0;

@@ -14,6 +14,15 @@ template<class T>
 class File{
 	public:
 		File(){}
+		File(std::string fname,bool gpu, uint64_t n, uint64_t d){
+			this->fname = fname;
+			this->delimiter=',';
+			this->transpose=false;
+			this->n = n;
+			this->d = d;
+			this->gpu=gpu;
+		}
+
 		File(std::string fname,bool gpu){
 			this->fname = fname;
 			this->delimiter=',';
@@ -200,10 +209,9 @@ void File<T>::load(){
 template<class T>
 void File<T>::load(T *& data){
 	if(data == NULL){
-		std::cout << "Load <data> pointer NULL!!!" << std::endl;
-		exit(1);
+		//std::cout << "Load <data> pointer NULL!!!" << std::endl;
+		data = (T*)malloc(sizeof(T) * (this->n) * (this->d));
 	}
-	//this->count();
 	this->data=data;
 	this->line_specifier();
 

@@ -9,7 +9,19 @@
 template<class T> inline __device__ T _MAX_(T x, T y){ return x > y ? x : y; }
 template<class T> inline __device__ T _MIN_(T x, T y){ return x < y ? x : y; }
 
+template<class T,uint32_t block>
+__global__ void reorder_max_2_full(T *gdata, uint64_t n, uint64_t d){
+	uint64_t offset = block * blockIdx.x + threadIdx.x;
 
+	if ( offset < n ){
+		T a0,a1;
+		T t0;
+
+		a0 = gdata[offset]; a1 = gdata[offset + n];
+		t0 = max(a0,a1); a1 = min(a0,a1); a0 = t0;//1
+		gdata[offset] = a0; gdata[offset+n] = a1;
+	}
+}
 
 template<class T,uint32_t block>
 __global__ void reorder_max_4_full(T *gdata, uint64_t n, uint64_t d){

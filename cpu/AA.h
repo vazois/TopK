@@ -5,8 +5,6 @@
 #include<algorithm>
 #include<map>
 
-#include "../input/Input.h"
-
 
 /*
  * Predicate structure
@@ -42,7 +40,7 @@ static bool cmp_max_pred(const pred<T> &a, const pred<T> &b){ return a.attr > b.
 template<class T>
 class AA{
 	public:
-		AA(Input<T>* input);
+		AA(uint64_t n, uint64_t d);
 		~AA();
 
 		void compare(AA<T> b);
@@ -51,9 +49,10 @@ class AA{
 
 		void benchmark();
 
-	protected:
-		Input<T>* input;
+		T*& get_cdata(){ return this->cdata; }
+		void set_cdata(T *cdata){ this->cdata = cdata; }
 
+	protected:
 		std::string algo;
 		std::vector<tuple<T>> res;
 		T *cdata;
@@ -67,18 +66,19 @@ class AA{
 };
 
 template<class T>
-AA<T>::AA(Input<T>* input){
-	this->input = input;
+AA<T>::AA(uint64_t n, uint64_t d){
 	this->tt_init = 0;
 	this->tt_processing = 0;
 	this->eval_count = 0;
-	this->n = this->input->get_n();
-	this->d = this->input->get_d();
-	this->cdata = this->input->get_dt();
+	this->n = n;
+	this->d = d;
+	this->cdata = NULL;
 }
 
 template<class T>
-AA<T>::~AA(){ }
+AA<T>::~AA(){
+	//if(this->cdata!=NULL) free(this->cdata);
+}
 
 /*
  * cmp results to check correctness

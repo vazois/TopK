@@ -106,7 +106,7 @@ __host__ void CompactConfig<T>::prune_tupples(uint32_t *tupple_ids, T *score, T 
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing scores partition");
 
 	uint64_t dnum = this->get_dnum_cpu();
-	std::cout << "rows qualified: " << dnum << std::endl;
+	std::cout << "rows qualified: " << dnum << std::endl;//Debug
 	dim3 ggrid((dnum-1)/BLOCK_SIZE + 1,1,1);
 	dim3 gblock(BLOCK_SIZE,1,1);
 	compact_tupples<T,BLOCK_SIZE><<<ggrid,gblock>>>(tupple_ids,score,gdataC,gdataN,this->tids_out,this->sout,dnum);
