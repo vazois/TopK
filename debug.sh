@@ -4,10 +4,10 @@
 
 START_N=$((1024 * 1024))
 END_N=$((1024 * 1024))
-START_D=8
-END_D=8
+START_D=4
+END_D=4
 
-distr=i
+distr=u
 
 for (( n=$START_N; n<=$END_N; n*=2 ))
 do

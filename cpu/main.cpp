@@ -14,7 +14,7 @@ void debug(std::string fname, uint64_t k){
 	input.init();
 	ginput.transpose(true); ginput.init();
 
-	std::cout << "\n<Debug> ....." << std::endl;
+	//std::cout << "\n<Debug> ....." << std::endl;
 	NA<float> na(&input);
 	FA<float> fa(&input);
 	CBA<float> cba(&ginput);
@@ -36,7 +36,7 @@ int main(int argc, char **argv){
 	}
 
 	if(!ap.exists("-md")){
-		std::cout << "Default mode: <debug>" <<std::endl;
+		//std::cout << "Default mode: <debug>" <<std::endl;
 		ap.addArg("-md","debug");
 	}
 

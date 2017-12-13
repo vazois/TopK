@@ -70,7 +70,7 @@ void Input<T>::init(){
 	t.start();
 	if(!tenable) this->read_scanf();
 	else this->read_scanf_t();
-	t.lap("Read elapsed time (ms)!!!");
+	//t.lap("Read elapsed time (ms)!!!");
 }
 
 template<class T>
@@ -111,7 +111,7 @@ void Input<T>::count(){
 
 	fclose(fp);
 	free(buffer);
-	std::cout << "dim: (" << (this->n) << "," << (this->d) << ")"<<std::endl;
+	//std::cout << "dim: (" << (this->n) << "," << (this->d) << ")"<<std::endl;
 }
 
 template<class T>
@@ -131,7 +131,7 @@ void Input<T>::read_scanf(){
 
 template<class T>
 void Input<T>::read_scanf_t(){
-	std::cout << "Read scanf transpose..." << std::endl;
+	//std::cout << "Read scanf transpose..." << std::endl;
 	FILE *f;
 	f = fopen(this->fname.c_str(), "r");
 	uint64_t i = 0;

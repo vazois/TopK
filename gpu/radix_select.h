@@ -35,15 +35,15 @@ class RdxSelect{
 
 static RdxSelect rdx;
 
-template<uint32_t block>
-__global__ void extract_bin(uint32_t *gcol_ui, float *gcol_f,uint64_t n){
+template<class T,uint32_t block>
+__global__ void extract_bin(uint32_t *gcol_ui, T *gcol_f,uint64_t n){
 	uint64_t offset = block * blockIdx.x + threadIdx.x;
 
 	if(offset < n){
-		float vf = gcol_f[offset];
+		T vf = gcol_f[offset];
 		uint32_t vi = *(uint32_t*)&vf;
 		gcol_ui[offset] = vi;
-		//if(offset == 0){ printf("%f , 0x%x\n",vf,vi); }
+		//if(offset == 1){ printf("<<< %f , 0x%x\n",vf,vi); }
 	}
 }
 
@@ -68,23 +68,13 @@ __global__ void radix_select_count(uint32_t *gcol_ui,uint64_t n,uint64_t k,uint3
 		//gpu_bins[threadIdx.x] = tbins[threadIdx.x];
 		atomicAdd(&gpu_bins[threadIdx.x],bbins[0][threadIdx.x]);
 	}
-
-//	__syncthreads();
-//	if(threadIdx.x == 0){
-//		for(int i = 0;i < 16;i++){
-//			printf("%d | ",bbins[0][i]);
-////			atomicAdd(&gpu_bins[i],bbins[0][i]);
-//		}
-//		printf("\n");
-//	}
-
 }
 
 __host__ uint32_t radix_select_gpu_findK(uint32_t *gcol_ui,uint64_t n, uint64_t k){
 //	dim3 grid(GRID_SIZE,1,1);
 //	dim3 block(BLOCK_SIZE,1,1);
 
-	uint32_t GRID_SIZE = n/(VALUE_PER_THREAD * BLOCK_SIZE);
+	uint32_t GRID_SIZE = (n-1)/(VALUE_PER_THREAD * BLOCK_SIZE) + 1;
 	dim3 grid(GRID_SIZE,1,1);
 	dim3 block(BLOCK_SIZE,1,1);
 

@@ -140,14 +140,25 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 			it = this->tupples.erase(it);
 		}else{
 			T next_attr = this->cdata[(r+1) * this->n + it->tid];
+//			if(r == 2){
+//				//std::cout << it->tid << ": " << (it->total) << " + " << next_attr << "=" <<it->total + next_attr<< std::endl;
+//				//if(it->tid <= 1045810 && it->tid >1045801){
+////				if(it->tid == 2438){
+//					//std::cout << it->tid << ": " << (it->total+next_attr) << std::endl;
+////					std::cout << it->tid << ": " << (it->total) << " + " << next_attr << "=" <<it->total + next_attr<< std::endl;
+////				}
+////				//}
+////				std::cout << it->tid << ": " << std::endl;
+//			}
 			it->total += next_attr;
 			it->curr_attr = next_attr;
 			this->eval_count++;
 			it++;
 		}
-
 	}
-	//std::cout << "tupples: " << this->tupples.size() << std::endl;
+	//if(r==2) exit(1);
+	std::cout << "tupples: " << this->tupples.size() << std::endl;
+
 }
 
 template<class T>

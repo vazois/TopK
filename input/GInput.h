@@ -28,7 +28,7 @@ void GInput<T>::init(){
 	Time<msecs> t;
 	t.start();
 	this->read_scanf_t();
-	t.lap("Read elapsed time (ms)!!!");
+	//t.lap("Read elapsed time (ms)!!!");
 }
 
 #endif
