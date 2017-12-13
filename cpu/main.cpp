@@ -5,6 +5,7 @@
 #include "cpu/AA.h"
 #include "cpu/NA.h"
 #include "cpu/FA.h"
+#include "cpu/TA.h"
 #include "cpu/CBA.h"
 
 void debug(std::string fname, uint64_t k){
@@ -14,17 +15,20 @@ void debug(std::string fname, uint64_t k){
 
 	NA<float> na(f.rows(),f.items());
 	FA<float> fa(f.rows(),f.items());
+	TA<float> ta(f.rows(),f.items());
 	CBA<float> cba(f.rows(),f.items());
 
 	f.load(na.get_cdata());
 	f2.load(cba.get_cdata());
 	fa.set_cdata(na.get_cdata());
+	ta.set_cdata(na.get_cdata());
 
 //	cba.set_cdata(na.get_cdata());
 //	cba.transpose();
 
 	na.init(); na.findTopK(k);
 	fa.init(); fa.findTopK(k);
+	ta.init(); ta.findTopK(k);
 	cba.init(); cba.findTopK(k);
 
 	fa.compare(na);

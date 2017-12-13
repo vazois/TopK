@@ -2,7 +2,6 @@
 #define FA_H
 
 #include "AA.h"
-#include<map>
 
 /*
  * Simple implementation of Fagin's algorithm

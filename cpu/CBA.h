@@ -7,7 +7,6 @@
 #include <list>
 #include <queue>
 
-
 template<class T>
 struct cpred{
 	cpred(){ tid = 0; curr_attr = 0; total = 0; }
