@@ -4,6 +4,7 @@
 #include "FA.h"
 #include <queue>
 #include <set>
+#include <map>
 
 
 template<class T>
@@ -30,6 +31,7 @@ void TA<T>::findTopK(uint64_t k){
 	std::cout << this->algo << " find topK ...";
 
 	std::set<uint64_t> tids_set;
+	std::map<uint64_t,T> tmap;
 	std::priority_queue<T, std::vector<tuple<T>>, PQComparison<T>> q;
 	T threshold=0;
 	this->t.start();
@@ -40,12 +42,18 @@ void TA<T>::findTopK(uint64_t k){
 			threshold+=p.attr;
 
 			T score = 0;
-			for(uint8_t k = 0; k < this->d; k++){
-				score+=this->cdata[p.tid * this->d + k];
-				this->eval_count+=this->d;
+			if(tmap.find(p.tid) == tmap.end()){// Only if we do not want to re-evaluate the score for tuples re-appering in the lists
+				for(uint8_t k = 0; k < this->d; k++){
+					score+=this->cdata[p.tid * this->d + k];
+				}
+				this->pred_count+=this->d;
+				this->tuple_count+=1;
+				tmap.insert(std::pair<uint64_t,T>(p.tid,score));
+			}else{
+				score = tmap[p.tid];
 			}
 
-			if(tids_set.find(p.tid) == tids_set.end()){//if does not exist in set
+			if(tids_set.find(p.tid) == tids_set.end()){//if does not exist in set / if tuple has not been evaluated yet
 				if(q.size() < k){//insert if space in queue
 					q.push(tuple<T>(p.tid,score));
 					tids_set.insert(p.tid);

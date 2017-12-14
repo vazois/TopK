@@ -137,7 +137,7 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 			T next_attr = this->cdata[(r+1) * this->n + it->tid];
 			it->total += next_attr;
 			it->curr_attr = next_attr;
-			this->eval_count++;
+			this->pred_count+=1;
 			it++;
 		}
 	}
@@ -156,13 +156,9 @@ void CBA<T>::findTopK(uint64_t k){
 	this->t.start();
 	for(uint64_t j = 0; j < this->d; j++){//d-1
 		findAndPrune(k,j);
-		//this->t.lap("<>");
-	//	findAndPrune(k,1);
-	//	findAndPrune(k,2);
 	}
-	//findAndPrune(k,3);
-	//this->tupples.sort(cmp_max_cpred<T>);//sort when d-1
 	this->tt_processing = this->t.lap("");
+	this->tuple_count+=tupples.size();
 
 	uint64_t i = 0;
 	typename std::list< cpred<T> >::iterator it;

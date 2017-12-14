@@ -61,14 +61,16 @@ class AA{
 		Time<msecs> t;
 		double tt_init;//initialization time
 		double tt_processing;//processing time
-		uint64_t eval_count;//count tuples evaluated
+		uint64_t pred_count;//count predicate evaluations
+		uint64_t tuple_count;//count predicate evaluations
 };
 
 template<class T>
 AA<T>::AA(uint64_t n, uint64_t d){
 	this->tt_init = 0;
 	this->tt_processing = 0;
-	this->eval_count = 0;
+	this->pred_count = 0;
+	this->tuple_count = 0;
 	this->n = n;
 	this->d = d;
 	this->cdata = NULL;
@@ -113,7 +115,8 @@ void AA<T>::benchmark(){
 	std::cout << "tt_init: " << this->tt_init << std::endl;
 	std::cout << "tt_procesing: " << this->tt_processing << std::endl;
 
-	std::cout << "eval_count: " << this->eval_count << std::endl;
+	std::cout << "pred_count: " << this->pred_count << std::endl;
+	std::cout << "tuple_count: " << this->tuple_count << std::endl;
 }
 
 #endif
