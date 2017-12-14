@@ -32,10 +32,12 @@ void debug(std::string fname, uint64_t k){
 	cba.init(); cba.findTopK(k);
 
 	fa.compare(na);
+	ta.compare(na);
 	cba.compare(na);
 
 	na.benchmark();
 	fa.benchmark();
+	ta.benchmark();
 	cba.benchmark();
 }
 

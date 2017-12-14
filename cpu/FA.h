@@ -42,7 +42,7 @@ void FA<T>::init(){
  */
 template<class T>
 void FA<T>::findTopK(uint64_t k){
-	std::cout << this->algo << " find topK ..." << std::endl;
+	std::cout << this->algo << " find topK ...";
 	std::map<uint64_t,uint8_t> tmap;
 	uint64_t stop=0;
 
@@ -74,6 +74,7 @@ void FA<T>::findTopK(uint64_t k){
 	this->tt_processing = this->t.lap();
 	for(uint64_t i = 0;i < k ;i++){ this->res.push_back(res[i]); }
 
+	std::cout << " (" << this->res.size() << ")" << std::endl;
 }
 
 #endif

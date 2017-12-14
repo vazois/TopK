@@ -40,14 +40,18 @@ void NA<T>::init(){
  */
 template<class T>
 void NA<T>::findTopK(uint64_t k){
-	std::cout << this->algo << " find topK ..." << std::endl;
+	std::cout << this->algo << " find topK ...";
 
 	this->t.start();
 	std::sort(this->tuples.begin(),this->tuples.end(),cmp_score<T>);
+	//std::cout << std::endl;
 	for(uint64_t i = 0;i <(k < this->tuples.size() ? k : this->tuples.size() ) ;i++){
+		//std::cout << this->algo <<" : " << this->tuples[i].tid << "," << this->tuples[i].score <<std::endl;
 		this->res.push_back(tuple<T>(this->tuples[i].tid,this->tuples[i].score));
 	}
 	this->tt_processing = this->t.lap();
+
+	std::cout << " (" << this->res.size() << ")" << std::endl;
 }
 
 #endif

@@ -125,7 +125,7 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 		it++;
 	}
 	T threshold = q.top();
-	std::cout << "threshold: " << threshold << std::endl;
+	//std::cout << "threshold: " << threshold << std::endl;
 
 	/*Prune tuples that cannot surpass the threshold*/
 	it=this->tupples.begin();
@@ -141,7 +141,7 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 			it++;
 		}
 	}
-	std::cout << "tupples: " << this->tupples.size() << std::endl;
+	//std::cout << "tupples: " << this->tupples.size() << std::endl;
 }
 
 template<class T>
@@ -152,7 +152,7 @@ T CBA<T>::find(uint64_t k){
 
 template<class T>
 void CBA<T>::findTopK(uint64_t k){
-	std::cout << this->algo << " find topK ..." << std::endl;
+	std::cout << this->algo << " find topK ...";
 	this->t.start();
 	for(uint64_t j = 0; j < this->d; j++){//d-1
 		findAndPrune(k,j);
@@ -174,7 +174,7 @@ void CBA<T>::findTopK(uint64_t k){
 	}
 
 	//std::cout << "list_size: " << tupples.size() << std::endl;
-
+	std::cout << " (" << this->res.size() << ")" << std::endl;
 }
 
 #endif
