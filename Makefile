@@ -5,7 +5,7 @@ NVCC=/usr/local/cuda-8.0/bin/nvcc
 CC_MAIN=cpu/main.cpp
 CC_FLAGS=-std=c++11
 CC_EXE=cpu_run
-CC_OPT_FLAGS= -O3 -ffast-math -funroll-loops -msse -msse3 -mmmx -fomit-frame-pointer -m64
+CC_OPT_FLAGS= -O3 -ffast-math -funroll-loops -msse -msse2 -msse3 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64
 
 #GPU CONFIGURATION
 GC_MAIN=gpu/main.cu

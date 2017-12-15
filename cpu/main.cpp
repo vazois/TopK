@@ -13,6 +13,7 @@ void debug(std::string fname, uint64_t k){
 	File<float> f2(fname,false,f.rows(),f.items());
 	f2.set_transpose(true);
 
+
 	NA<float> na(f.rows(),f.items());
 	FA<float> fa(f.rows(),f.items());
 	TA<float> ta(f.rows(),f.items());
@@ -23,6 +24,7 @@ void debug(std::string fname, uint64_t k){
 	fa.set_cdata(na.get_cdata());
 	ta.set_cdata(na.get_cdata());
 
+	f.sample();
 //	cba.set_cdata(na.get_cdata());
 //	cba.transpose();
 

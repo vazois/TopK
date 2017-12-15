@@ -5,6 +5,12 @@
 #include<algorithm>
 #include<map>
 
+#include <mmintrin.h>//MMX
+#include <xmmintrin.h>//SSE
+#include <emmintrin.h>//SSE2
+#include <emmintrin.h>//SSE3
+#include <immintrin.h>//AVX and AVX2 // AVX-512
+
 /*
  * Predicate structure
  */
