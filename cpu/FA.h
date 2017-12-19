@@ -2,6 +2,7 @@
 #define FA_H
 
 #include "AA.h"
+#include <unordered_map>
 
 /*
  * Simple implementation of Fagin's algorithm
@@ -43,7 +44,8 @@ void FA<T>::init(){
 template<class T>
 void FA<T>::findTopK(uint64_t k){
 	std::cout << this->algo << " find topK ...";
-	std::map<uint64_t,uint8_t> tmap;
+	//std::map<uint64_t,uint8_t> tmap;
+	std::unordered_map<uint64_t,uint8_t> tmap;
 	uint64_t stop=0;
 
 	this->t.start();
@@ -63,7 +65,7 @@ void FA<T>::findTopK(uint64_t k){
 
 	//Gather results and evaluate scores
 	std::vector<tuple<T>> res;
-	for(std::map<uint64_t,uint8_t>::iterator it = tmap.begin(); it!=tmap.end(); ++it){
+	for(std::unordered_map<uint64_t,uint8_t>::iterator it = tmap.begin(); it!=tmap.end(); ++it){
 		uint64_t tid = it->first;
 		T score = 0;
 		for(uint64_t j = 0; j < this->d; j++){ score+= this->cdata[tid * this->d + j]; }

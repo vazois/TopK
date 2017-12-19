@@ -7,6 +7,7 @@
 #include "cpu/FA.h"
 #include "cpu/TA.h"
 #include "cpu/CBA.h"
+#include "cpu/BPA.h"
 
 void debug(std::string fname, uint64_t k){
 	File<float> f(fname,false);
@@ -17,11 +18,13 @@ void debug(std::string fname, uint64_t k){
 	NA<float> na(f.rows(),f.items());
 	FA<float> fa(f.rows(),f.items());
 	TA<float> ta(f.rows(),f.items());
+	BPA<float> bpa(f.rows(),f.items());
 	CBA<float> cba(f.rows(),f.items());
 
 	f.load(na.get_cdata());
 	f2.load(cba.get_cdata());
 	fa.set_cdata(na.get_cdata());
+	bpa.set_cdata(na.get_cdata());
 	ta.set_cdata(na.get_cdata());
 
 	f.sample();
@@ -31,15 +34,18 @@ void debug(std::string fname, uint64_t k){
 	na.init(); na.findTopK(k);
 	fa.init(); fa.findTopK(k);
 	ta.init(); ta.findTopK(k);
+	bpa.init(); bpa.findTopK(k);
 	cba.init(); cba.findTopK(k);
 
 	fa.compare(na);
 	ta.compare(na);
+	bpa.compare(na);
 	cba.compare(na);
 
 	na.benchmark();
 	fa.benchmark();
 	ta.benchmark();
+	bpa.benchmark();
 	cba.benchmark();
 }
 

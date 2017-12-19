@@ -5,6 +5,8 @@
 #include <queue>
 #include <set>
 #include <map>
+#include <unordered_map>
+#include <unordered_set>
 
 
 template<class T>
@@ -30,8 +32,10 @@ void TA<T>::findTopK(uint64_t k){
 	//Note: keep truck of ids so you will not re-insert the same tupple as your process them in order
 	std::cout << this->algo << " find topK ...";
 
-	std::set<uint64_t> tids_set;
-	std::map<uint64_t,T> tmap;
+	std::unordered_set<uint64_t> tids_set;
+	std::unordered_map<uint64_t,T> tmap;
+//	std::set<uint64_t> tids_set;
+//	std::map<uint64_t,T> tmap;
 	std::priority_queue<T, std::vector<tuple<T>>, PQComparison<T>> q;
 	T threshold=0;
 	this->t.start();
@@ -42,7 +46,7 @@ void TA<T>::findTopK(uint64_t k){
 			threshold+=p.attr;
 
 			T score = 0;
-			if(tmap.find(p.tid) == tmap.end()){// Only if we do not want to re-evaluate the score for tuples re-appering in the lists
+			if(tmap.find(p.tid) == tmap.end()){// Only if we do not want to re-evaluate the score for tuples re-appearing in the lists
 				for(uint8_t k = 0; k < this->d; k++){
 					score+=this->cdata[p.tid * this->d + k];
 				}
