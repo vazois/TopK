@@ -11,12 +11,11 @@
 #include <algorithm>
 #include <vector>
 
-
 #define BLOCK_SIZE 512
 #define DEBUG false
 
 template<class T>
-class GPA{
+class GPA {
 	public:
 		GPA() { this->algo = "GPA"; };
 		~GPA(){
@@ -28,16 +27,23 @@ class GPA{
 		void findTopK(uint64_t k);
 
 		void alloc(uint64_t items, uint64_t rows);
+		void set_cdata(T *cdata){ this->cdata = cdata; }
+		void set_gdata(T *gdata){ this->gdata = gdata; }
 		T*& get_cdata(){ return this->cdata; }
+		T*& get_gdata(){ return this->gdata; }
 
-	protected:
-		T *gdata = NULL;//column major tupple data
-		T *cdata;
-
+		void benchmark();
 	private:
+		Time<msecs> t;
+		double tt_init;//initialization time
+		double tt_processing;//processing time
+
 		uint32_t radix_select_findK(uint32_t *col_ui,uint64_t n, uint64_t k);
 		uint32_t radix_select_count(uint32_t *col_ui,uint64_t n,uint64_t &k,uint32_t prefix, uint32_t prefix_mask,uint32_t digit_mask, uint32_t digit_shf);
 		void check_order();
+
+		T *gdata = NULL;//column major tupple data
+		T *cdata;
 
 		uint64_t n,d;
 		std::string algo;
@@ -195,6 +201,7 @@ void GPA<T>::findTopK(uint64_t k){
 		CompactConfig<T> cconfig;
 		uint64_t suffix_len = this->d - 1;
 		uint64_t tmpN = n;
+		t.start();
 		for(uint64_t i = 0; i < d;i++){
 			dim3 ggrid((tmpN-1)/BLOCK_SIZE + 1,1,1);
 			dim3 gblock(BLOCK_SIZE,1,1);
@@ -203,18 +210,26 @@ void GPA<T>::findTopK(uint64_t k){
 
 			uint32_t gpu_prefix = radix_select_gpu_findK(gcol_ui,tmpN,tmpN - k);
 			float threshold = *(float*)&gpu_prefix;
-			printf("kgpu: 0x%08x, %f\n",gpu_prefix,threshold);//Debug
+			//printf("kgpu: 0x%08x, %f\n",gpu_prefix,threshold);//Debug
 
 			cconfig.prune_tupples(tupples.tupple_ids,tupples.scores,&this->gdata[i*n],&this->gdata[(i+1)*n],tmpN,threshold,suffix_len);
 
 			suffix_len--;
 		}
+		this->tt_processing = this->t.lap();
 		cudaFreeHost(col_ui);
 		cudaFree(gcol_ui);
 	}
 
 
 	free_tupples<T>(tupples);
+}
+
+template<class T>
+void GPA<T>::benchmark(){
+	std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
+	std::cout << "tt_init: " << this->tt_init << std::endl;
+	std::cout << "tt_procesing: " << this->tt_processing << std::endl;
 }
 
 #endif

@@ -69,6 +69,7 @@ void BPA<T>::findTopK(uint64_t k){
 			}
 		}
 
+		//Find threshold
 		T threshold = 0;
 		for(uint64_t j = 0; j < this->d;j++){
 			std::set<uint64_t>::iterator it = pset[j]->find(i);
@@ -84,7 +85,7 @@ void BPA<T>::findTopK(uint64_t k){
 		}
 
 		if(q.top().score >= threshold){
-			std::cout << "stopped at: " << i << "," << threshold << std::endl;
+			//std::cout << "stopped at: " << i << "," << threshold << std::endl;
 			break;
 		}
 	}
