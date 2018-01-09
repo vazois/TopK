@@ -11,6 +11,8 @@
 #include <emmintrin.h>//SSE3
 #include <immintrin.h>//AVX and AVX2 // AVX-512
 
+#define THREADS 8
+
 /*
  * Predicate structure
  */

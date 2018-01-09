@@ -9,11 +9,12 @@
 #include "cpu/CBA.h"
 #include "cpu/BPA.h"
 
+#define RUN_PAR true
+
 void debug(std::string fname, uint64_t k){
 	File<float> f(fname,false);
 	File<float> f2(fname,false,f.rows(),f.items());
 	f2.set_transpose(true);
-
 
 	NA<float> na(f.rows(),f.items());
 	FA<float> fa(f.rows(),f.items());
@@ -27,9 +28,13 @@ void debug(std::string fname, uint64_t k){
 	bpa.set_cdata(na.get_cdata());
 	ta.set_cdata(na.get_cdata());
 
-	f.sample();
+//	f.sample();
 //	cba.set_cdata(na.get_cdata());
 //	cba.transpose();
+
+	fa.set_init_exec(RUN_PAR); //fa.set_topk_exec(RUN_PAR);
+	ta.set_init_exec(RUN_PAR);
+	bpa.set_init_exec(RUN_PAR);
 
 	na.init(); na.findTopK(k);
 	fa.init(); fa.findTopK(k);
