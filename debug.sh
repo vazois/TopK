@@ -4,8 +4,8 @@
 
 START_N=$((1*1024 * 1024))
 END_N=$((1*1024 * 1024))
-START_D=4
-END_D=4
+START_D=10
+END_D=10
 
 distr=i
 
