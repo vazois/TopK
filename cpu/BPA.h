@@ -8,39 +8,39 @@
 #include <unordered_map>
 #include <unordered_set>
 
-template<class T>
-class BPA : public FA<T>{
+template<class T,class Z>
+class BPA : public FA<T,Z>{
 	public:
-		BPA(uint64_t n,uint64_t d) : FA<T>(n,d){ this->algo = "BPA"; };
+		BPA(uint64_t n,uint64_t d) : FA<T,Z>(n,d){ this->algo = "BPA"; };
 		void findTopK(uint64_t k);
 };
 
 
-template<class T>
-void BPA<T>::findTopK(uint64_t k){
+template<class T,class Z>
+void BPA<T,Z>::findTopK(uint64_t k){
 	std::cout << this->algo << " find topK ...";
-	std::vector<std::unordered_map<uint64_t,uint64_t>*> pmap;//Quickly find position of tuple in list
-	std::vector<std::set<uint64_t>*> pset;//Keep track of positions i have seen
+	std::vector<std::unordered_map<Z,Z>*> pmap;//Quickly find position of tuple in list
+	std::vector<std::set<Z>*> pset;//Keep track of positions i have seen
 	this->t.start();
 	for(uint8_t j = 0; j < this->d;j++){
-		pmap.push_back(new std::unordered_map<uint64_t,uint64_t>);
-		pset.push_back(new std::set<uint64_t>);
+		pmap.push_back(new std::unordered_map<Z,Z>);
+		pset.push_back(new std::set<Z>);
 	}
 
 	for(uint64_t i = 0; i < this->n;i++){
 		//pmap.push_back(new std::map<uint64_t,uint64_t>);
 		for(uint8_t j = 0; j < this->d;j++){
-			pred<T> p = this->lists[j][i];
-			pmap[j]->insert(std::pair<uint64_t,uint64_t>(p.tid,i));//tupple-id position in j-th list
+			pred<T,Z> p = this->lists[j][i];
+			pmap[j]->insert(std::pair<Z,Z>(p.tid,i));//tupple-id position in j-th list
 		}
 	}
 
-	std::unordered_map<uint64_t,T> tmap;//keep track of evaluated tupples
-	std::unordered_set<uint64_t> tids_set;//make sure not to insert twice tupple into priority queue
-	std::priority_queue<T, std::vector<tuple<T>>, PQComparison<T>> q;
+	std::unordered_map<Z,T> tmap;//keep track of evaluated tupples
+	std::unordered_set<Z> tids_set;//make sure not to insert twice tupple into priority queue
+	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
 	for(uint64_t i = 0; i < this->n;i++){
 		for(uint8_t j = 0; j < this->d;j++){
-			pred<T> p = this->lists[j][i];
+			pred<T,Z> p = this->lists[j][i];
 
 			T score = 0;
 			if(tmap.find(p.tid) == tmap.end()){// Only if we do not want to re-evaluate the score for tuples re-appearing in the lists
@@ -58,12 +58,12 @@ void BPA<T>::findTopK(uint64_t k){
 
 			if(tids_set.find(p.tid) == tids_set.end()){//if does not exist in set / if tuple has not been evaluated yet
 				if(q.size() < k){//insert if space in queue
-					q.push(tuple<T>(p.tid,score));
+					q.push(tuple<T,Z>(p.tid,score));
 					tids_set.insert(p.tid);
 				}else if(q.top().score<score){//delete smallest element if current score is bigger
 					tids_set.erase(tids_set.find(q.top().tid));
 					q.pop();
-					q.push(tuple<T>(p.tid,score));
+					q.push(tuple<T,Z>(p.tid,score));
 					tids_set.insert(p.tid);
 				}
 			}

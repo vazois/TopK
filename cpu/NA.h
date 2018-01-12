@@ -6,30 +6,30 @@
 /*
  * Naive algorithm for aggregation
  */
-template<class T>
-class NA : public AA<T>{
+template<class T,class Z>
+class NA : public AA<T,Z>{
 	public:
-		NA(uint64_t n,uint64_t d) : AA<T>(n,d){ this->algo = "NA"; };
+		NA(uint64_t n,uint64_t d) : AA<T,Z>(n,d){ this->algo = "NA"; };
 
 		void init();
 		void initSIMD();
 		void findTopK(uint64_t k);
 
 	protected:
-		std::vector<tuple<T>> tuples;
+		std::vector<tuple<T,Z>> tuples;
 };
 
 /*
  * Calculate scores
  */
-template<class T>
-void NA<T>::init(){
+template<class T,class Z>
+void NA<T,Z>::init(){
 	this->tuples.resize(this->n);
 	this->t.start();
 	for(uint64_t i = 0; i < this->n; i++ ){
 		T score = 0;
 		for(uint64_t j = 0; j < this->d; j++ ){ score+= this->cdata[i * this->d + j]; }
-		this->tuples.push_back(tuple<T>(i,score));
+		this->tuples.push_back(tuple<T,Z>(i,score));
 		this->pred_count+=this->d;
 		this->tuple_count+=1;
 	}
@@ -43,8 +43,8 @@ void NA<T>::init(){
 			//__m256 vT0 =  _mm256_set_ps(0,0,0,0); // set manually
 //__m128 acc = _mm_set_ps(0,0,0,0);
 //__m256 acc = _mm256_set_ps(0,0,0,0);
-template<class T>
-void NA<T>::initSIMD(){
+template<class T, class Z>
+void NA<T,Z>::initSIMD(){
 	this->tuples.resize(this->n);
 
 	this->t.start();
@@ -65,14 +65,14 @@ void NA<T>::initSIMD(){
 		}
 		_mm256_store_ps(score,acc);
 
-		this->tuples.push_back(tuple<T>(i,score[0]));
-		this->tuples.push_back(tuple<T>(i+1,score[1]));
-		this->tuples.push_back(tuple<T>(i+2,score[2]));
-		this->tuples.push_back(tuple<T>(i+3,score[3]));
-		this->tuples.push_back(tuple<T>(i+4,score[4]));
-		this->tuples.push_back(tuple<T>(i+5,score[5]));
-		this->tuples.push_back(tuple<T>(i+6,score[6]));
-		this->tuples.push_back(tuple<T>(i+7,score[7]));
+		this->tuples.push_back(tuple<T,Z>(i,score[0]));
+		this->tuples.push_back(tuple<T,Z>(i+1,score[1]));
+		this->tuples.push_back(tuple<T,Z>(i+2,score[2]));
+		this->tuples.push_back(tuple<T,Z>(i+3,score[3]));
+		this->tuples.push_back(tuple<T,Z>(i+4,score[4]));
+		this->tuples.push_back(tuple<T,Z>(i+5,score[5]));
+		this->tuples.push_back(tuple<T,Z>(i+6,score[6]));
+		this->tuples.push_back(tuple<T,Z>(i+7,score[7]));
 	}
 	this->tt_init = this->t.lap();
 }
@@ -81,16 +81,16 @@ void NA<T>::initSIMD(){
 /*
  * Sort and find top-K
  */
-template<class T>
-void NA<T>::findTopK(uint64_t k){
+template<class T,class Z>
+void NA<T,Z>::findTopK(uint64_t k){
 	std::cout << this->algo << " find topK ...";
 
 	this->t.start();
-	std::sort(this->tuples.begin(),this->tuples.end(),cmp_score<T>);
+	std::sort(this->tuples.begin(),this->tuples.end(),cmp_score<T,Z>);
 	//std::cout << std::endl;
 	for(uint64_t i = 0;i <(k < this->tuples.size() ? k : this->tuples.size() ) ;i++){
 		//std::cout << this->algo <<" : " << this->tuples[i].tid << "," << this->tuples[i].score <<std::endl;
-		this->res.push_back(tuple<T>(this->tuples[i].tid,this->tuples[i].score));
+		this->res.push_back(tuple<T,Z>(this->tuples[i].tid,this->tuples[i].score));
 	}
 	this->tt_processing = this->t.lap();
 

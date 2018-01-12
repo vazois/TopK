@@ -3,7 +3,9 @@
 #include "input/File.h"
 #include "tools/ArgParser.h"
 
-void test(std::string fname){
+#define K 100
+
+void test(std::string fname, uint64_t k){
 	File<float> f(fname,true);
 	GPA<float> gpa;
 
@@ -13,11 +15,11 @@ void test(std::string fname){
 	f.load(gpa.get_cdata());
 	//f.sample();
 	gpa.init();
-	gpa.findTopK(100);
+	gpa.findTopK(K);
 	gpa.benchmark();
 }
 
-void simple_benchmark(std::string fname){
+void simple_benchmark(std::string fname, uint64_t k){
 	File<float> f(fname,true);
 	GPA<float> gpa;
 	GFA<float> gfa;
@@ -30,7 +32,7 @@ void simple_benchmark(std::string fname){
 	std::cout << "Finished Loading data..." << std::endl;
 
 	gpa.init();
-	gpa.findTopK(100);
+	gpa.findTopK(K);
 	gpa.benchmark();
 }
 
@@ -44,7 +46,7 @@ int main(int argc, char **argv){
 		exit(1);
 	}
 
-	test(ap.getString("-f"));
+	test(ap.getString("-f"), K);
 
 
 	return 0;

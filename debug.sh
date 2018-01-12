@@ -2,12 +2,13 @@
 
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
-START_N=$((1*1024 * 1024))
-END_N=$((1*1024 * 1024))
+START_N=$((16*1024 * 1024))
+END_N=$((16*1024 * 1024))
 START_D=10
 END_D=10
 
 distr=i
+#bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
 
 for (( n=$START_N; n<=$END_N; n*=2 ))
 do
@@ -21,7 +22,7 @@ do
 		fi
 		
 		make cpu_cc ; ./cpu_run -f=data/$fname
-		#make gpu_cc ; nvprof ./gpu_run -f=data/$fname
+		#make gpu_cc ; ./gpu_run -f=data/$fname
 		
 		if [ $? -eq 1 ]
 		then

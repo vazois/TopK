@@ -63,7 +63,7 @@ void GPA<T>::init(){
 
 	dim3 grid(this->n/BLOCK_SIZE,1,1);
 	dim3 block(BLOCK_SIZE,1,1);
-
+	t.start();
 	switch(this->d){
 		case 2:
 			reorder_max_2_full<T,BLOCK_SIZE><<<grid,block>>>(this->gdata,this->n,this->d);
@@ -87,6 +87,7 @@ void GPA<T>::init(){
 			break;
 	}
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing reorder");
+	this->tt_init+=t.lap();
 
 	this->check_order();//TODO: Comment
 }

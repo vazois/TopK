@@ -7,23 +7,35 @@
 #include <list>
 #include <queue>
 
-template<class T>
+template<class T,class Z>
 struct cpred{
 	cpred(){ tid = 0; curr_attr = 0; total = 0; }
 	cpred(uint64_t t, T a){ tid = t; curr_attr = a; total = a;}
-	bool compare(T threshold, uint64_t r){ return (total + curr_attr * r) < threshold; }
-	uint64_t tid;
+	bool compare(T threshold, Z r){ return (total + curr_attr * r) < threshold; }
+	Z tid;
 	T curr_attr;
 	T total;
 };
 
-template<class T>
-static bool cmp_max_cpred(const cpred<T> &a, const cpred<T> &b){ return a.total > b.total; };
+template<class T,class Z>
+struct vpred{
+	vpred(){ tid = 0; last = 0; total = 0; }
+	vpred(Z t, T a){ tid = t; last = a; total = a;}
 
-template<class T>
-class CBA : public AA<T>{
+	bool keep(T threshold, uint64_t r){ return (total + last * r) >= threshold;}
+
+	Z tid;
+	T total;
+	T last;
+};
+
+template<class T,class Z>
+static bool cmp_max_cpred(const cpred<T,Z> &a, const cpred<T,Z> &b){ return a.total > b.total; };
+
+template<class T,class Z>
+class CBA : public AA<T,Z>{
 	public:
-		CBA(uint64_t n,uint64_t d) : AA<T>(n,d){ this->algo = "CBA"; };
+		CBA(uint64_t n,uint64_t d) : AA<T,Z>(n,d){ this->algo = "CBA"; };
 		~CBA(){ };
 
 		void init();
@@ -31,16 +43,26 @@ class CBA : public AA<T>{
 		void findTopK(uint64_t k);
 
 	protected:
-		std::list<cpred<T>> tupples;
+		std::list<cpred<T,Z>> tupples;
+		std::vector<vpred<T,Z>> vtupples;
 
 	private:
+		void seq_topk(uint64_t k);
+		void seq_topk2(uint64_t k);
+		void par_topk(uint64_t k);
+
+		void seq_init();
+		void par_init();
 		void check_order();
-		T find(uint64_t k);
+
+		float radix_select(T *data, uint64_t n,uint64_t k);
 		T findAndPrune(uint64_t k,uint64_t r);
+
+		typename std::vector<vpred<T,Z>>::iterator partition(typename std::vector<vpred<T,Z>>::iterator first, typename std::vector<vpred<T,Z>>::iterator last, T threshold, uint32_t mult);
 };
 
-template<class T>
-void CBA<T>::init(){
+template<class T,class Z>
+void CBA<T,Z>::init(){
 	//std::cout << this->algo <<" initialize: " << "(" << this->n << "," << this->d << ")"<< std::endl;
 
 	this->t.start();
@@ -66,15 +88,20 @@ void CBA<T>::init(){
 		default:
 			break;
 	}
+	//this->tt_init = this->t.lap("");
+	if(this->topkp){
+
+	}else{
+		//for(uint64_t i = 0; i < this->n; i++){ this->tupples.push_back(cpred<T,Z>(i,this->cdata[i])); }
+		this->vtupples.resize(this->n);
+		for(uint64_t i = 0; i < this->n; i++){ this->vtupples[i] = vpred<T,Z>(i,this->cdata[i]); }
+	}
 	this->tt_init = this->t.lap("");
 	this->check_order();//TODO: Comment
-
-	for(uint64_t i = 0; i < this->n; i++){ this->tupples.push_back(cpred<T>(i,this->cdata[i])); }
-	//this->sort(cmp_max_cpred<T>);
 }
 
-template<class T>
-void CBA<T>::transpose(){
+template<class T,class Z>
+void CBA<T,Z>::transpose(){
 	T *tmp = (T*)malloc(sizeof(T) * (this->n) * (this->d));
 
 	for(uint64_t i = 0; i < this->n; i++){
@@ -89,8 +116,8 @@ void CBA<T>::transpose(){
 	free(tmp);
 }
 
-template<class T>
-void CBA<T>::check_order(){
+template<class T,class Z>
+void CBA<T,Z>::check_order(){
 	std::string passed = "(PASSED)";
 	for(uint64_t i = 0; i < this->n; i++){
 		bool ordered = true;
@@ -108,9 +135,9 @@ void CBA<T>::check_order(){
 	}
 }
 
-template<class T>
-T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
-	typename std::list< cpred<T> >::iterator it = this->tupples.begin();
+template<class T,class Z>
+T CBA<T,Z>::findAndPrune(uint64_t k, uint64_t r){
+	typename std::list< cpred<T,Z> >::iterator it = this->tupples.begin();
 	uint64_t i = 0;
 	std::priority_queue<T, std::vector<T>, std::greater<T>> q;
 
@@ -125,7 +152,11 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 		it++;
 	}
 	T threshold = q.top();
-	//std::cout << "threshold: " << threshold << std::endl;
+//	if(r == 0){
+//		T threshold= this->radix_select(this->cdata,this->n,this->n - k);
+//		std::cout << "rdx threshold: " << threshold << std::endl;
+//	}
+	std::cout << "threshold: " << threshold << std::endl;
 
 	/*Prune tuples that cannot surpass the threshold*/
 	it=this->tupples.begin();
@@ -141,32 +172,149 @@ T CBA<T>::findAndPrune(uint64_t k, uint64_t r){
 			it++;
 		}
 	}
-	//std::cout << "tupples: " << this->tupples.size() << std::endl;
+	std::cout << "tupples ("<< r <<") : "<< this->tupples.size() << std::endl;
 }
 
-template<class T>
-T CBA<T>::find(uint64_t k){
-	typename std::list< cpred<T> >::iterator it;
-	this->tupples.sort(cmp_max_cpred<T>);
+template<class T,class Z>
+float CBA<T,Z>::radix_select(T *data, uint64_t n,uint64_t k){
+	uint32_t prefix=0x00000000;
+	uint32_t prefix_mask=0x00000000;
+	uint32_t digit_mask=0xF0000000;
+	uint32_t digit_shf=28;
+
+	uint64_t tmpK = k;
+	for(int i = 0;i <8;i++){
+		uint32_t bins[16];
+		for(uint8_t i = 0;i < 16;i++) bins[i]=0;
+
+		uint8_t digit;
+		for(uint32_t j = 0; j < this->n; j++){
+			uint32_t vi = *(uint32_t*)&(data[j]);
+			digit = (vi & digit_mask) >> digit_shf;
+			bins[digit]+= ((vi & prefix_mask) == prefix);
+		}
+
+		if (bins[0] > k){
+			digit =  0x0;
+		}else{
+			for(uint8_t i = 1;i < 16;i++){
+				bins[i]+=bins[i-1];
+				if( bins[i] > k ){
+					k = k-bins[i-1];
+					digit = i;
+					break;
+				}
+			}
+		}
+
+		prefix = prefix | (digit << digit_shf);
+		prefix_mask=prefix_mask | digit_mask;
+		digit_mask>>=4;
+		digit_shf-=4;
+	}
+
+	return *(float*)&prefix;
 }
 
-template<class T>
-void CBA<T>::findTopK(uint64_t k){
-	std::cout << this->algo << " find topK ...";
-	this->t.start();
+template<class T,class Z>
+void CBA<T,Z>::seq_topk(uint64_t k){
 	for(uint64_t j = 0; j < this->d; j++){//d-1
 		findAndPrune(k,j);
 	}
-	this->tt_processing = this->t.lap("");
-	this->tuple_count+=tupples.size();
+}
 
-	uint64_t i = 0;
-	typename std::list< cpred<T> >::iterator it;
-	for (it=tupples.begin(); it != tupples.end(); ++it){
-		//std::cout << it->total << "," << it->tid << std::endl;
-		this->res.push_back(tuple<T>(it->tid,it->total));
-		i++;
-		if(i > k-1) break;
+template<class T,class Z>
+typename std::vector<vpred<T,Z>>::iterator CBA<T,Z>::partition(typename std::vector<vpred<T,Z>>::iterator first, typename std::vector<vpred<T,Z>>::iterator last, T threshold, uint32_t mult){
+	uint32_t keep_count = 0;
+	while(first != last){
+		while (first->keep(threshold,mult)) {
+			++first;
+			if (first==last) return first;
+		}
+
+		do{
+			--last;
+			if (first==last) return first;
+		}while(!last->keep(threshold,mult));
+		std::iter_swap(first,last);
+		++first;
+	}
+	return first;
+}
+
+template<class T,class Z>
+void CBA<T,Z>::seq_topk2(uint64_t k){
+	typename std::vector<vpred<T,Z>>::iterator first = this->vtupples.begin();
+	typename std::vector<vpred<T,Z>>::iterator last = this->vtupples.end();
+
+	for(uint64_t j = 0; j < this->d; j++){
+		std::priority_queue<T, std::vector<T>, std::greater<T>> q;
+
+		//Find threshold
+		first = this->vtupples.begin();
+		while( first != last  ){
+			if(q.size() < k){
+				q.push(first->total);
+			}else if(q.top()<first->total){
+				q.pop();
+				q.push(first->total);
+			}
+			first++;
+		}
+		T threshold = q.top();
+		//std::cout << "threshold: " << threshold << std::endl;
+
+		//Partition data
+		uint32_t mult =this->d-(j+1);
+		last = this->partition(this->vtupples.begin(),last,threshold,mult);
+
+		//Update tupple scores
+		first = this->vtupples.begin();
+		uint32_t size = 0;
+		while( first != last  ){
+			T next_attr = this->cdata[(j+1) * this->n + first->tid];
+			first->total += next_attr;
+			first->last = next_attr;
+			//this->pred_count+=1;
+			first++;
+			size++;
+		}
+		this->pred_count+=size;
+		//std::cout << "tupples ("<< j <<") : "<< size << std::endl;
+	}
+
+}
+
+template<class T,class Z>
+void CBA<T,Z>::par_topk(uint64_t k){
+
+}
+
+template<class T,class Z>
+void CBA<T,Z>::findTopK(uint64_t k){
+	std::cout << this->algo << " find topK ...";
+	this->t.start();
+	if(this->topkp){
+		this->par_topk(k);
+	}else{
+		//this->seq_topk(k);
+		this->seq_topk2(k);
+	}
+	this->tt_processing = this->t.lap("");
+	//this->tuple_count+=tupples.size();
+	this->tuple_count+=vtupples.size();
+
+	//uint64_t i = 0;
+//	typename std::list< cpred<T> >::iterator it;
+//	for (it=tupples.begin(); it != tupples.end(); ++it){
+//		//std::cout << it->total << "," << it->tid << std::endl;
+//		this->res.push_back(tuple<T>(it->tid,it->total));
+//		//i++;
+//		//if(i > k-1) break;
+//	}
+
+	for(uint32_t i = 0;i <k;i++){
+		this->res.push_back(tuple<T,Z>(this->vtupples[i].tid,this->vtupples[i].total));
 	}
 
 	//std::cout << "list_size: " << tupples.size() << std::endl;

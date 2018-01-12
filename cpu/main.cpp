@@ -9,19 +9,21 @@
 #include "cpu/CBA.h"
 #include "cpu/BPA.h"
 
-#define RUN_PAR true
+#define RUN_PAR false
+#define K 1000
 
 void debug(std::string fname, uint64_t k){
 	File<float> f(fname,false);
 	File<float> f2(fname,false,f.rows(),f.items());
 	f2.set_transpose(true);
 
-	NA<float> na(f.rows(),f.items());
-	FA<float> fa(f.rows(),f.items());
-	TA<float> ta(f.rows(),f.items());
-	BPA<float> bpa(f.rows(),f.items());
-	CBA<float> cba(f.rows(),f.items());
+	NA<float,uint64_t> na(f.rows(),f.items());
+	FA<float,uint64_t> fa(f.rows(),f.items());
+	TA<float,uint64_t> ta(f.rows(),f.items());
+	BPA<float,uint64_t> bpa(f.rows(),f.items());
+	CBA<float,uint64_t> cba(f.rows(),f.items());
 
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	f.load(na.get_cdata());
 	f2.load(cba.get_cdata());
 	fa.set_cdata(na.get_cdata());
@@ -54,6 +56,11 @@ void debug(std::string fname, uint64_t k){
 	cba.benchmark();
 }
 
+void bench(File<float> f, uint64_t k){
+
+
+}
+
 int main(int argc, char **argv){
 	ArgParser ap;
 	ap.parseArgs(argc,argv);
@@ -68,7 +75,7 @@ int main(int argc, char **argv){
 	}
 
 	if(ap.getString("-md") == "debug"){
-		debug(ap.getString("-f"),100);
+		debug(ap.getString("-f"),K);
 	}
 
 	return 0;

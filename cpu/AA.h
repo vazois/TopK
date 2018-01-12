@@ -13,45 +13,48 @@
 
 #define THREADS 8
 
+#include <parallel/algorithm>
+#include <omp.h>
+
 /*
  * Predicate structure
  */
-template<class T>
+template<class T,class Z>
 struct pred{
 	pred(){ tid = 0; attr = 0; }
-	pred(uint64_t t, T a){ tid = t; attr = a; }
-	uint64_t tid;
+	pred(Z t, T a){ tid = t; attr = a; }
+	Z tid;
 	T attr;
 };
 
 /*
  * Tuple structure
  */
-template<class T>
+template<class T,class Z>
 struct tuple{
 	tuple(){ tid = 0; score = 0; }
-	tuple(uint64_t t, T s){ tid = t; score = s; }
-	uint64_t tid;
+	tuple(Z t, T s){ tid = t; score = s; }
+	Z tid;
 	T score;
 };
 
-template<class T>
-static bool cmp_score(const tuple<T> &a, const tuple<T> &b){ return a.score > b.score; };
+template<class T,class Z>
+static bool cmp_score(const tuple<T,Z> &a, const tuple<T,Z> &b){ return a.score > b.score; };
 
-template<class T>
-static bool cmp_max_pred(const pred<T> &a, const pred<T> &b){ return a.attr > b.attr; };
+template<class T,class Z>
+static bool cmp_max_pred(const pred<T,Z> &a, const pred<T,Z> &b){ return a.attr > b.attr; };
 
 /*
  * Base class for aggregation algorithm
  */
-template<class T>
+template<class T,class Z>
 class AA{
 	public:
 		AA(uint64_t n, uint64_t d);
 		~AA();
 
-		void compare(AA<T> b);
-		std::vector<tuple<T>> get_res(){ return this->res; };
+		void compare(AA<T,Z> b);
+		std::vector<tuple<T,Z>> get_res(){ return this->res; };
 		std::string get_algo(){ return this->algo; };
 
 		void benchmark();
@@ -59,12 +62,18 @@ class AA{
 		T*& get_cdata(){ return this->cdata; }
 		void set_cdata(T *cdata){ this->cdata = cdata; }
 
+		void set_init_exec(bool initp){ this->initp = initp; }
+		void set_topk_exec(bool topkp){ this->topkp = topkp; }
+
 	protected:
 		std::string algo;
-		std::vector<tuple<T>> res;
+		std::vector<tuple<T,Z>> res;
 		T *cdata;
 		uint64_t n;
 		uint64_t d;
+
+		bool initp;// Parallel Initialize
+		bool topkp;// Parallel TopK Calculation
 
 		Time<msecs> t;
 		double tt_init;//initialization time
@@ -73,8 +82,8 @@ class AA{
 		uint64_t tuple_count;//count predicate evaluations
 };
 
-template<class T>
-AA<T>::AA(uint64_t n, uint64_t d){
+template<class T,class Z>
+AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->tt_init = 0;
 	this->tt_processing = 0;
 	this->pred_count = 0;
@@ -82,20 +91,22 @@ AA<T>::AA(uint64_t n, uint64_t d){
 	this->n = n;
 	this->d = d;
 	this->cdata = NULL;
+	this->initp = false;
+	this->topkp=false;
 }
 
-template<class T>
-AA<T>::~AA(){
+template<class T,class Z>
+AA<T,Z>::~AA(){
 	//if(this->cdata!=NULL) free(this->cdata);
 }
 
 /*
  * cmp results to check correctness
  */
-template<class T>
-void AA<T>::compare(AA<T> b){
+template<class T,class Z>
+void AA<T,Z>::compare(AA<T,Z> b){
 	std::string cmp = "PASSED";
-	std::map<uint64_t,T> tmap;
+	std::map<Z,T> tmap;
 
 	/*create map with tuple ids*/
 	for(uint64_t i = 0;i < this->res.size();i++){
@@ -117,8 +128,8 @@ void AA<T>::compare(AA<T> b){
 /*
  * List benchmarking information
  */
-template<class T>
-void AA<T>::benchmark(){
+template<class T,class Z>
+void AA<T,Z>::benchmark(){
 	std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
 	std::cout << "tt_init: " << this->tt_init << std::endl;
 	std::cout << "tt_procesing: " << this->tt_processing << std::endl;
