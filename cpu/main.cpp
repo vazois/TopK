@@ -10,7 +10,7 @@
 #include "cpu/BPA.h"
 
 #define RUN_PAR false
-#define K 1000
+#define K 100
 
 void debug(std::string fname, uint64_t k){
 	File<float> f(fname,false);
@@ -23,13 +23,14 @@ void debug(std::string fname, uint64_t k){
 	BPA<float,uint64_t> bpa(f.rows(),f.items());
 	CBA<float,uint64_t> cba(f.rows(),f.items());
 
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	std::cout << "Loading data ..." << std::endl;
 	f.load(na.get_cdata());
 	f2.load(cba.get_cdata());
 	fa.set_cdata(na.get_cdata());
 	bpa.set_cdata(na.get_cdata());
 	ta.set_cdata(na.get_cdata());
 
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 //	f.sample();
 //	cba.set_cdata(na.get_cdata());
 //	cba.transpose();
@@ -41,12 +42,12 @@ void debug(std::string fname, uint64_t k){
 	na.init(); na.findTopK(k);
 	fa.init(); fa.findTopK(k);
 	ta.init(); ta.findTopK(k);
-	bpa.init(); bpa.findTopK(k);
+	//bpa.init(); bpa.findTopK(k);
 	cba.init(); cba.findTopK(k);
 
 	fa.compare(na);
 	ta.compare(na);
-	bpa.compare(na);
+	//bpa.compare(na);
 	cba.compare(na);
 
 	na.benchmark();

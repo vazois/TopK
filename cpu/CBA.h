@@ -252,6 +252,7 @@ void CBA<T,Z>::seq_topk2(uint64_t k){
 
 		//Find threshold
 		first = this->vtupples.begin();
+		//this->t.start();
 		while( first != last  ){
 			if(q.size() < k){
 				q.push(first->total);
@@ -261,26 +262,32 @@ void CBA<T,Z>::seq_topk2(uint64_t k){
 			}
 			first++;
 		}
+		//this->t.lap("<1>");
 		T threshold = q.top();
 		//std::cout << "threshold: " << threshold << std::endl;
 
 		//Partition data
+		//this->t.start();
 		uint32_t mult =this->d-(j+1);
 		last = this->partition(this->vtupples.begin(),last,threshold,mult);
+		//this->t.lap("<2>");
 
 		//Update tupple scores
+		//this->t.start();
 		first = this->vtupples.begin();
 		uint32_t size = 0;
 		while( first != last  ){
 			T next_attr = this->cdata[(j+1) * this->n + first->tid];
 			first->total += next_attr;
 			first->last = next_attr;
-			//this->pred_count+=1;
 			first++;
 			size++;
 		}
-		this->pred_count+=size;
+		//this->t.lap("<3>");
+		if(STATS_EFF) this->pred_count+=size;
 		//std::cout << "tupples ("<< j <<") : "<< size << std::endl;
+		//std::cout << "------------------------\n";
+		if(size == k) break;
 	}
 
 }

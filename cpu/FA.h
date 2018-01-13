@@ -49,6 +49,7 @@ void FA<T,Z>::par_init(){
 	for(int i =0;i<this->d;i++){
 		__gnu_parallel::sort(this->lists[i].begin(),this->lists[i].end(),cmp_max_pred<T,Z>);
 	}
+
 }
 
 

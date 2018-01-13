@@ -12,6 +12,7 @@
 #include <immintrin.h>//AVX and AVX2 // AVX-512
 
 #define THREADS 8
+#define STATS_EFF true
 
 #include <parallel/algorithm>
 #include <omp.h>
@@ -80,6 +81,9 @@ class AA{
 		double tt_processing;//processing time
 		uint64_t pred_count;//count predicate evaluations
 		uint64_t tuple_count;//count predicate evaluations
+
+		bool stats_eff;
+		bool stats_time;
 };
 
 template<class T,class Z>
