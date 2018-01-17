@@ -12,54 +12,75 @@
 #define RUN_PAR false
 #define K 100
 
-void debug(std::string fname, uint64_t k){
-	File<float> f(fname,false);
-	File<float> f2(fname,false,f.rows(),f.items());
+void debug(std::string fname, uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	File<float> f2(fname,false,n,d);
 	f2.set_transpose(true);
 
 	NA<float,uint64_t> na(f.rows(),f.items());
-	FA<float,uint64_t> fa(f.rows(),f.items());
 	TA<float,uint64_t> ta(f.rows(),f.items());
-	BPA<float,uint64_t> bpa(f.rows(),f.items());
 	CBA<float,uint64_t> cba(f.rows(),f.items());
 
 	std::cout << "Loading data ..." << std::endl;
 	f.load(na.get_cdata());
 	f2.load(cba.get_cdata());
-	fa.set_cdata(na.get_cdata());
-	bpa.set_cdata(na.get_cdata());
 	ta.set_cdata(na.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-//	f.sample();
-//	cba.set_cdata(na.get_cdata());
-//	cba.transpose();
-
-	fa.set_init_exec(RUN_PAR); //fa.set_topk_exec(RUN_PAR);
-	ta.set_init_exec(RUN_PAR);
-	bpa.set_init_exec(RUN_PAR);
+	ta.set_init_exec(RUN_PAR); ta.set_topk_exec(RUN_PAR);
+	//cba.set_topk_exec(RUN_PAR);
 
 	na.init(); na.findTopK(k);
-	fa.init(); fa.findTopK(k);
 	ta.init(); ta.findTopK(k);
-	//bpa.init(); bpa.findTopK(k);
 	cba.init(); cba.findTopK(k);
 
-	fa.compare(na);
 	ta.compare(na);
-	//bpa.compare(na);
 	cba.compare(na);
 
 	na.benchmark();
-	fa.benchmark();
 	ta.benchmark();
-	bpa.benchmark();
 	cba.benchmark();
 }
 
-void bench(File<float> f, uint64_t k){
+void debug_cba(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	f.set_transpose(true);
+
+	CBA<float,uint64_t> cba_seq(f.rows(),f.items());
+	CBA<float,uint64_t> cba_par(f.rows(),f.items());
+	cba_seq.set_topk_exec(false);
+	cba_par.set_topk_exec(true);
 
 
+	std::cout << "Loading data ..." << std::endl;
+	f.load(cba_seq.get_cdata());
+	cba_par.set_cdata(cba_seq.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	cba_seq.init(); cba_seq.findTopK(k);
+
+	cba_seq.benchmark();
+}
+
+void debug_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	TA<float,uint64_t> ta_seq(f.rows(),f.items());
+	TA<float,uint64_t> ta_par(f.rows(),f.items());
+	ta_seq.set_init_exec(false); ta_seq.set_topk_exec(false);
+	ta_par.set_init_exec(true); ta_par.set_topk_exec(true);
+
+	std::cout << "Loading data ..." << std::endl;
+	f.load(ta_seq.get_cdata());
+	ta_par.set_cdata(ta_seq.get_cdata());
+	//ta_seq.make_distinct();
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	ta_seq.init(); ta_seq.findTopK(k);
+	ta_par.init(); ta_par.findTopK(k);
+
+	ta_par.compare(ta_seq);
+	ta_seq.benchmark();
+	ta_par.benchmark();
 }
 
 int main(int argc, char **argv){
@@ -70,13 +91,27 @@ int main(int argc, char **argv){
 		exit(1);
 	}
 
+	if(!ap.exists("-d")){
+		std::cout << "Missing d!!!" << std::endl;
+		exit(1);
+	}
+
+	if(!ap.exists("-n")){
+		std::cout << "Missing n!!!" << std::endl;
+		exit(1);
+	}
+
 	if(!ap.exists("-md")){
 		//std::cout << "Default mode: <debug>" <<std::endl;
 		ap.addArg("-md","debug");
 	}
 
+	uint64_t n = ap.getInt("-n");
+	uint64_t d = ap.getInt("-d");
 	if(ap.getString("-md") == "debug"){
-		debug(ap.getString("-f"),K);
+		//debug(ap.getString("-f"),n,d,K);
+		//debug_cba(ap.getString("-f"),n,d,K);
+		debug_ta(ap.getString("-f"),n,d,K);
 	}
 
 	return 0;

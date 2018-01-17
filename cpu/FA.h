@@ -3,7 +3,16 @@
 
 #include "AA.h"
 #include <unordered_map>
+#include <unordered_set>
 #include <list>
+
+template<class Z>
+struct rrpred{
+	rrpred(){ tid = 0; offset = 0; }
+	rrpred(Z t, Z o){ tid = t; offset = o; }
+	Z tid;
+	Z offset;
+};
 
 /*
  * Simple implementation of Fagin's algorithm
@@ -18,6 +27,7 @@ class FA : public AA<T,Z>{
 
 	protected:
 		std::vector<std::vector<pred<T,Z>>> lists;
+		std::vector<rrpred<Z>> rrlist;
 
 	private:
 		void seq_topk(uint64_t k);
@@ -49,7 +59,6 @@ void FA<T,Z>::par_init(){
 	for(int i =0;i<this->d;i++){
 		__gnu_parallel::sort(this->lists[i].begin(),this->lists[i].end(),cmp_max_pred<T,Z>);
 	}
-
 }
 
 

@@ -187,8 +187,8 @@ void File<T>::read_scanf_t(){
 	}
 
 	fclose(f);
+	free(buffer);
 }
-
 
 template<class T>
 void File<T>::load(){

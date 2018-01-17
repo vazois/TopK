@@ -17,6 +17,8 @@
 #include <parallel/algorithm>
 #include <omp.h>
 
+#include <cstdlib>
+
 /*
  * Predicate structure
  */
@@ -64,7 +66,9 @@ class AA{
 		void set_cdata(T *cdata){ this->cdata = cdata; }
 
 		void set_init_exec(bool initp){ this->initp = initp; }
-		void set_topk_exec(bool topkp){ this->topkp = topkp; }
+		void set_topk_exec(bool topkp){ this->topkp = topkp; if(topkp){ this->algo= this->algo + " ( parallel ) "; }else{this->algo= this->algo + " ( sequential ) ";}  }
+
+		void make_distinct();
 
 	protected:
 		std::string algo;
@@ -97,6 +101,7 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->cdata = NULL;
 	this->initp = false;
 	this->topkp=false;
+	this->algo= this->algo + " ( sequential ) ";
 }
 
 template<class T,class Z>
@@ -120,7 +125,9 @@ void AA<T,Z>::compare(AA<T,Z> b){
 	/*check if ids in b exist in my result*/
 	for(uint64_t i = 0;i < b.res.size();i++){
 		if (tmap.find(b.get_res()[i].tid) == tmap.end()){//find if id of b does not exist in map
-			std::cout <<"i:(" << i << ") "<<this->res[i].tid << " = " << this->res[i].score << std::endl;
+			//std::cout <<"i:(" << i << ") "<<this->res[i].tid << " = " << this->res[i].score << << std::endl;
+			std::cout << "< " << b.get_res()[i].tid << " > = " << b.get_res()[i].score << std::endl;
+
 			cmp  = "FAILED";
 			std::cout << "(" <<this->algo <<") != (" << b.get_algo() << ") ( "<< cmp <<" )" << std::endl;
 			exit(1);
@@ -134,12 +141,24 @@ void AA<T,Z>::compare(AA<T,Z> b){
  */
 template<class T,class Z>
 void AA<T,Z>::benchmark(){
+	std::string exec_policy = "sequential";
+	if(this->topkp) exec_policy = "parallel";
 	std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
 	std::cout << "tt_init: " << this->tt_init << std::endl;
 	std::cout << "tt_procesing: " << this->tt_processing << std::endl;
 
 	std::cout << "pred_count: " << this->pred_count << std::endl;
 	std::cout << "tuple_count: " << this->tuple_count << std::endl;
+}
+
+template<class T, class Z>
+void AA<T,Z>::make_distinct(){
+	for(uint64_t i = 0;i < this->n;i++){
+		for(uint64_t j = 0;j < this->d;j++){
+			float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+			this->cdata[i * this->d + j]*=r;
+		}
+	}
 }
 
 #endif

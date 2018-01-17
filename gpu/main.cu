@@ -5,7 +5,7 @@
 
 #define K 100
 
-void test(std::string fname, uint64_t k){
+void test(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,true);
 	GPA<float> gpa;
 
@@ -19,7 +19,7 @@ void test(std::string fname, uint64_t k){
 	gpa.benchmark();
 }
 
-void simple_benchmark(std::string fname, uint64_t k){
+void simple_benchmark(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,true);
 	GPA<float> gpa;
 	GFA<float> gfa;
@@ -46,7 +46,19 @@ int main(int argc, char **argv){
 		exit(1);
 	}
 
-	test(ap.getString("-f"), K);
+	if(!ap.exists("-d")){
+		std::cout << "Missing d!!!" << std::endl;
+		exit(1);
+	}
+
+	if(!ap.exists("-n")){
+		std::cout << "Missing n!!!" << std::endl;
+		exit(1);
+	}
+
+	uint64_t n = ap.getInt("-n");
+	uint64_t d = ap.getInt("-d");
+	test(ap.getString("-f"),n,d, K);
 
 
 	return 0;
