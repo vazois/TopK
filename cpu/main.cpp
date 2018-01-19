@@ -27,8 +27,6 @@ void debug(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	ta.set_cdata(na.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	ta.set_init_exec(RUN_PAR); ta.set_topk_exec(RUN_PAR);
-	//cba.set_topk_exec(RUN_PAR);
 
 	na.init(); na.findTopK(k);
 	ta.init(); ta.findTopK(k);
@@ -65,22 +63,15 @@ void debug_cba(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 void debug_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	TA<float,uint64_t> ta_seq(f.rows(),f.items());
-	TA<float,uint64_t> ta_par(f.rows(),f.items());
-	ta_seq.set_init_exec(false); ta_seq.set_topk_exec(false);
-	ta_par.set_init_exec(true); ta_par.set_topk_exec(true);
 
 	std::cout << "Loading data ..." << std::endl;
 	f.load(ta_seq.get_cdata());
-	ta_par.set_cdata(ta_seq.get_cdata());
-	//ta_seq.make_distinct();
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	ta_seq.init(); ta_seq.findTopK(k);
-	ta_par.init(); ta_par.findTopK(k);
 
-	ta_par.compare(ta_seq);
+	//ta_par.compare(ta_seq);
 	ta_seq.benchmark();
-	ta_par.benchmark();
 }
 
 int main(int argc, char **argv){
@@ -109,9 +100,9 @@ int main(int argc, char **argv){
 	uint64_t n = ap.getInt("-n");
 	uint64_t d = ap.getInt("-d");
 	if(ap.getString("-md") == "debug"){
-		//debug(ap.getString("-f"),n,d,K);
+		debug(ap.getString("-f"),n,d,K);
 		//debug_cba(ap.getString("-f"),n,d,K);
-		debug_ta(ap.getString("-f"),n,d,K);
+		//debug_ta(ap.getString("-f"),n,d,K);
 	}
 
 	return 0;

@@ -44,11 +44,6 @@ class CBA : public AA<T,Z>{
 		std::vector<vpred<T,Z>> vtupples;
 
 	private:
-		void seq_topk(uint64_t k);
-		void par_topk(uint64_t k);
-
-		void seq_init();
-		void par_init();
 		void check_order();
 
 		float radix_select(T *data, uint64_t n,uint64_t k);
@@ -177,9 +172,12 @@ typename std::vector<vpred<T,Z>>::iterator CBA<T,Z>::partition(typename std::vec
 }
 
 template<class T,class Z>
-void CBA<T,Z>::seq_topk(uint64_t k){
+void CBA<T,Z>::findTopK(uint64_t k){
 	typename std::vector<vpred<T,Z>>::iterator first = this->vtupples.begin();
 	typename std::vector<vpred<T,Z>>::iterator last = this->vtupples.end();
+
+	std::cout << this->algo << " find topK ...";
+	this->t.start();
 	for(uint64_t j = 0; j < this->d; j++){
 		std::priority_queue<T, std::vector<T>, std::greater<T>> q;
 
@@ -216,111 +214,14 @@ void CBA<T,Z>::seq_topk(uint64_t k){
 			if(size <= k) break;
 		}
 	}
-	if(STATS_EFF) this->tuple_count+=k;
-}
-
-template<class T,class Z>
-void CBA<T,Z>::par_topk(uint64_t k){
-	//TODO: Fix bug one iteration more//
-	uint64_t tuples[THREADS];
-	T thresholds[THREADS];
-	typename std::priority_queue<T, std::vector<T>, std::greater<T>> qs[THREADS];
-	typename std::vector<vpred<T,Z>>::iterator start_it[THREADS];
-	typename std::vector<vpred<T,Z>>::iterator end_it[THREADS];
-	omp_set_num_threads(THREADS);
-
-	//std::cout << "sss < " << this->vtupples[0].total << "\n";
-	#pragma omp parallel
-	{
-		uint32_t tid = omp_get_thread_num();
-		uint32_t p = THREADS;
-		T threshold = 0;
-		typename std::vector<vpred<T,Z>>::iterator first = this->vtupples.begin() + (tid * this->n)/p;
-		typename std::vector<vpred<T,Z>>::iterator last = this->vtupples.begin() + (((tid+1) * this->n )/p) - 1;
-		start_it[tid] = first;
-		end_it[tid] = last;
-		std::string msg = "<" + std::to_string(tid) + "> = " + std::to_string(this->n) + " | " + std::to_string((tid * this->n)/p) + "\n";
-
-		for(uint64_t j = 0; j < this->d; j++){
-			if(tid == 0) std::cout << msg;
-			std::priority_queue<T, std::vector<T>, std::greater<T>> q;
-
-			first = start_it[tid];
-			last = end_it[tid];
-			while( first != last  ){//Find k-largest value//
-				if(qs[tid].size() < k){
-					//std::cout << first->total << " -- "<<msg ;
-					qs[tid].push(first->total);
-					//std::cout << "2"+msg;
-				}else if(qs[tid].top()<first->total){
-					qs[tid].pop();
-					qs[tid].push(first->total);
-				}
-				first++;
-			}
-			#pragma omp barrier
-
-			if(tid == 0){
-				for(uint32_t m = 0;m < p;m++){
-					while(!qs[m].empty()){
-						if(q.size() < k){
-							q.push(qs[m].top());
-						}else if(q.top()<qs[m].top()){
-							q.pop();
-							q.push(qs[m].top());
-						}
-						qs[m].pop();
-					}
-				}
-				threshold = q.top();
-			}
-			#pragma omp barrier
-
-			//prune irrelevant tupples//
-			first = start_it[tid];
-			uint32_t mult =this->d-(j+1);
-			last = this->partition(first,last,threshold,mult);
-			end_it[tid] = last;
-
-			//probe for next predicate//
-			first = start_it[tid];
-			if(j == (this->d-1)) tuples[tid] = 0;
-			while( first != last  ){
-				T next_attr = this->cdata[(j+1) * this->n + first->tid];
-				first->total += next_attr;
-				first->last = next_attr;
-				first++;
-				if(j == (this->d-1)) tuples[tid]++;
-			}
-		}
-	}
-
-//	for(uint32_t m = 1;m < THREADS;m++){
-//		while( start_it[m] != end_it[m]  ){
-//			end_it[m-1] = start_it[m];
-//			start_it[m]++;
-//			end_it[m-1]++;
-//		}
-//		end_it[m] = end_it[m-1];
-//	}
-}
-
-template<class T,class Z>
-void CBA<T,Z>::findTopK(uint64_t k){
-	std::cout << this->algo << " find topK ...";
-	this->t.start();
-	if(this->topkp){
-		this->par_topk(k);
-	}else{
-		this->seq_topk(k);
-	}
 	this->tt_processing = this->t.lap();
-	//this->tuple_count+=this->vtupples.size();
 
+	if(STATS_EFF) this->tuple_count+=k;
 	for(uint32_t i = 0;i <k;i++){
 		this->res.push_back(tuple<T,Z>(this->vtupples[i].tid,this->vtupples[i].total));
 	}
 	std::cout << " (" << this->res.size() << ")" << std::endl;
 }
+
 
 #endif
