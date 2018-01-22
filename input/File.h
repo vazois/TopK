@@ -39,7 +39,7 @@ class File{
 		}
 
 		~File(){
-			if(this->data!=NULL && !this->gpu){ free(data); }
+			if(this->data!=NULL && !this->gpu){ free(data); this->data = NULL; }
 		}
 
 		void load();

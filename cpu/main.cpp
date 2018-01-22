@@ -45,14 +45,10 @@ void debug_cba(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	f.set_transpose(true);
 
 	CBA<float,uint64_t> cba_seq(f.rows(),f.items());
-	CBA<float,uint64_t> cba_par(f.rows(),f.items());
 	cba_seq.set_topk_exec(false);
-	cba_par.set_topk_exec(true);
-
 
 	std::cout << "Loading data ..." << std::endl;
 	f.load(cba_seq.get_cdata());
-	cba_par.set_cdata(cba_seq.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	cba_seq.init(); cba_seq.findTopK(k);
@@ -72,6 +68,43 @@ void debug_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 	//ta_par.compare(ta_seq);
 	ta_seq.benchmark();
+}
+
+void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k, uint64_t nl, uint64_t nu){
+	File<float> f(fname,false,n,d);
+	f.set_transpose(true);
+	float *data=NULL;
+	std::cout << "Loading data ..." << std::endl;
+	f.load(data);
+
+	for(uint64_t i = nl; i <= nu; i*=2){
+		TA<float,uint32_t> ta(i,f.items());
+
+		ta.set_cdata(data);
+		std::cout << "Benchmark <<<" << i << "," << d << "," << k << ">>> " << std::endl;
+		ta.init();
+		ta.findTopK(k);
+		ta.benchmark();
+	}
+//	if(data != NULL ) free(data);
+}
+
+void bench_cba(std::string fname,uint64_t n, uint64_t d, uint64_t k, uint64_t nl, uint64_t nu){
+	File<float> f(fname,false,n,d);
+	float *data=NULL;
+	std::cout << "Loading data ..." << std::endl;
+	f.load(data);
+
+	for(uint64_t i = nl; i <= nu; i*=2){
+		CBA<float,uint32_t> cba(i,f.items());
+
+		cba.set_cdata(data);
+		std::cout << "Benchmark <<<" << i << "," << d << "," << k << ">>> " << std::endl;
+		cba.init();
+		cba.findTopK(k);
+		cba.benchmark();
+	}
+	//if(data != NULL ) free(data);
 }
 
 int main(int argc, char **argv){
@@ -99,10 +132,26 @@ int main(int argc, char **argv){
 
 	uint64_t n = ap.getInt("-n");
 	uint64_t d = ap.getInt("-d");
+
+	uint64_t nu;
+	if(!ap.exists("-nu")){
+		nu = n;
+	}else{
+		nu = ap.getInt("-nu");
+	}
+
+	uint64_t nl;
+	if(!ap.exists("-nl")){
+		nl = n;
+	}else{
+		nl = ap.getInt("-nl");
+	}
+
 	if(ap.getString("-md") == "debug"){
-		debug(ap.getString("-f"),n,d,K);
+		//debug(ap.getString("-f"),n,d,K);
 		//debug_cba(ap.getString("-f"),n,d,K);
-		//debug_ta(ap.getString("-f"),n,d,K);
+		debug_ta(ap.getString("-f"),n,d,K);
+		//bench_cba(ap.getString("-f"),n,d,K,nl,nu);
 	}
 
 	return 0;

@@ -88,6 +88,8 @@ class AA{
 
 		bool stats_eff;
 		bool stats_time;
+		uint64_t bt_bytes;
+		uint64_t ax_bytes;
 };
 
 template<class T,class Z>
@@ -102,6 +104,8 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->initp = false;
 	this->topkp=false;
 	this->algo= this->algo + " ( sequential ) ";
+	this->bt_bytes=sizeof(T)*n*d;
+	this->ax_bytes=0;
 }
 
 template<class T,class Z>
@@ -149,6 +153,8 @@ void AA<T,Z>::benchmark(){
 
 	std::cout << "pred_count: " << this->pred_count << std::endl;
 	std::cout << "tuple_count: " << this->tuple_count << std::endl;
+	std::cout << "Base Table Footprint (MB): " << ((float)this->bt_bytes)/(1024*1024) << std::endl;
+	std::cout << "Auxiliary Structures Footprint (MB): " << ((float)this->ax_bytes)/(1024*1024) << std::endl;
 }
 
 template<class T, class Z>

@@ -20,12 +20,10 @@ void test(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 }
 
 void simple_benchmark(std::string fname, uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,true);
+	File<float> f(fname,true,n,d);
 	GPA<float> gpa;
-	GFA<float> gfa;
 
 	gpa.alloc(f.items(),f.rows());
-	gfa.set_gdata(gpa.get_gdata());
 	f.set_transpose(true);
 	std::cout << "Loading data..." << std::endl;
 	f.load(gpa.get_cdata());
@@ -36,7 +34,9 @@ void simple_benchmark(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	gpa.benchmark();
 }
 
-
+void bench_gpa(std::string fname,uint64_t n, uint64_t d, uint64_t k, uint64_t nl, uint64_t nu){
+	File<float> f(fname,true,n,d);
+}
 
 int main(int argc, char **argv){
 	ArgParser ap;
@@ -58,6 +58,21 @@ int main(int argc, char **argv){
 
 	uint64_t n = ap.getInt("-n");
 	uint64_t d = ap.getInt("-d");
+
+	uint64_t nu;
+	if(!ap.exists("-nu")){
+		nu = n;
+	}else{
+		nu = ap.getInt("-nu");
+	}
+
+	uint64_t nl;
+	if(!ap.exists("-nl")){
+		nl = n;
+	}else{
+		nl = ap.getInt("-nl");
+	}
+
 	test(ap.getString("-f"),n,d, K);
 
 

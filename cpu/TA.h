@@ -30,7 +30,7 @@ class PQComparison{
 template<class T,class Z>
 class TA : public AA<T,Z>{
 	public:
-		TA(uint64_t n,uint64_t d) : AA<T,Z>(n,d){ this->algo = "TA"; };
+		TA(uint64_t n,uint64_t d) : AA<T,Z>(n,d){ this->algo = "TA";  this->capacity=0; };
 		~TA(){  }
 
 		void init();
@@ -39,6 +39,7 @@ class TA : public AA<T,Z>{
 		std::vector<std::vector<pred<T,Z>>> lists;
 	private:
 		std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+		uint64_t capacity;
 };
 
 template<class T,class Z>
@@ -52,11 +53,16 @@ void TA<T,Z>::init(){
 			this->lists[j].push_back(pred<T,Z>(i,this->cdata[i*this->d + j]));
 		}
 	}
-	//for(int i =0;i<this->d;i++){ std::sort(this->lists[i].begin(),this->lists[i].end(),cmp_max_pred<T,Z>);}
 	for(int i =0;i<this->d;i++){
-		__gnu_parallel::sort(this->lists[i].begin(),this->lists[i].end(),cmp_max_pred<T,Z>);
+		std::sort(this->lists[i].begin(),this->lists[i].end(),cmp_max_pred<T,Z>);
+		this->ax_bytes+= this->lists[i].capacity() * (sizeof(Z) + sizeof(T));
 	}
+//	for(int i =0;i<this->d;i++){
+//		__gnu_parallel::sort(this->lists[i].begin(),this->lists[i].end(),cmp_max_pred<T,Z>);
+//		this->ax_bytes+= this->lists[i].capacity() * (sizeof(Z) + sizeof(T));
+//	}
 	this->tt_init = this->t.lap();
+	//this->ax_bytes+=(sizeof(Z) + sizeof(T)) * this->n * this->d;
 }
 
 template<class T,class Z>

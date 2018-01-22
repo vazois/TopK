@@ -4,8 +4,8 @@
 
 START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
-START_D=10
-END_D=10
+START_D=4
+END_D=4
 
 distr=i
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
@@ -28,7 +28,7 @@ do
 		#echo "Processing ... "$fname
 		if [ ! -f data/$fname ]; then
     		echo "Creating file <"$fname">"
-			cd data/; python skydata.py $n $d $distr ; cd ..
+			cd data/; time python skydata.py $n $d $distr ; cd ..
 		fi
 		
 		#make cpu_cc ; ./cpu_run -f=data/$fname -n=$n -d=$d
