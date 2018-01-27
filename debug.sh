@@ -4,13 +4,15 @@
 
 START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
-START_D=4
-END_D=4
+START_D=12
+END_D=12
 
 distr=i
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
 #CPU:0,GPU:1
-device=0
+device=1
+#randdataset3: higher precission , randdataset: lower precission
+script=randdataset
 
 if [ $device -eq 0 ]
 then
@@ -28,11 +30,13 @@ do
 		#echo "Processing ... "$fname
 		if [ ! -f data/$fname ]; then
     		echo "Creating file <"$fname">"
-			cd data/; time python skydata.py $n $d $distr ; cd ..
+			cd data/; time python skydata.py $n $d $distr $script; cd ..
+			#cd data/; time python rand.py $n $d $distr; cd ..
 		fi
 		
 		#make cpu_cc ; ./cpu_run -f=data/$fname -n=$n -d=$d
 		#make gpu_cc ; ./gpu_run -f=data/$fname -n=$n -d=$d
+		
 		
 		if [ $device -eq 0 ]
 		then
@@ -47,6 +51,7 @@ do
 			exit
 		fi
 		sleep 1
+		rm -rf data/$fname
 		
 	done
 done

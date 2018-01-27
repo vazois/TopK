@@ -27,13 +27,14 @@ class GPA {
 		void findTopK(uint64_t k);
 
 		void alloc(uint64_t items, uint64_t rows);
+		void set_dim(uint64_t items, uint64_t rows){ this->d = items; this->n = rows; }
 		void set_cdata(T *cdata){ this->cdata = cdata; }
 		void set_gdata(T *gdata){ this->gdata = gdata; }
 		T*& get_cdata(){ return this->cdata; }
 		T*& get_gdata(){ return this->gdata; }
 
 		void benchmark();
-	private:
+	protected:
 		Time<msecs> t;
 		double tt_init;//initialization time
 		double tt_processing;//processing time
@@ -161,11 +162,11 @@ void GPA<T>::findTopK(uint64_t k){
 	dim3 grid((this->n-1)/BLOCK_SIZE+1,1,1);
 	dim3 block(BLOCK_SIZE,1,1);
 	uint32_t *col_ui, *gcol_ui;
-	Tupple<T> tupples;
+	Tuple<T> tuples;
 
-	alloc_tupples<T>(tupples,this->n);
-	init_tupples<T,BLOCK_SIZE><<<grid,block>>>(tupples.tupple_ids,tupples.scores,this->gdata,this->n);
-	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_tupples");
+	alloc_tuples<T>(tuples,this->n);
+	init_tuples<T,BLOCK_SIZE><<<grid,block>>>(tuples.tuple_ids,tuples.scores,this->gdata,this->n);
+	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_tuples");
 
 	/////////////////////
 	//Debug Code
@@ -196,7 +197,7 @@ void GPA<T>::findTopK(uint64_t k){
 		}
 	/////////////
 	}else{
-		cutil::safeMallocHost<uint32_t,uint64_t>(&(col_ui),sizeof(uint32_t)*this->n,"col_ui alloc");//Debug
+		//cutil::safeMallocHost<uint32_t,uint64_t>(&(col_ui),sizeof(uint32_t)*this->n,"col_ui alloc");//Debug
 		cutil::safeMalloc<uint32_t,uint64_t>(&(gcol_ui),sizeof(uint32_t)*this->n,"gcol_ui alloc");
 
 		CompactConfig<T> cconfig;
@@ -206,24 +207,23 @@ void GPA<T>::findTopK(uint64_t k){
 		for(uint64_t i = 0; i < d;i++){
 			dim3 ggrid((tmpN-1)/BLOCK_SIZE + 1,1,1);
 			dim3 gblock(BLOCK_SIZE,1,1);
-			extract_bin<T,BLOCK_SIZE><<<ggrid,gblock>>>(gcol_ui,tupples.scores,tmpN);
+			extract_bin<T,BLOCK_SIZE><<<ggrid,gblock>>>(gcol_ui,tuples.scores,tmpN);
 			cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing extract_bin");
 
 			uint32_t gpu_prefix = radix_select_gpu_findK(gcol_ui,tmpN,tmpN - k);
 			float threshold = *(float*)&gpu_prefix;
 			//printf("kgpu: 0x%08x, %f\n",gpu_prefix,threshold);//Debug
 
-			cconfig.prune_tupples(tupples.tupple_ids,tupples.scores,&this->gdata[i*n],&this->gdata[(i+1)*n],tmpN,threshold,suffix_len);
+			cconfig.prune_tupples(tuples.tuple_ids,tuples.scores,&this->gdata[i*n],&this->gdata[(i+1)*n],tmpN,threshold,suffix_len);
 
 			suffix_len--;
 		}
 		this->tt_processing = this->t.lap();
-		cudaFreeHost(col_ui);
+		//cudaFreeHost(col_ui);
 		cudaFree(gcol_ui);
 	}
 
-
-	free_tupples<T>(tupples);
+	free_tuples<T>(tuples);
 }
 
 template<class T>

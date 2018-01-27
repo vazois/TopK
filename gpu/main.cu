@@ -1,5 +1,6 @@
 #include "GPA.h"
 #include "GFA.h"
+#include "GPAm.h"
 #include "input/File.h"
 #include "tools/ArgParser.h"
 
@@ -22,12 +23,18 @@ void test(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 void simple_benchmark(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,true,n,d);
 	GPA<float> gpa;
+	GPAm<float> gpam;
 
 	gpa.alloc(f.items(),f.rows());
+	gpam.set_dim(f.items(),f.rows());
+	gpam.set_cdata(gpa.get_cdata());
+	gpam.alloc(f.items(),f.rows());
+
 	f.set_transpose(true);
 	std::cout << "Loading data..." << std::endl;
 	f.load(gpa.get_cdata());
 	std::cout << "Finished Loading data..." << std::endl;
+
 
 	gpa.init();
 	gpa.findTopK(K);
@@ -36,6 +43,21 @@ void simple_benchmark(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 
 void bench_gpa(std::string fname,uint64_t n, uint64_t d, uint64_t k, uint64_t nl, uint64_t nu){
 	File<float> f(fname,true,n,d);
+	GPA<float> tmp;
+	tmp.alloc(f.items(),f.rows());
+
+	std::cout << "Loading data..." << std::endl;
+	f.load(tmp.get_cdata());
+	for(uint64_t i = nl; i <= nu; i*=2){
+		GPA<float> gpa;
+		gpa.set_cdata(tmp.get_cdata());
+		gpa.set_gdata(tmp.get_gdata());
+		gpa.set_dim(f.items(),i);
+		std::cout << "Benchmark <<<" << i << "," << d << "," << k << ">>> " << std::endl;
+		gpa.init();
+		gpa.findTopK(K);
+		gpa.benchmark();
+	}
 }
 
 int main(int argc, char **argv){
@@ -73,7 +95,8 @@ int main(int argc, char **argv){
 		nl = ap.getInt("-nl");
 	}
 
-	test(ap.getString("-f"),n,d, K);
+	//test(ap.getString("-f"),n,d, K);
+	bench_gpa(ap.getString("-f"),n,d,K,nl,nu);
 
 
 	return 0;

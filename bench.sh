@@ -3,7 +3,7 @@
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
 START_N=$((1*1024*1024))
-END_N=$((256*1024*1024))
+END_N=$((1*1024*1024))
 START_D=8
 END_D=8
 
@@ -11,8 +11,8 @@ distr=i
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
 #CPU:0,GPU:1
 device=0
+script=randdataset
 
-#COMPILE CPU OR GPU
 if [ $device -eq 0 ]
 then
   make cpu_cc
@@ -20,13 +20,35 @@ else
   make gpu_cc
 fi
 
-#CREATE DATA FILE FOR GIVEN DIMENSION
-fname='d_'$END_N'_'$END_D'_'$distr
-if [ ! -f data/$fname ]; then
-	echo "Creating file <"$fname">"
-	cd data/; time python skydata.py $END_N $END_D $distr ; cd ..
-fi
 
-#BENCH START_N TO END_N CARDINALITY
-./cpu_run -f=data/$fname -n=$END_N -d=$END_D -nl=$START_N -nu=$END_N
-	
+for (( n=$START_N; n<=$END_N; n*=4 ))
+do
+	for (( d=$START_D; d<=$END_D; d+=2 ))
+	do
+		fname='d_'$n'_'$d'_'$distr
+		#echo "Processing ... "$fname
+		if [ ! -f data/$fname ]; then
+    		echo "Creating file <"$fname">"
+			cd data/; time python skydata.py $n $d $distr $script; cd ..
+		fi
+		
+		#make cpu_cc ; ./cpu_run -f=data/$fname -n=$n -d=$d
+		#make gpu_cc ; ./gpu_run -f=data/$fname -n=$n -d=$d
+		
+		if [ $device -eq 0 ]
+		then
+  			./cpu_run -f=data/$fname -n=$n -d=$d
+		else
+  			./gpu_run -f=data/$fname -n=$n -d=$d
+		fi
+		
+		if [ $? -eq 1 ]
+		then
+			echo "error occured!!!"
+			exit
+		fi
+		sleep 1
+		rm -rf data/$fname
+		
+	done
+done

@@ -1,3 +1,5 @@
+#include<limits>
+
 #include "time/Time.h"
 #include "tools/ArgParser.h"
 #include "input/File.h"
@@ -8,6 +10,7 @@
 #include "cpu/TA.h"
 #include "cpu/CBA.h"
 #include "cpu/BPA.h"
+#include "cpu/T2S.h"
 
 #define RUN_PAR false
 #define K 100
@@ -29,7 +32,7 @@ void debug(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 
 	na.init(); na.findTopK(k);
-	ta.init(); ta.findTopK(k);
+	ta.init2(); ta.findTopK2(k);
 	cba.init(); cba.findTopK(k);
 
 	ta.compare(na);
@@ -44,7 +47,7 @@ void debug_cba(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	f.set_transpose(true);
 
-	CBA<float,uint64_t> cba_seq(f.rows(),f.items());
+	CBA<float,uint32_t> cba_seq(f.rows(),f.items());
 	cba_seq.set_topk_exec(false);
 
 	std::cout << "Loading data ..." << std::endl;
@@ -58,7 +61,7 @@ void debug_cba(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 void debug_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	TA<float,uint64_t> ta_seq(f.rows(),f.items());
+	TA<float,uint32_t> ta_seq(f.rows(),f.items());
 
 	std::cout << "Loading data ..." << std::endl;
 	f.load(ta_seq.get_cdata());
@@ -68,6 +71,18 @@ void debug_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 	//ta_par.compare(ta_seq);
 	ta_seq.benchmark();
+}
+
+void debug_t2s(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	T2S<float,uint32_t> t2s(f.rows(),f.items());
+
+	std::cout << "Loading data ..." << std::endl;
+	f.load(t2s.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	t2s.init();
+	t2s.benchmark();
 }
 
 void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k, uint64_t nl, uint64_t nu){
@@ -82,8 +97,8 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k, uint64_t nl,
 
 		ta.set_cdata(data);
 		std::cout << "Benchmark <<<" << i << "," << d << "," << k << ">>> " << std::endl;
-		ta.init();
-		ta.findTopK(k);
+		ta.init2();
+		ta.findTopK2(k);
 		ta.benchmark();
 	}
 //	if(data != NULL ) free(data);
@@ -107,6 +122,35 @@ void bench_cba(std::string fname,uint64_t n, uint64_t d, uint64_t k, uint64_t nl
 	//if(data != NULL ) free(data);
 }
 
+void mem_bench(uint32_t bsize, uint32_t dim, uint32_t n, uint32_t p){
+	float *base = (float*)malloc(sizeof(float) * dim * n);
+	float *buffer = (float*)malloc(sizeof(float) * dim * bsize);
+	float **bucket = (float**) malloc (sizeof(float**) * p);
+
+	for(uint64_t i = 0 ; i < p; i++) bucket[i] = (float*)malloc(sizeof(float)*dim*bsize);
+	uint64_t count = 0;
+	Time<msecs> t;
+	double tt = 0;
+	std::cout << "Running..." << std::endl;
+	for(uint64_t i = 0; i < n ; i+=bsize)
+	{
+		t.start();
+		memcpy(buffer,&base[i * dim],sizeof(float) * dim * bsize);
+		for(uint64_t j = 0 ; j < p; j++) memcpy(&bucket[j][0],buffer, sizeof(float) * dim * bsize);
+		tt+=t.lap();
+		count++;
+	}
+
+	std::cout << "cc: " << count << std::endl;
+	std::cout << "total: " << tt << std::endl;
+	std::cout << "per iteration: " << tt/count << std::endl;
+
+	for(uint64_t i = 0 ; i < p; i++) free(bucket[i]);
+	free(bucket);
+	free(base);
+	free(buffer);
+}
+
 int main(int argc, char **argv){
 	ArgParser ap;
 	ap.parseArgs(argc,argv);
@@ -125,14 +169,8 @@ int main(int argc, char **argv){
 		exit(1);
 	}
 
-	if(!ap.exists("-md")){
-		//std::cout << "Default mode: <debug>" <<std::endl;
-		ap.addArg("-md","debug");
-	}
-
 	uint64_t n = ap.getInt("-n");
 	uint64_t d = ap.getInt("-d");
-
 	uint64_t nu;
 	if(!ap.exists("-nu")){
 		nu = n;
@@ -147,12 +185,15 @@ int main(int argc, char **argv){
 		nl = ap.getInt("-nl");
 	}
 
-	if(ap.getString("-md") == "debug"){
-		//debug(ap.getString("-f"),n,d,K);
-		//debug_cba(ap.getString("-f"),n,d,K);
-		debug_ta(ap.getString("-f"),n,d,K);
-		//bench_cba(ap.getString("-f"),n,d,K,nl,nu);
-	}
+
+	//debug(ap.getString("-f"),n,d,K);
+	//debug_ta(ap.getString("-f"),n,d,K);
+	debug_cba(ap.getString("-f"),n,d,K);
+	//debug_t2s(ap.getString("-f"),n,d,K);
+	//bench_ta(ap.getString("-f"),n,d,K,nl,nu);
+	//bench_cba(ap.getString("-f"),n,d,K,nl,nu);
+
+	//mem_bench(256*1024,4, 1*1024*1024, 1);
 
 	return 0;
 }

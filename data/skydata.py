@@ -7,15 +7,17 @@ N = int(sys.argv[1])
 D = int(sys.argv[2])
 distr = sys.argv[3]
 scale = 1024 * 1024 * 1024
+script = sys.argv[4]
 
 def genData(N,D,distr):
     global scale
+    global script
     #print time.time()
     filename = "d_"+str(N)+"_"+str(D)+"_"+distr
     #print filename
     #Call d
     f = open(filename, "w")
-    arg_call = ["./randdataset", "-"+distr,"-n",str(N),"-d",str(D),"-s",str(int(time.time()))]
+    arg_call = ["./"+script, "-"+distr,"-n",str(N),"-d",str(D),"-s",str(int(time.time()))]
     #print arg_call
     call(arg_call,stdout=f)
     f.close()

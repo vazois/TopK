@@ -95,14 +95,14 @@ __host__ void CompactConfig<T>::prune_tupples(uint32_t *tupple_ids, T *score, T 
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing evaluate");
 
 	if(!init){
-		cub::DevicePartition::Flagged(this->d_temp_storage,this->temp_storage_bytes,tupple_ids,this->prune,this->tids_out,this->dnum, n);
+		cub::DeviceSelect::Flagged(this->d_temp_storage,this->temp_storage_bytes,tupple_ids,this->prune,this->tids_out,this->dnum, n);
 		this->alloc_tmp_storage();
 		this->init = true;
 	}
 
-	cub::DevicePartition::Flagged(this->d_temp_storage,this->temp_storage_bytes,tupple_ids,this->prune,this->tids_out,this->dnum, n);
+	cub::DeviceSelect::Flagged(this->d_temp_storage,this->temp_storage_bytes,tupple_ids,this->prune,this->tids_out,this->dnum, n);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing ids partition");
-	cub::DevicePartition::Flagged(this->d_temp_storage,this->temp_storage_bytes,score,this->prune,this->sout,this->dnum, n);
+	cub::DeviceSelect::Flagged(this->d_temp_storage,this->temp_storage_bytes,score,this->prune,this->sout,this->dnum, n);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing scores partition");
 
 	uint64_t dnum = this->get_dnum_cpu();

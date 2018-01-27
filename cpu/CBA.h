@@ -176,7 +176,9 @@ void CBA<T,Z>::findTopK(uint64_t k){
 	typename std::vector<vpred<T,Z>>::iterator first = this->vtupples.begin();
 	typename std::vector<vpred<T,Z>>::iterator last = this->vtupples.end();
 
-	std::cout << this->algo << " find topK ...";
+
+	std::cout << this->algo << " find topK ...\n";
+	std::cout << "size(" << 0 << ") :" << this->vtupples.size() << std::endl;
 	this->t.start();
 	for(uint64_t j = 0; j < this->d; j++){
 		std::priority_queue<T, std::vector<T>, std::greater<T>> q;
@@ -193,7 +195,7 @@ void CBA<T,Z>::findTopK(uint64_t k){
 			first++;
 		}
 		T threshold = q.top();
-//		//std::cout << "threshold: " << threshold << std::endl;
+//		std::cout << "threshold: " << threshold << std::endl;
 
 //		//Partition data
 		uint32_t mult =this->d-(j+1);
@@ -210,6 +212,7 @@ void CBA<T,Z>::findTopK(uint64_t k){
 				first++;
 				size++;
 			}
+			std::cout << "size(" << j+1 << ") :" << size << std::endl;
 			if(STATS_EFF) this->pred_count+=size;
 			if(size <= k) break;
 		}
