@@ -10,9 +10,9 @@ END_D=12
 distr=i
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
 #CPU:0,GPU:1
-device=1
+device=$1
 #randdataset3: higher precission , randdataset: lower precission
-script=randdataset
+script=randdataset3
 
 if [ $device -eq 0 ]
 then
@@ -51,7 +51,7 @@ do
 			exit
 		fi
 		sleep 1
-		rm -rf data/$fname
+		#rm -rf data/$fname
 		
 	done
 done

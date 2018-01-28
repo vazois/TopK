@@ -1,5 +1,5 @@
-#ifndef INIT_TUPPLES_H
-#define INIT_TUPPLES_H
+#ifndef INIT_TUPLES_H
+#define INIT_TUPLES_H
 
 #include "CudaHelper.h"
 

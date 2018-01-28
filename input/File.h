@@ -21,6 +21,7 @@ class File{
 			this->n = n;
 			this->d = d;
 			this->gpu=gpu;
+			this->packed=false;
 		}
 
 		File(std::string fname,bool gpu){
@@ -29,6 +30,7 @@ class File{
 			this->transpose=false;
 			this->count();
 			this->gpu=gpu;
+			this->packed=false;
 		}
 		File(std::string fname,char delimiter,bool transpose,bool gpu){
 			this->fname=fname;
@@ -36,6 +38,7 @@ class File{
 			this->transpose=transpose;
 			this->count();
 			this->gpu=gpu;
+			this->packed=false;
 		}
 
 		~File(){
@@ -72,6 +75,7 @@ class File{
 		char delimiter;
 		bool transpose;
 		bool gpu;
+		bool packed;
 };
 
 

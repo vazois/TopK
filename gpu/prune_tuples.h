@@ -1,5 +1,5 @@
-#ifndef PRUNE_TUPPLES_H
-#define PRUNE_TUPPLES_H
+#ifndef PRUNE_TUPLES_H
+#define PRUNE_TUPLES_H
 
 #include <cub/cub.cuh>
 #include "CudaHelper.h"
@@ -16,7 +16,8 @@ __global__ void evaluate(uint32_t *tupple_ids,T *score, T *gdataC, T threshold, 
 }
 
 template<class T, uint32_t block>
-__global__ void compact_tupples(uint32_t *tupple_ids,T *scores, T *gdataC, T* gdataN, uint32_t *tupple_ids_out, T *scores_out, uint64_t dnum){
+//__global__ void compact_tupples(uint32_t *tupple_ids,T *scores, T *gdataC, T* gdataN, uint32_t *tupple_ids_out, T *scores_out, uint64_t dnum){
+__global__ void compact_tuples(uint32_t *tupple_ids,T *scores, T* gdataN, uint32_t *tupple_ids_out, T *scores_out, uint64_t dnum){
 	uint64_t offset = block * blockIdx.x + threadIdx.x;
 
 	if(offset < dnum){
@@ -50,7 +51,7 @@ class CompactConfig{
 		}
 
 
-		void prune_tupples(uint32_t *tupple_ids, T *score, T *gdataC, T *gdataN, uint64_t &n, T threshold, uint64_t suffix_len);
+		void prune_tuples(uint32_t *tupple_ids, T *score, T *gdataC, T *gdataN, uint64_t &n, T threshold, uint64_t suffix_len);
 
 		void alloc_tmp_storage(){
 			if(this->d_temp_storage == NULL ){
@@ -86,21 +87,21 @@ class CompactConfig{
 };
 
 template<class T>
-__host__ void CompactConfig<T>::prune_tupples(uint32_t *tupple_ids, T *score, T *gdataC, T *gdataN, uint64_t &n, T threshold, uint64_t suffix_len){
+__host__ void CompactConfig<T>::prune_tuples(uint32_t *tuple_ids, T *score, T *gdataC, T *gdataN, uint64_t &n, T threshold, uint64_t suffix_len){
 	dim3 grid((n-1)/BLOCK_SIZE + 1,1,1);
 	dim3 block(BLOCK_SIZE,1,1);
 
 	if(!init) this->alloc(n);
-	evaluate<T,BLOCK_SIZE><<<grid,block>>>(tupple_ids,score,gdataC,threshold,prune,suffix_len,n);
+	evaluate<T,BLOCK_SIZE><<<grid,block>>>(tuple_ids,score,gdataC,threshold,prune,suffix_len,n);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing evaluate");
 
 	if(!init){
-		cub::DeviceSelect::Flagged(this->d_temp_storage,this->temp_storage_bytes,tupple_ids,this->prune,this->tids_out,this->dnum, n);
+		cub::DeviceSelect::Flagged(this->d_temp_storage,this->temp_storage_bytes,tuple_ids,this->prune,this->tids_out,this->dnum, n);
 		this->alloc_tmp_storage();
 		this->init = true;
 	}
 
-	cub::DeviceSelect::Flagged(this->d_temp_storage,this->temp_storage_bytes,tupple_ids,this->prune,this->tids_out,this->dnum, n);
+	cub::DeviceSelect::Flagged(this->d_temp_storage,this->temp_storage_bytes,tuple_ids,this->prune,this->tids_out,this->dnum, n);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing ids partition");
 	cub::DeviceSelect::Flagged(this->d_temp_storage,this->temp_storage_bytes,score,this->prune,this->sout,this->dnum, n);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing scores partition");
@@ -109,7 +110,8 @@ __host__ void CompactConfig<T>::prune_tupples(uint32_t *tupple_ids, T *score, T 
 	//std::cout << "rows qualified: " << dnum << std::endl;//Debug
 	dim3 ggrid((dnum-1)/BLOCK_SIZE + 1,1,1);
 	dim3 gblock(BLOCK_SIZE,1,1);
-	compact_tupples<T,BLOCK_SIZE><<<ggrid,gblock>>>(tupple_ids,score,gdataC,gdataN,this->tids_out,this->sout,dnum);
+	//compact_tupples<T,BLOCK_SIZE><<<ggrid,gblock>>>(tupple_ids,score,gdataC,gdataN,this->tids_out,this->sout,dnum);
+	compact_tuples<T,BLOCK_SIZE><<<ggrid,gblock>>>(tuple_ids,score,gdataN,this->tids_out,this->sout,dnum);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gather");
 
 	n=dnum;

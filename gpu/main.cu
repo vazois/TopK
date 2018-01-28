@@ -26,9 +26,6 @@ void simple_benchmark(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	GPAm<float> gpam;
 
 	gpa.alloc(f.items(),f.rows());
-	gpam.set_dim(f.items(),f.rows());
-	gpam.set_cdata(gpa.get_cdata());
-	gpam.alloc(f.items(),f.rows());
 
 	f.set_transpose(true);
 	std::cout << "Loading data..." << std::endl;
@@ -39,25 +36,44 @@ void simple_benchmark(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	gpa.init();
 	gpa.findTopK(K);
 	gpa.benchmark();
+
+
+	gpam.set_dim(f.items(),f.rows());
+	gpam.set_cdata(gpa.get_cdata());
+	gpam.alloc(f.items(),f.rows());
+	gpam.findTopK(K);
 }
 
-void bench_gpa(std::string fname,uint64_t n, uint64_t d, uint64_t k, uint64_t nl, uint64_t nu){
+void bench_gpa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,true,n,d);
-	GPA<float> tmp;
-	tmp.alloc(f.items(),f.rows());
+	GPA<float> gpa;
 
+	gpa.alloc(f.items(),f.rows());
+
+	f.set_transpose(true);
 	std::cout << "Loading data..." << std::endl;
-	f.load(tmp.get_cdata());
-	for(uint64_t i = nl; i <= nu; i*=2){
-		GPA<float> gpa;
-		gpa.set_cdata(tmp.get_cdata());
-		gpa.set_gdata(tmp.get_gdata());
-		gpa.set_dim(f.items(),i);
-		std::cout << "Benchmark <<<" << i << "," << d << "," << k << ">>> " << std::endl;
-		gpa.init();
-		gpa.findTopK(K);
-		gpa.benchmark();
-	}
+	f.load(gpa.get_cdata());
+	std::cout << "Finished Loading data..." << std::endl;
+
+	gpa.init();
+	gpa.findTopK(K);
+	gpa.benchmark();
+}
+
+void bench_gpam(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,true,n,d);
+	GPA<float> gpam;
+
+	gpam.alloc(f.items(),f.rows());
+
+	f.set_transpose(true);
+	std::cout << "Loading data..." << std::endl;
+	f.load(gpam.get_cdata());
+	std::cout << "Finished Loading data..." << std::endl;
+
+	gpam.init();
+	gpam.findTopK(K);
+	gpam.benchmark();
 }
 
 int main(int argc, char **argv){
@@ -81,22 +97,24 @@ int main(int argc, char **argv){
 	uint64_t n = ap.getInt("-n");
 	uint64_t d = ap.getInt("-d");
 
-	uint64_t nu;
-	if(!ap.exists("-nu")){
-		nu = n;
-	}else{
-		nu = ap.getInt("-nu");
-	}
-
-	uint64_t nl;
-	if(!ap.exists("-nl")){
-		nl = n;
-	}else{
-		nl = ap.getInt("-nl");
-	}
+//	uint64_t nu;
+//	if(!ap.exists("-nu")){
+//		nu = n;
+//	}else{
+//		nu = ap.getInt("-nu");
+//	}
+//
+//	uint64_t nl;
+//	if(!ap.exists("-nl")){
+//		nl = n;
+//	}else{
+//		nl = ap.getInt("-nl");
+//	}
 
 	//test(ap.getString("-f"),n,d, K);
-	bench_gpa(ap.getString("-f"),n,d,K,nl,nu);
+	//simple_benchmark(ap.getString("-f"),n,d,K);
+	//bench_gpa(ap.getString("-f"),n,d,K);
+	bench_gpam(ap.getString("-f"),n,d,K);
 
 
 	return 0;

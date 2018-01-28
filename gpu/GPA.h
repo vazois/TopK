@@ -3,9 +3,9 @@
 
 #include "CudaHelper.h"
 #include "reorder_attr.h"
-#include "init_tupples.h"
+#include "init_tuples.h"
 #include "radix_select.h"
-#include "prune_tupples.h"
+#include "prune_tuples.h"
 
 #include <inttypes.h>
 #include <algorithm>
@@ -212,9 +212,9 @@ void GPA<T>::findTopK(uint64_t k){
 
 			uint32_t gpu_prefix = radix_select_gpu_findK(gcol_ui,tmpN,tmpN - k);
 			float threshold = *(float*)&gpu_prefix;
-			//printf("kgpu: 0x%08x, %f\n",gpu_prefix,threshold);//Debug
+			printf("kgpu: 0x%08x, %f\n",gpu_prefix,threshold);//Debug
 
-			cconfig.prune_tupples(tuples.tuple_ids,tuples.scores,&this->gdata[i*n],&this->gdata[(i+1)*n],tmpN,threshold,suffix_len);
+			cconfig.prune_tuples(tuples.tuple_ids,tuples.scores,&this->gdata[i*n],&this->gdata[(i+1)*n],tmpN,threshold,suffix_len);
 
 			suffix_len--;
 		}
