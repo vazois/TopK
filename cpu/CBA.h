@@ -177,8 +177,8 @@ void CBA<T,Z>::findTopK(uint64_t k){
 	typename std::vector<vpred<T,Z>>::iterator last = this->vtupples.end();
 
 
-	std::cout << this->algo << " find topK ...\n";
-	std::cout << "size(" << 0 << ") :" << this->vtupples.size() << std::endl;
+	std::cout << this->algo << " find topK ...";
+//	std::cout << "\nsize(" << 0 << ") :" << this->vtupples.size() << std::endl;
 	this->t.start();
 	for(uint64_t j = 0; j < this->d; j++){
 		std::priority_queue<T, std::vector<T>, std::greater<T>> q;
