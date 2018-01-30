@@ -195,7 +195,7 @@ void CBA<T,Z>::findTopK(uint64_t k){
 			first++;
 		}
 		T threshold = q.top();
-		std::cout << "threshold: " << threshold << std::endl;
+//		std::cout << "threshold: " << threshold << std::endl;
 
 //		//Partition data
 		uint32_t mult =this->d-(j+1);

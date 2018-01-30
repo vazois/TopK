@@ -76,6 +76,22 @@ void bench_gpam(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	gpam.benchmark();
 }
 
+void mem_gpam(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,true,n,d);
+	GPA<float> gpam;
+
+	gpam.alloc(f.items(),f.rows());
+
+	//f.set_transpose(true);
+	std::cout << "Loading data..." << std::endl;
+	//f.load(gpam.get_cdata());
+	std::cout << "Finished Loading data..." << std::endl;
+
+	gpam.init();
+	//gpam.findTopK(K);
+	//gpam.benchmark();
+}
+
 int main(int argc, char **argv){
 	ArgParser ap;
 	ap.parseArgs(argc,argv);
@@ -113,9 +129,9 @@ int main(int argc, char **argv){
 
 	//test(ap.getString("-f"),n,d, K);
 	//simple_benchmark(ap.getString("-f"),n,d,K);
-	//bench_gpa(ap.getString("-f"),n,d,K);
-	bench_gpam(ap.getString("-f"),n,d,K);
-
+	bench_gpa(ap.getString("-f"),n,d,K);
+	//bench_gpam(ap.getString("-f"),n,d,K);
+	//mem_gpam(ap.getString("-f"),n,d,K);
 
 	return 0;
 }

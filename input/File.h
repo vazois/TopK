@@ -130,6 +130,7 @@ int File<T>::fetch(T *&p, uint64_t d, FILE *f){
 	switch(d){
 		case 2:
 			count = fscanf(f,this->fetch_row,&p[0],&p[1]);
+			break;
 		case 4:
 			count = fscanf(f,this->fetch_row,&p[0],&p[1],&p[2],&p[3]);
 			break;
@@ -166,7 +167,12 @@ void File<T>::read_scanf(){
 	uint64_t i = 0;
 
 	T *ptr = &data[i];
+//	std::cout << this->fetch_row << std::endl;
 	while(fetch(ptr,d,f) > 0){
+	//while(fscanf(f,"%f,%f",&ptr[0],&ptr[1]) > 0){
+//		std::cout << "(" << i/d << ")";
+//		for(uint8_t m = 0; m < d; m++) std::cout << ptr[m] << " ";
+//		std::cout << std::endl;
 		i+=(d);
 		ptr = &data[i];
 	}

@@ -2,10 +2,10 @@
 
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
-START_N=$((1*1024*1024))
-END_N=$((1*1024*1024))
-START_D=12
-END_D=12
+START_N=$((1*1024))
+END_N=$((1*1024))
+START_D=6
+END_D=6
 
 distr=i
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
@@ -13,6 +13,8 @@ distr=i
 device=$1
 #randdataset3: higher precission , randdataset: lower precission
 script=randdataset3
+#mem:1 only for memory benchmark, do not create file
+mem=0
 
 if [ $device -eq 0 ]
 then
@@ -28,7 +30,8 @@ do
 	do
 		fname='d_'$n'_'$d'_'$distr
 		#echo "Processing ... "$fname
-		if [ ! -f data/$fname ]; then
+		if [ ! -f data/$fname ] && [ $mem -eq 0 ] 
+		then
     		echo "Creating file <"$fname">"
 			cd data/; time python skydata.py $n $d $distr $script; cd ..
 			#cd data/; time python rand.py $n $d $distr; cd ..
