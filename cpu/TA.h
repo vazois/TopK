@@ -9,7 +9,7 @@
 #include <unordered_set>
 
 
-#include "reorder_attr_cpu.h"
+#include "reorder_attr_cpu_c.h"
 
 template<class T,class Z>
 class PQComparison{

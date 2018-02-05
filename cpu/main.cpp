@@ -12,6 +12,7 @@
 #include "cpu/BPA.h"
 #include "cpu/T2S.h"
 #include "cpu/FAc.h"
+#include "cpu/PFAc.h"
 
 #define RUN_PAR false
 #define K 100
@@ -25,6 +26,7 @@ void debug(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	TA<float,uint32_t> ta(f.rows(),f.items());
 	CBA<float,uint32_t> cba(f.rows(),f.items());
 	FAc<float,uint32_t> fac(f.rows(),f.items());
+	//FAc<float,uint32_t> fac2(f.rows(),f.items());
 
 	std::cout << "Loading data ..." << std::endl;
 	f.load(na.get_cdata());
@@ -32,22 +34,26 @@ void debug(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	f2.load(cba.get_cdata());
 	ta.set_cdata(na.get_cdata());
 	fac.set_cdata(na.get_cdata());
+	//fac2.set_cdata(na.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 
 	na.init(); na.findTopK(k);
 	ta.init(); ta.findTopK(k);
 	cba.init(); cba.findTopK(k);
-	fac.init(); fac.findTopK(k);
+	fac.init2(); fac.findTopK2(k);
+	//fac2.init2(); fac2.findTopK2(k);
 
 	ta.compare(na);
 	cba.compare(na);
 	fac.compare(na);
+	//fac2.compare(na);
 
 	na.benchmark();
 	ta.benchmark();
 	cba.benchmark();
 	fac.benchmark();
+	//fac2.benchmark();
 }
 
 void debug_cba(std::string fname,uint64_t n, uint64_t d, uint64_t k){
@@ -144,6 +150,21 @@ void debug_fac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	fac.benchmark();
 }
 
+void debug_pfac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	PFAc<float,uint32_t> pfac(f.rows(),f.items());
+
+	std::cout << "Loading data ..." << std::endl;
+	f.load(pfac.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	pfac.init();
+	pfac.findTopK(k);
+
+	//fac.compare(ta_seq);
+	pfac.benchmark();
+}
+
 void mem_bench(uint32_t bsize, uint32_t dim, uint32_t n, uint32_t p){
 	float *base = (float*)malloc(sizeof(float) * dim * n);
 	float *buffer = (float*)malloc(sizeof(float) * dim * bsize);
@@ -212,6 +233,7 @@ int main(int argc, char **argv){
 	//debug_ta(ap.getString("-f"),n,d,K);
 	//debug_cba(ap.getString("-f"),n,d,K);
 	//debug_fac(ap.getString("-f"),n,d,K);
+	//debug_pfac(ap.getString("-f"),n,d,K);
 	//debug_t2s(ap.getString("-f"),n,d,K);
 	//bench_ta(ap.getString("-f"),n,d,K,nl,nu);
 	//bench_cba(ap.getString("-f"),n,d,K,nl,nu);

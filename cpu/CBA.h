@@ -2,7 +2,7 @@
 #define CBA_H
 
 #include "AA.h"
-#include "reorder_attr_cpu.h"
+#include "reorder_attr_cpu_c.h"
 
 #include <list>
 #include <queue>

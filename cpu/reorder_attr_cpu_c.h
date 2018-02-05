@@ -1,5 +1,5 @@
-#ifndef REORDER_ATTR_CPU_H
-#define REORDER_ATTR_CPU_H
+#ifndef REORDER_ATTR_CPU_C_H
+#define REORDER_ATTR_CPU_C_H
 
 //#define MAX(x,y) (x > y ? x : y)
 //#define MIN(x,y) (x < y ? x : y)
