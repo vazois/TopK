@@ -8,7 +8,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-
 #include "reorder_attr_cpu_c.h"
 
 template<class T,class Z>
@@ -73,14 +72,14 @@ void TA<T,Z>::init2(){
 	}
 
 	this->t.start();
-	for(uint8_t m =0;m<this->d;m++){
-		std::sort(this->alists[m],this->alists[m] + this->n,cmp_max_pred<T,Z>);
-	}
-
-//	for(int i =0;i<this->d;i++){
-//		__gnu_parallel::sort(this->alists[i],this->alists[i] + this->n,cmp_max_pred<T,Z>);
-//		this->ax_bytes+= this->lists[i].capacity() * (sizeof(Z) + sizeof(T));
+//	for(uint8_t m =0;m<this->d;m++){
+//		std::sort(this->alists[m],this->alists[m] + this->n,cmp_max_pred<T,Z>);
 //	}
+
+	for(int i =0;i<this->d;i++){
+		__gnu_parallel::sort(this->alists[i],this->alists[i] + this->n,cmp_max_pred<T,Z>);
+		this->ax_bytes+= this->lists[i].capacity() * (sizeof(Z) + sizeof(T));
+	}
 	this->tt_init = this->t.lap();
 }
 

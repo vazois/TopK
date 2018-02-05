@@ -7,6 +7,7 @@
 #include <list>
 
 #include "build_attr_index_r.h"
+#include <inttypes.h>
 
 template<class T, class Z>
 class FAc : public AA<T,Z>{
@@ -196,23 +197,20 @@ void FAc<T,Z>::init2(){
 	//3
 	this->build_index();
 
-	if(this->n < 50){
-	std::cout << "<<index>>"<< std::endl;
-	for(uint64_t i = 0;i<this->n;i++){
-		std::cout << std::dec << std::setfill('0') << std::setw(3) << i << ": ";
-		for(uint8_t m = 0;m <this->d;m++){
-			std::cout << std::dec << std::setfill('0') << std::setw(3) << TT[i*this->d + m] << " ";
-		}
-		std::cout << " | 0x" <<  std::hex << std::setfill('0') << std::setw(16) << II[i] << std::endl;
-	}
-	std::cout << std::dec;
-	}
+//	if(this->n < 50){
+//	std::cout << "<<index>>"<< std::endl;
+//	for(uint64_t i = 0;i<25;i++){
+//		std::cout << std::dec << std::setfill('0') << std::setw(6) << i << ": ";
+//		for(uint8_t m = 0;m <this->d;m++){
+//			std::cout << std::dec << std::setfill('0') << std::setw(6) << TT[i*this->d + m] << " ";
+//		}
+//		std::cout << " | 0x" <<  std::hex << std::setfill('0') << std::setw(16) << II[i] << std::endl;
+//		//printf ("| 0x%llx\n",II[i]) ;
+//
+//	}
+//	std::cout << std::dec;
+//	}
 	this->tt_init = this->t.lap();
-
-	//for(uint64_t i = 0;i < this->d;i++) free(lists[i]);
-	//free(lists);
-	//free(TT);
-	//free(II);
 }
 
 template<class T, class Z>
@@ -224,16 +222,16 @@ void FAc<T,Z>::base_table(){
 		}
 	}
 
-	if(this->n < 50){
-	std::cout << std::endl << "<TT>" << std::endl;
-	for(uint64_t i=0;i<this->n;i++){
-		std::cout << std::dec << std::setfill('0') << std::setw(3) << i << ": ";
-		for(uint8_t m =0;m<this->d;m++){
-			std::cout << std::dec << std::setfill('0') << std::setw(3) << TT[ i * this->d + m] << " ";
-		}
-		std::cout << std::endl;
-	}
-	}
+//	if(this->n < 50){
+//	std::cout << std::endl << "<TT>" << std::endl;
+//	for(uint64_t i=0;i<25;i++){
+//		std::cout << std::dec << std::setfill('0') << std::setw(6) << i << ": ";
+//		for(uint8_t m =0;m<this->d;m++){
+//			std::cout << std::dec << std::setfill('0') << std::setw(6) << TT[ i * this->d + m] << " ";
+//		}
+//		std::cout << std::endl;
+//	}
+//	}
 }
 
 template<class T, class Z>
@@ -298,18 +296,18 @@ void FAc<T,Z>::findTopK2(uint64_t k){
 	//this->t.start();
 	for(uint64_t i = 0; i < this->n; i++){
 		//Tm[i] = TT[(II[i] & (0xF << tm_shf)) >> tm_shf];
-		seen_pos = TT[i * this->d + ((II[i] & (0xF << tm_shf)) >> tm_shf)];
+		seen_pos = TT[i * this->d + ((II[i] & ((uint64_t)0xF << tm_shf)) >> tm_shf)];
 		Tw[i] = (TT[i * this->d + (II[i] & (0xF))] == 0) ?  1 : TT[i * this->d + (II[i] & (0xF))];
 		//std::cout << i <<": " << seen_pos<<  "," << Tw[i] <<std::endl;
 		R[seen_pos]++;
 	}
 
-	if(this->n < 50){
-		std::cout <<std::endl << "<R>" << std::endl;
-		for(uint64_t i = 0; i < this->n; i++){
-			std::cout << i<<  ": " << R[i] <<std::endl;
-		}
-	}
+//	if(this->n < 50){
+//		std::cout <<std::endl << "<R>" << std::endl;
+//		for(uint64_t i = 0; i < this->n; i++){
+//			std::cout << i<<  ": " << R[i] <<std::endl;
+//		}
+//	}
 
 	//Prefix sum
 	uint64_t upper = 0;

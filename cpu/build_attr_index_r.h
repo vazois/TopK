@@ -20,9 +20,19 @@ void build_attr_index_r(uint64_t *II, Z *TT, uint64_t n,uint64_t d){
 			oo[m].ii = m; oo[m].tt = TT[i*d + m];
 		}
 		std::sort(oo,oo + d,cmp_pos_oo<Z>);
+//		if( i == 0 ){
+//			std::cout << "--------------------------" << std::endl;
+//			for(uint8_t m = 0;m <d;m++){
+//				std::cout << std::dec << std::setfill('0') << std::setw(4) << "( " << (uint32_t)oo[m].ii << " , " << oo[m].tt << " ) ";
+//			}
+//			std::cout << std::endl << "--------------------------" << std::endl;
+//		}
 		II[i] = 0;
 		for(uint8_t m = 0; m < d;m++){
-			II[i] = II[i] | (oo[m].ii << (m*4));
+			II[i] = II[i] | ((uint64_t)oo[m].ii << (m*4));
+//			if( i == 0 ){
+//			std::cout << "0x" <<  std::hex << std::setfill('0') << std::setw(16) << II[i] << std::endl;
+//			}
 		}
 	}
 	free(oo);
