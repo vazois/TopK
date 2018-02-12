@@ -47,6 +47,16 @@ static bool cmp_score(const tuple<T,Z> &a, const tuple<T,Z> &b){ return a.score 
 template<class T,class Z>
 static bool cmp_max_pred(const pred<T,Z> &a, const pred<T,Z> &b){ return a.attr > b.attr; };
 
+template<class T,class Z>
+class PQComparison{
+	public:
+		PQComparison(){};
+
+		bool operator() (const tuple<T,Z>& lhs, const tuple<T,Z>& rhs) const{
+			return (lhs.score>rhs.score);
+		}
+};
+
 /*
  * Base class for aggregation algorithm
  */
@@ -57,8 +67,10 @@ class AA{
 		~AA();
 
 		void compare(AA<T,Z> b);
+		void compare_t(AA<T,Z> b);
 		std::vector<tuple<T,Z>> get_res(){ return this->res; };
 		std::string get_algo(){ return this->algo; };
+		T get_thres(){return this->threshold;}
 
 		void benchmark();
 
@@ -85,6 +97,8 @@ class AA{
 		double tt_processing;//processing time
 		uint64_t pred_count;//count predicate evaluations
 		uint64_t tuple_count;//count predicate evaluations
+		uint64_t stop_pos;//stop pos for ordered lists
+		T threshold;
 
 		bool stats_eff;
 		bool stats_time;
@@ -98,6 +112,8 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->tt_processing = 0;
 	this->pred_count = 0;
 	this->tuple_count = 0;
+	this->stop_pos = 0;
+	this->threshold = 0;
 	this->n = n;
 	this->d = d;
 	this->cdata = NULL;
@@ -140,6 +156,18 @@ void AA<T,Z>::compare(AA<T,Z> b){
 	std::cout << "(" <<this->algo <<") compare result to (" << b.get_algo() << ") ( "<< cmp <<" )" << std::endl;
 }
 
+template<class T,class Z>
+void AA<T,Z>::compare_t(AA<T,Z> b){
+	std::string cmp = "PASSED";
+
+	if(std::abs(this->threshold - b.get_thres()) > 0.0001){
+		cmp  = "FAILED";
+		std::cout << "(" <<this->algo <<") != (" << b.get_algo() << ") [" << this->get_thres() <<","<< b.get_thres() << "] ( "<< cmp <<" )" << std::endl;
+		exit(1);
+	}
+	std::cout << "(" <<this->algo <<") compare result to (" << b.get_algo() << ") ( "<< cmp <<" )" << std::endl;
+}
+
 /*
  * List benchmarking information
  */
@@ -153,6 +181,7 @@ void AA<T,Z>::benchmark(){
 
 	std::cout << "pred_count: " << this->pred_count << std::endl;
 	std::cout << "tuple_count: " << this->tuple_count << std::endl;
+	std::cout << "stop_pos: " << this->stop_pos << std::endl;
 	std::cout << "Base Table Footprint (MB): " << ((float)this->bt_bytes)/(1024*1024) << std::endl;
 	std::cout << "Auxiliary Structures Footprint (MB): " << ((float)this->ax_bytes)/(1024*1024) << std::endl;
 }

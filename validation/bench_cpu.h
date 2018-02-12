@@ -12,8 +12,7 @@
 #include "cpu/CBA.h"
 #include "cpu/BPA.h"
 #include "cpu/T2S.h"
-#include "cpu/FAc.h"
-#include "cpu/PFAc.h"
+#include "cpu/cFA.h"
 
 void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
@@ -40,16 +39,16 @@ void bench_cba(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	cba.benchmark();
 }
 
-void debug_fac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+void debug_cfa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	FAc<float,uint32_t> fac(f.rows(),f.items());
+	cFA<float,uint32_t> cfa(f.rows(),f.items());
 
 	std::cout << "Loading data ..." << std::endl;
-	f.load(fac.get_cdata());
+	f.load(cfa.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	fac.init2();fac.findTopK2(k);
-	fac.benchmark();
+	cfa.init(); cfa.findTopK(k);
+	cfa.benchmark();
 }
 
 

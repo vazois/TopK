@@ -89,13 +89,16 @@ void NA<T,Z>::findTopK(uint64_t k){
 	std::sort(this->tuples.begin(),this->tuples.end(),cmp_score<T,Z>);
 	//std::cout << std::endl;
 	Z limit = k < this->n ? k : this->n;
+	T threshold = this->tuples[k-1].score;
 	for(uint64_t i = 0;i < limit ;i++){
 		//std::cout << this->algo <<" : (" << i << ") " << this->tuples[i].tid << "," << this->tuples[i].score <<std::endl;
 		this->res.push_back(tuple<T,Z>(this->tuples[i].tid,this->tuples[i].score));
 	}
 	this->tt_processing = this->t.lap();
 
-	std::cout << " (" << this->res.size() << ")" << std::endl;
+	//Gather results for verification
+	std::cout << " threshold[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
 }
 
 #endif

@@ -4,8 +4,8 @@
 
 START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
-START_D=2
-END_D=12
+START_D=4
+END_D=4
 
 distr=i
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
@@ -54,7 +54,7 @@ do
 			exit
 		fi
 		sleep 1
-		#rm -rf data/$fname
+		rm -rf data/$fname
 		
 	done
 done

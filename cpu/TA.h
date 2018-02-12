@@ -10,15 +10,6 @@
 
 #include "reorder_attr_cpu_c.h"
 
-template<class T,class Z>
-class PQComparison{
-	public:
-		PQComparison(){};
-
-		bool operator() (const tuple<T,Z>& lhs, const tuple<T,Z>& rhs) const{
-			return (lhs.score>rhs.score);
-		}
-};
 
 //TODO: what if only compute scores, until threshold and then gather results in priority queue//
 //Precompute number of distinct items at each positional index
@@ -136,17 +127,20 @@ void TA<T,Z>::findTopK(uint64_t k){
 		}
 		if(this->q.top().score >= threshold){
 //			std::cout << "stopped at: " << i << ", threshold: " << threshold << std::endl;
+			this->stop_pos = i;
 			break;
 		}
 	}
 	this->tt_processing = this->t.lap();
 
+	T threshold = q.top().score;
 	while(!this->q.empty()){
 		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
 		this->res.push_back(this->q.top());
 		this->q.pop();
 	}
-	std::cout << " (" << this->res.size() << ")" << std::endl;
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
 }
 
 template<class T,class Z>
@@ -184,11 +178,14 @@ void TA<T,Z>::findTopK2(uint64_t k){
 	}
 	this->tt_processing = this->t.lap();
 
+	//Gather results for verification
+	T threshold = q.top().score;
 	while(!this->q.empty()){
 		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
 		this->res.push_back(this->q.top());
 		this->q.pop();
 	}
-	std::cout << " (" << this->res.size() << ")" << std::endl;
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
 }
 #endif

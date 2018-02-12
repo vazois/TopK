@@ -26,6 +26,7 @@ class FA : public AA<T,Z>{
 		void findTopK(uint64_t k);
 
 	protected:
+		std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
 		std::vector<std::vector<pred<T,Z>>> lists;
 		std::vector<rrpred<Z>> rrlist;
 };
@@ -35,6 +36,7 @@ class FA : public AA<T,Z>{
  */
 template<class T,class Z>
 void FA<T,Z>::init(){
+	std::cout << this->algo << " find topK ...";
 	this->lists.resize(this->d);
 	for(int i =0;i<this->d;i++){ this->lists[i].resize(this->n); }
 
@@ -70,10 +72,10 @@ void FA<T,Z>::findTopK(uint64_t k){
 		}
 		if(stop >= k){
 			//std::cout << "Stopped at: " << i << std::endl;
+			this->stop_pos = i;
 			break;
 		}
 	}
-	this->tt_processing = this->t.lap("");
 
 	//Gather results and evaluate scores
 	std::vector<tuple<T,Z>> res;
@@ -81,12 +83,28 @@ void FA<T,Z>::findTopK(uint64_t k){
 		uint64_t tid = it->first;
 		T score = 0;
 		for(uint64_t j = 0; j < this->d; j++){ score+= this->cdata[tid * this->d + j]; }
-		res.push_back(tuple<T,Z>(it->first,score));
+
+		if(this->q.size() < k){//insert if empty space in queue
+			this->q.push(tuple<T,Z>(tid,score));
+		}else if(this->q.top().score<score){//delete smallest element if current score is bigger
+			this->q.pop();
+			this->q.push(tuple<T,Z>(tid,score));
+		}
+
 		this->pred_count+=this->d;
 		this->tuple_count+=1;
 	}
-	std::sort(res.begin(),res.end(),cmp_score<T,Z>);
-	for(uint64_t i = 0;i < k ;i++){ this->res.push_back(res[i]); }
+	this->tt_processing = this->t.lap("");
+
+	//Gather results for verification
+	T threshold = this->q.top().score;
+	while(!this->q.empty()){
+		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
+		this->res.push_back(this->q.top());
+		this->q.pop();
+	}
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
 }
 
 #endif

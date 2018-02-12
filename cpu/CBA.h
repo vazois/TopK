@@ -33,12 +33,33 @@ template<class T,class Z>
 static bool cmp_max_cpred(const cpred<T,Z> &a, const cpred<T,Z> &b){ return a.total > b.total; };
 
 template<class T,class Z>
+struct LocalMax{
+	LocalMax(){ tid = 0; score = 0; }
+	LocalMax(Z t, T s, T n){ tid = t; score = s; next = n; }
+
+	Z tid;
+	T score;
+	T next;
+};
+
+template<class T,class Z>
+class LocalMaxCmp{
+	public:
+		LocalMaxCmp(){};
+
+		bool operator() (const LocalMax<T,Z>& lhs, const LocalMax<T,Z>& rhs) const{
+			return (lhs.score>rhs.score);
+		}
+};
+
+template<class T,class Z>
 class CBA : public AA<T,Z>{
 	public:
 		CBA(uint64_t n,uint64_t d) : AA<T,Z>(n,d){ this->algo = "CBA"; };
 
 		void init();
 		void findTopK(uint64_t k);
+		void findTopK2(uint64_t k);
 
 	protected:
 		std::vector<vpred<T,Z>> vtupples;
@@ -80,15 +101,15 @@ void CBA<T,Z>::init(){
 			break;
 	}
 	//this->tt_init = this->t.lap("");
-	if(this->topkp){
-		this->vtupples.resize(this->n);
-		for(uint64_t i = 0; i < this->n; i++){ this->vtupples[i] = vpred<T,Z>(i,this->cdata[i]); }
-	}else{
-		//for(uint64_t i = 0; i < this->n; i++){ this->tupples.push_back(cpred<T,Z>(i,this->cdata[i])); }
-		this->vtupples.resize(this->n);
-		for(uint64_t i = 0; i < this->n; i++){ this->vtupples[i] = vpred<T,Z>(i,this->cdata[i]); }
-	}
-	this->tt_init = this->t.lap("");
+//	if(this->topkp){
+//		this->vtupples.resize(this->n);
+//		for(uint64_t i = 0; i < this->n; i++){ this->vtupples[i] = vpred<T,Z>(i,this->cdata[i]); }
+//	}else{
+	//for(uint64_t i = 0; i < this->n; i++){ this->tupples.push_back(cpred<T,Z>(i,this->cdata[i])); }
+	this->vtupples.resize(this->n);
+	for(uint64_t i = 0; i < this->n; i++){ this->vtupples[i] = vpred<T,Z>(i,this->cdata[i]); }
+
+	this->tt_init = this->t.lap();
 	this->check_order();//TODO: Comment
 }
 
@@ -176,7 +197,6 @@ void CBA<T,Z>::findTopK(uint64_t k){
 	typename std::vector<vpred<T,Z>>::iterator first = this->vtupples.begin();
 	typename std::vector<vpred<T,Z>>::iterator last = this->vtupples.end();
 
-
 	std::cout << this->algo << " find topK ...";
 //	std::cout << "\nsize(" << 0 << ") :" << this->vtupples.size() << std::endl;
 	this->t.start();
@@ -218,13 +238,53 @@ void CBA<T,Z>::findTopK(uint64_t k){
 		}
 	}
 	this->tt_processing = this->t.lap();
-
 	if(STATS_EFF) this->tuple_count+=k;
+
+	//Gather results for verification
+	T threshold = this->vtupples[0].total;
 	for(uint32_t i = 0;i <k;i++){
 		this->res.push_back(tuple<T,Z>(this->vtupples[i].tid,this->vtupples[i].total));
+		threshold = threshold > this->vtupples[i].total ? this->vtupples[i].total : threshold;
 	}
-	std::cout << " (" << this->res.size() << ")" << std::endl;
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
 }
 
+template<class T,class Z>
+void CBA<T,Z>::findTopK2(uint64_t k){
+	std::cout << this->algo << " find topK ...";
+	T *score = (T* )malloc(sizeof(T) * this->n);
+
+	LocalMax<T,Z> k_0;
+	LocalMax<T,Z> k_1;
+	this->t.start();
+	memset(score,0,sizeof(T)*this->n);
+	uint8_t suffix_len=this->d-1;
+	for(uint8_t m = 0; m < this->d; m++){
+		std::priority_queue<T, std::vector<LocalMax<T,Z>>, LocalMaxCmp<T,Z>> q;
+		for(uint64_t i = 0; i < this->n;i++){
+			score[i]+=this->cdata[m * this->n + i];
+			if(q.size() < k+1){
+				q.push(LocalMax<T,Z>(i,score[i],this->cdata[m * this->n + i]));
+			}else if( q.top().score < score[i]){
+				q.pop();
+				q.push(LocalMax<T,Z>(i,score[i],this->cdata[m * this->n + i]));
+			}
+		}
+
+		k_1 =q.top(); q.pop(); k_0 =q.top();
+		std::cout << "k_0: " <<k_0.score <<  std::endl;
+		std::cout << "k_1: " <<k_1.score <<" + " << k_1.next << " * " << (int)suffix_len<<  std::endl;
+		if(k_0.score >= k_1.score + k_1.next * suffix_len){
+			std::cout << "stopped at:" <<(int)m << std::endl;
+			break;
+		}
+		suffix_len--;
+	}
+
+	this->tt_processing = this->t.lap();
+	free(score);
+
+}
 
 #endif

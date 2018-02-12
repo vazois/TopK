@@ -48,8 +48,6 @@ def create_file(n,d,distr):
     print "tt: ",tt
     
     fp.close()
-    
-    
 
 if __name__ == "__main__":
     if(len(sys.argv) < 3):
@@ -57,7 +55,7 @@ if __name__ == "__main__":
         exit()
     n = int(sys.argv[1])
     d = int(sys.argv[2])
-    distr = "i"
+    distr = "z"
     if (len(sys.argv) == 4):
         distr=sys.argv[3]
         

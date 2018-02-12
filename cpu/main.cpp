@@ -40,7 +40,6 @@ int main(int argc, char **argv){
 		nl = ap.getInt("-nl");
 	}
 
-
 	debug(ap.getString("-f"),n,d,K);
 	//bench_ta(ap.getString("-f"),n,d,K);
 	//bench_cba(ap.getString("-f"),n,d,K);
