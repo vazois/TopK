@@ -18,6 +18,7 @@ struct MxPred{
 
 	Z tid;
 	T score;
+	T  next;
 };
 
 template<class T>
@@ -111,6 +112,9 @@ void MaxScore<T,Z>::findTopK(uint64_t k){
 			if(STATS_EFF) this->tuple_count+=this->n;
 			std::swap(q,this->q);
 		}
+
+//		if(STATS_EFF) this->pred_count+=size;
+//		if(STATS_EFF && m == (this->d-1)) this->tuple_count+=size;
 	}
 	this->tt_processing = this->t.lap();
 	free(score);
@@ -142,7 +146,7 @@ typename std::vector<MxPred<T,Z>>::iterator MaxScore<T,Z>::partition(
 		do{
 			--last;
 			if (first==last) return first;
-		}while(!(first->score + remainder >= threshold));
+		}while(!(last->score + remainder >= threshold));
 		std::iter_swap(first,last);
 		++first;
 	}
@@ -151,13 +155,13 @@ typename std::vector<MxPred<T,Z>>::iterator MaxScore<T,Z>::partition(
 
 template<class T, class Z>
 void MaxScore<T,Z>::findTopK2(uint64_t k){
-	std::cout << this->algo << " find topK ...";
+	std::cout << this->algo << " find topK2 ...";
 	for(int8_t m = this->d-2; m >=0; m--){ this->mxr[m].attr += this->mxr[m+1].attr; }
 
 	typename std::vector<MxPred<T,Z>>::iterator first = this->mxtuples.begin();
 	typename std::vector<MxPred<T,Z>>::iterator last = this->mxtuples.end();
 	this->t.start();
-	for(uint8_t m = 0; m < this->d-1; m++){
+	for(uint8_t m = 0; m < this->d; m++){
 		std::priority_queue<T, std::vector<T>, std::greater<T>> q;
 		first = this->mxtuples.begin();
 		while( first != last  ){
@@ -175,15 +179,27 @@ void MaxScore<T,Z>::findTopK2(uint64_t k){
 		last = this->partition(this->mxtuples.begin(),last,threshold,this->mxr[m+1].attr);
 
 		uint64_t size = 0;
+		first = this->mxtuples.begin();
 		while( first != last ){
 			first->score+=this->cdata[(m+1) * this->n + first->tid];
-			//size++;
+			first->next=this->cdata[(m+1) * this->n + first->tid];
+			size++;
 			first++;
 		}
-		std::cout << (int) m << ": " << size << std::endl;
-
+		//std::cout << std::endl << "MaxScore: "<<(int) m << ": " << size << std::endl;
+		if(STATS_EFF) this->pred_count+=size;
+		if(STATS_EFF && m == (this->d-1)) this->tuple_count+=size;
+		if(size <= k) break;
 	}
 	this->tt_processing = this->t.lap();
+
+	T threshold = this->mxtuples[0].score;
+	for(uint32_t i = 0;i <k;i++){
+		this->res.push_back(tuple<T,Z>(this->mxtuples[i].tid,this->mxtuples[i].score));
+		threshold = threshold > this->mxtuples[i].score ? this->mxtuples[i].score : threshold;
+	}
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
 }
 
 #endif

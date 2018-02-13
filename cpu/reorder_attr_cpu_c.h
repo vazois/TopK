@@ -257,4 +257,44 @@ void reorder_attr_12(T *&data,uint64_t n){
 	}
 }
 
+template<class T>
+void reorder_attr_14(T *&data,uint64_t n){
+	T tmp[14];
+	//std::sort(s.begin(), s.end(), std::greater<int>());
+
+	for(uint64_t i = 0;i < n;i++){
+		T *offset = &data[i];
+		tmp[0] = data[n*0 + i]; tmp[4] = data[n*4 + i]; tmp[8] = data[n*8 + i]; tmp[12] = data[n*12 + i];
+		tmp[1] = data[n*1 + i]; tmp[5] = data[n*5 + i]; tmp[9] = data[n*9 + i]; tmp[13] = data[n*13 + i];
+		tmp[2] = data[n*2 + i]; tmp[6] = data[n*6 + i]; tmp[10] = data[n*10 + i]; //tmp[14] = data[n*14 + i];
+		tmp[3] = data[n*3 + i]; tmp[7] = data[n*7 + i]; tmp[11] = data[n*11 + i]; //tmp[15] = data[n*15 + i];
+		std::sort(tmp , tmp + 14, std::greater<T>());
+
+		data[n*0 + i] = tmp[0]; data[n*4 + i] = tmp[4]; data[n*8 + i] = tmp[8]; data[n*12 + i] = tmp[12];
+		data[n*1 + i] = tmp[1]; data[n*5 + i] = tmp[5]; data[n*9 + i] = tmp[9]; data[n*13 + i] = tmp[13];
+		data[n*2 + i] = tmp[2]; data[n*6 + i] = tmp[6]; data[n*10 + i] = tmp[10]; //data[n*14 + i] = tmp[14];
+		data[n*3 + i] = tmp[3]; data[n*7 + i] = tmp[7]; data[n*11 + i] = tmp[11]; //data[n*15 + i] = tmp[15];
+	}
+}
+
+template<class T>
+void reorder_attr_16(T *&data,uint64_t n){
+	T tmp[16];
+	//std::sort(s.begin(), s.end(), std::greater<int>());
+
+	for(uint64_t i = 0;i < n;i++){
+		T *offset = &data[i];
+		tmp[0] = data[n*0 + i]; tmp[4] = data[n*4 + i]; tmp[8] = data[n*8 + i]; tmp[12] = data[n*12 + i];
+		tmp[1] = data[n*1 + i]; tmp[5] = data[n*5 + i]; tmp[9] = data[n*9 + i]; tmp[13] = data[n*13 + i];
+		tmp[2] = data[n*2 + i]; tmp[6] = data[n*6 + i]; tmp[10] = data[n*10 + i]; tmp[14] = data[n*14 + i];
+		tmp[3] = data[n*3 + i]; tmp[7] = data[n*7 + i]; tmp[11] = data[n*11 + i]; tmp[15] = data[n*15 + i];
+		std::sort(tmp , tmp + 16, std::greater<T>());
+
+		data[n*0 + i] = tmp[0]; data[n*4 + i] = tmp[4]; data[n*8 + i] = tmp[8]; data[n*12 + i] = tmp[12];
+		data[n*1 + i] = tmp[1]; data[n*5 + i] = tmp[5]; data[n*9 + i] = tmp[9]; data[n*13 + i] = tmp[13];
+		data[n*2 + i] = tmp[2]; data[n*6 + i] = tmp[6]; data[n*10 + i] = tmp[10]; data[n*14 + i] = tmp[14];
+		data[n*3 + i] = tmp[3]; data[n*7 + i] = tmp[7]; data[n*11 + i] = tmp[11]; data[n*15 + i] = tmp[15];
+	}
+}
+
 #endif

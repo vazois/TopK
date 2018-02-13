@@ -49,7 +49,7 @@ void debug(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	cba.compare_t(na);
 	fa.compare_t(na);
 	cfa.compare_t(na);
-	//ms.compare(na);
+	//ms.compare_t(na);
 
 	na.benchmark();
 	ta.benchmark();

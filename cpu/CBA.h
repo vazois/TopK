@@ -97,6 +97,12 @@ void CBA<T,Z>::init(){
 		case 12:
 			reorder_attr_12(this->cdata,this->n);
 			break;
+		case 14:
+			reorder_attr_14(this->cdata,this->n);
+			break;
+		case 16:
+			reorder_attr_16(this->cdata,this->n);
+			break;
 		default:
 			break;
 	}
@@ -232,8 +238,9 @@ void CBA<T,Z>::findTopK(uint64_t k){
 				first++;
 				size++;
 			}
-			//std::cout << "size(" << j+1 << ") :" << size << std::endl;
+			//std::cout <<std::endl << "size(" << j+1 << ") :" << size << std::endl;
 			if(STATS_EFF) this->pred_count+=size;
+			if(STATS_EFF && j == (this->d-1)) this->tuple_count+=size;
 			if(size <= k) break;
 		}
 	}
@@ -252,39 +259,60 @@ void CBA<T,Z>::findTopK(uint64_t k){
 
 template<class T,class Z>
 void CBA<T,Z>::findTopK2(uint64_t k){
+	typename std::vector<vpred<T,Z>>::iterator first = this->vtupples.begin();
+	typename std::vector<vpred<T,Z>>::iterator last = this->vtupples.end();
+
 	std::cout << this->algo << " find topK ...";
-	T *score = (T* )malloc(sizeof(T) * this->n);
-
-	LocalMax<T,Z> k_0;
-	LocalMax<T,Z> k_1;
+//	std::cout << "\nsize(" << 0 << ") :" << this->vtupples.size() << std::endl;
 	this->t.start();
-	memset(score,0,sizeof(T)*this->n);
-	uint8_t suffix_len=this->d-1;
-	for(uint8_t m = 0; m < this->d; m++){
-		std::priority_queue<T, std::vector<LocalMax<T,Z>>, LocalMaxCmp<T,Z>> q;
-		for(uint64_t i = 0; i < this->n;i++){
-			score[i]+=this->cdata[m * this->n + i];
-			if(q.size() < k+1){
-				q.push(LocalMax<T,Z>(i,score[i],this->cdata[m * this->n + i]));
-			}else if( q.top().score < score[i]){
+	for(uint64_t j = 0; j < this->d; j++){
+		std::priority_queue<T, std::vector<T>, std::greater<T>> q;
+
+		//Find threshold
+		first = this->vtupples.begin();
+		while( first != last  ){
+			if(q.size() < k){
+				q.push(first->total);
+			}else if(q.top()<first->total){
 				q.pop();
-				q.push(LocalMax<T,Z>(i,score[i],this->cdata[m * this->n + i]));
+				q.push(first->total);
 			}
+			first++;
 		}
+		T threshold = q.top();
+//		std::cout << "threshold: " << threshold << std::endl;
 
-		k_1 =q.top(); q.pop(); k_0 =q.top();
-		std::cout << "k_0: " <<k_0.score <<  std::endl;
-		std::cout << "k_1: " <<k_1.score <<" + " << k_1.next << " * " << (int)suffix_len<<  std::endl;
-		if(k_0.score >= k_1.score + k_1.next * suffix_len){
-			std::cout << "stopped at:" <<(int)m << std::endl;
-			break;
+//		//Partition data
+		uint32_t mult =this->d-(j+1);
+		last = this->partition(this->vtupples.begin(),last,threshold,mult);
+
+//		//Update tupple scores
+		if( j < this->d-1 ){
+			Z size = 0;
+			first = this->vtupples.begin();
+			while( first != last && j < this->d-1){
+				T next_attr = this->cdata[(j+1) * this->n + first->tid];
+				first->total += next_attr;
+				first->last = next_attr;
+				first++;
+				size++;
+			}
+			//std::cout <<std::endl << "size(" << j+1 << ") :" << size << std::endl;
+			if(STATS_EFF) this->pred_count+=size;
+			if(size <= k) break;
 		}
-		suffix_len--;
 	}
-
 	this->tt_processing = this->t.lap();
-	free(score);
+	if(STATS_EFF) this->tuple_count+=k;
 
+	//Gather results for verification
+	T threshold = this->vtupples[0].total;
+	for(uint32_t i = 0;i <k;i++){
+		this->res.push_back(tuple<T,Z>(this->vtupples[i].tid,this->vtupples[i].total));
+		threshold = threshold > this->vtupples[i].total ? this->vtupples[i].total : threshold;
+	}
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
 }
 
 #endif

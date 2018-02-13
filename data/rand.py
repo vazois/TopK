@@ -40,6 +40,10 @@ def create_file(n,d,distr):
         
     i = 0
     while( i  < n ):
+        if distr == "i":
+            sample=np.random.normal(0.5,0.1,d)
+        elif distr == "z":
+            sample=float(1.0)/np.random.zipf(1.5,d)
         #fp.write(ret_distr(bsize,d,distr,sample))
         fp.write(scale_sample(bsize,d,sample))
         i = i + bsize  
@@ -49,6 +53,43 @@ def create_file(n,d,distr):
     
     fp.close()
 
+def create_sample(sample,d,p):
+    global FORMAT
+    line=""
+    n = len(sample)
+    pp =random.uniform(0.0,1.0)
+    if pp <= p:
+        for j in range(d):
+            line+=FORMAT.format(sample[random.randrange(0,10)])+","
+    else:
+        for j in range(d):
+            line+=FORMAT.format(sample[random.randrange(10,n)])+","
+    return line[:-1]+"\n"
+
+def create_file2(n,d,distr):
+    fname= "d_"+str(n)+"_"+str(d)+"_"+distr
+    fp = open(fname,'w')
+    
+    sample=[]
+    if distr == "i":
+        sample=np.random.normal(1.0,0.1,n)
+    elif distr == "z":
+        sample=np.random.zipf(1.8,n)
+        
+    #print sorted(sample,reverse=True)
+    mx = float(max(sample))
+    sample = [v / mx for v in sample]
+    sample = sorted(sample,reverse=True)
+    #print sample
+    
+    i = 0
+    while( i  < n ):
+        fp.write(create_sample(sample,d,0.1))
+        i+=1
+
+    fp.close()
+    
+    
 if __name__ == "__main__":
     if(len(sys.argv) < 3):
         print("Usage: " + sys.argv[0] + " <cardinality> <attributes> <distribution: (u)niform>")
@@ -64,39 +105,6 @@ if __name__ == "__main__":
     p = 0.1
     FORMAT="{:0.4f}"
         
-    create_file(n,d,distr)
-
-#print next_value(distr)
-
-# tt=time.time()
-# 
-# fname= "d_"+str(n)+"_"+str(d)+"_"+distr
-# fp = open(fname,'w')
-# arr=[decrease(distr,d)[:-1]+"\n" for i in range(n)]
-# fp.write("".join(arr))
-# fp.close()
-# 
-# 
-# tt = time.time() - tt
-
-# print "tt:",tt
-
-# fname= "d_"+str(n)+"_"+str(d)+"_"+distr
-# fp = open(fname,'w')
-# 
-#     
-# rr=1024*1024
-# rows = 0
-# while(rows < n):
-#     lines=""
-#     gen_rows = rr
-#     if rows + rr >= n:
-#         gen_rows = n - rows
-#     
-#     for i in range(rr):
-#         line=decrease(distr,d)
-#         lines+=line[:-1]+"\n"
-#     fp.write(lines)
-#     rows = rows + rr
-#     
-# fp.close()
+    #create_file(n,d,distr)
+    create_file2(n,d,distr)
+    
