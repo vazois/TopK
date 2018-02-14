@@ -32,25 +32,25 @@ struct vpred{
 template<class T,class Z>
 static bool cmp_max_cpred(const cpred<T,Z> &a, const cpred<T,Z> &b){ return a.total > b.total; };
 
-template<class T,class Z>
-struct LocalMax{
-	LocalMax(){ tid = 0; score = 0; }
-	LocalMax(Z t, T s, T n){ tid = t; score = s; next = n; }
-
-	Z tid;
-	T score;
-	T next;
-};
-
-template<class T,class Z>
-class LocalMaxCmp{
-	public:
-		LocalMaxCmp(){};
-
-		bool operator() (const LocalMax<T,Z>& lhs, const LocalMax<T,Z>& rhs) const{
-			return (lhs.score>rhs.score);
-		}
-};
+//template<class T,class Z>
+//struct LocalMax{
+//	LocalMax(){ tid = 0; score = 0; }
+//	LocalMax(Z t, T s, T n){ tid = t; score = s; next = n; }
+//
+//	Z tid;
+//	T score;
+//	T next;
+//};
+//
+//template<class T,class Z>
+//class LocalMaxCmp{
+//	public:
+//		LocalMaxCmp(){};
+//
+//		bool operator() (const LocalMax<T,Z>& lhs, const LocalMax<T,Z>& rhs) const{
+//			return (lhs.score>rhs.score);
+//		}
+//};
 
 template<class T,class Z>
 class CBA : public AA<T,Z>{
@@ -221,7 +221,7 @@ void CBA<T,Z>::findTopK(uint64_t k){
 			first++;
 		}
 		T threshold = q.top();
-//		std::cout << "threshold: " << threshold << std::endl;
+		//std::cout << "threshold: " << threshold << std::endl;
 
 //		//Partition data
 		uint32_t mult =this->d-(j+1);
@@ -280,7 +280,7 @@ void CBA<T,Z>::findTopK2(uint64_t k){
 			first++;
 		}
 		T threshold = q.top();
-//		std::cout << "threshold: " << threshold << std::endl;
+		std::cout << "threshold: " << threshold << std::endl;
 
 //		//Partition data
 		uint32_t mult =this->d-(j+1);
@@ -314,5 +314,4 @@ void CBA<T,Z>::findTopK2(uint64_t k){
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
-
 #endif

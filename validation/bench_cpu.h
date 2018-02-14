@@ -14,6 +14,7 @@
 #include "cpu/T2S.h"
 #include "cpu/cFA.h"
 #include "cpu/MaxScore.h"
+#include "cpu_opt/CBAopt.h"
 
 void bench_fa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
@@ -72,10 +73,22 @@ void bench_maxscore(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	std::cout << "Loading data from file !!!" << std::endl;
 	f.load(ms.get_cdata());
 
+	ms.init();
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	ms.init(); ms.findTopK2(k);
+	ms.findTopK2(k);
 	ms.benchmark();
 }
 
+void bench_cba_opt(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	CBAopt<float,uint32_t> cba(f.rows(),f.items());
+	f.set_transpose(true);
 
+	std::cout << "Loading data from file !!!" << std::endl;
+	f.load(cba.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	cba.init(); cba.findTopK2(k);
+	cba.benchmark();
+}
 #endif

@@ -45,11 +45,11 @@ void debug(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	cfa.init(); cfa.findTopK(k);
 	ms.init(); ms.findTopK2(k);
 
-	ta.compare_t(na);
-	cba.compare_t(na);
-	fa.compare_t(na);
-	cfa.compare_t(na);
-	//ms.compare_t(na);
+//	ta.compare_t(na);
+//	cba.compare_t(na);
+//	fa.compare_t(na);
+//	cfa.compare_t(na);
+//	//ms.compare_t(na);
 
 	na.benchmark();
 	ta.benchmark();

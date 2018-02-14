@@ -19,7 +19,7 @@ def histogram(list,bins):
     pair = np.histogram(list,bins,density=False)
     #print pair
     return pair[0]
-    
+ 
 def gather_stats(lists):
     bins=[]
     v = 0.0

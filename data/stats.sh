@@ -2,10 +2,10 @@
 
 START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
-START_D=12
-END_D=12
+START_D=2
+END_D=2
 
-distr=z
+distr=p
 
 for (( n=$START_N; n<=$END_N; n*=2 ))
 do
@@ -19,8 +19,8 @@ do
 		fi
 		
 		#sleep 1
-		time python mstats.py $fname $n $d
+		#time python mstats.py $fname $n $d
 		
-		#rm -rf $fname
+		rm -rf $fname
 	done
 done
