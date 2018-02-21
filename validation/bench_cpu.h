@@ -13,8 +13,12 @@
 #include "cpu/BPA.h"
 #include "cpu/T2S.h"
 #include "cpu/cFA.h"
+
 #include "cpu/MaxScore.h"
 #include "cpu_opt/CBAopt.h"
+#include "cpu_opt/cFAopt.h"
+#include "cpu_opt/MSA.h"
+#include "cpu_opt/GSA.h"
 
 void bench_fa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
@@ -91,4 +95,46 @@ void bench_cba_opt(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	cba.init(); cba.findTopK2(k);
 	cba.benchmark();
 }
+
+void bench_cfa_opt(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	cFAopt<float,uint32_t> cfa_opt(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" << std::endl;
+	f.load(cfa_opt.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	cfa_opt.init(); cfa_opt.findTopK(k);
+	cfa_opt.benchmark();
+}
+
+void bench_msa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	MSA<float,uint32_t> msa(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" << std::endl;
+	f.load(msa.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	msa.init();
+	msa.findTopK(k);
+	msa.benchmark();
+}
+
+void bench_gsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	GSA<float,uint32_t> gsa(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" <<std::endl;
+	f.load(gsa.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	gsa.init();
+
+	gsa.benchmark();
+}
+
 #endif

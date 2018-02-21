@@ -158,9 +158,11 @@ void cFA<T,Z>::findTopK(uint64_t k){
 	//Prefix sum
 	uint64_t upper = 0;
 	R[0] = 1;
+	std::cout <<std::endl << "<RS>" << std::endl;
 	for(uint64_t i = 1; i < this->n; i++){
 		R[i] = R[i-1] + R[i];
 		upper = i;// Find offset of prefix that is less than k
+		std::cout << i<<  ": " << R[i] <<std::endl;
 		if(R[i] >= k) break;// >= or > ?
 	}
 

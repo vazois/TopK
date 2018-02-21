@@ -2,10 +2,10 @@
 
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
-START_N=$((16*1024*1024))
-END_N=$((16*1024*1024))
-START_D=2
-END_D=12
+START_N=$((1*25))
+END_N=$((1*25))
+START_D=4
+END_D=4
 
 distr=p
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA

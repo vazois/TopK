@@ -147,6 +147,7 @@ void CBAopt<T,Z>::findTopK(uint64_t k){
 	T threshold = scores[0];
 	for(uint64_t i = 0;i<k;i++){
 		threshold = threshold < scores[i] ? threshold : scores[i];
+		this->res.push_back(tuple<T,Z>(ids[i],scores[i]));
 	}
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
@@ -219,6 +220,7 @@ void CBAopt<T,Z>::findTopK2(uint64_t k){
 	T threshold = this->tuples[0].score;
 	for(uint64_t i = 0;i < k;i++){
 		threshold = threshold < this->tuples[i].score ? threshold : this->tuples[i].score;
+		this->res.push_back(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
 	}
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
@@ -293,6 +295,7 @@ void CBAopt<T,Z>::findTopK3(uint64_t k){
 	T threshold = this->tuples[0].score;
 	for(uint64_t i = 0; i < k; i++){
 		threshold = threshold < this->tuples[i].score ? threshold : this->tuples[i].score;
+		this->res.push_back(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
 	}
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
@@ -382,6 +385,7 @@ void CBAopt<T,Z>::findTopK4(uint64_t k){
 	T threshold = this->tuples[0].score;
 	for(uint64_t i =0 ; i < k ; i++){
 		threshold = threshold < this->tuples[i].score ? threshold : this->tuples[i].score;
+		this->res.push_back(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
 	}
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
