@@ -9,7 +9,7 @@
 #include <tmmintrin.h>
 
 #define RUN_PAR false
-#define K 5
+#define K 100
 
 void test(){
 	uint8_t qsize = 8;
@@ -80,6 +80,97 @@ void test2(){
 	std::cout << "perm: 0x" << std::hex << std::setfill('0') << std::setw(16) << II[0] << " | 0x" << std::setfill('0') << std::setw(16) << II[1] << std::endl;
 }
 
+const __m128i pass1_add4 = _mm_setr_epi32(1, 1, 3, 3);
+const __m128i pass2_add4 = _mm_setr_epi32(2, 3, 2, 3);
+const __m128i pass3_add4 = _mm_setr_epi32(0, 2, 2, 3);
+void simdsort4(int* __restrict v) {
+	__m128i b, a = _mm_loadu_si128(reinterpret_cast<const __m128i*>(v));
+
+	b = _mm_shuffle_epi32(a, 177);
+	b = _mm_cmpgt_epi32(b, a);
+	b = _mm_add_epi32(b, pass1_add4);
+	a = _mm_castps_si128(_mm_permutevar_ps(_mm_castsi128_ps(a), b));
+
+	b = _mm_shuffle_epi32(a, 78);
+	b = _mm_cmpgt_epi32(b, a);
+	b = _mm_add_epi32(b, b);
+	b = _mm_add_epi32(b, pass2_add4);
+	a = _mm_castps_si128(_mm_permutevar_ps(_mm_castsi128_ps(a), b));
+
+	b = _mm_shuffle_epi32(a, 216);
+	b = _mm_cmpgt_epi32(b, a);
+	b = _mm_add_epi32(b, pass3_add4);
+	__m128 ret = _mm_permutevar_ps(_mm_castsi128_ps(a), b);
+
+	_mm_storeu_ps(reinterpret_cast<float*>(v), ret);
+}
+
+void simd4sort(float *v){
+	__m128 in = _mm_set_ps(v[0],v[1],v[2],v[3]);
+	__m128 pair;
+	__m128i cmp;
+
+	pair =_mm_permute_ps(in,177);
+	_mm_store_ps(v,pair);
+	std::cout << "1a: "<< v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+	cmp = _mm_castps_si128(_mm_cmpgt_ps(in,pair));
+	cmp = _mm_add_epi32(cmp, _mm_setr_epi32(1, 1, 3, 3));
+	in = _mm_permutevar_ps(in,cmp);
+	_mm_store_ps(v,in);
+	std::cout << "1b: "<< v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+
+	pair =_mm_permute_ps(in,78);
+	_mm_store_ps(v,pair);
+	std::cout << "2a: "<< v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+	cmp = _mm_castps_si128(_mm_cmpgt_ps(in,pair));
+	int vv[4];
+	_mm_storeu_si128((__m128i*)vv,cmp);
+	std::cout << "<<a "<< vv[0] << "," << vv[1] << "," << vv[2] << "," << vv[3] << std::endl;
+	cmp = _mm_add_epi32(cmp, cmp);
+	_mm_storeu_si128((__m128i*)vv,cmp);
+	std::cout << "<<b "<< vv[0] << "," << vv[1] << "," << vv[2] << "," << vv[3] << std::endl;
+	cmp = _mm_add_epi32(cmp, _mm_setr_epi32(2, 3, 2, 3));
+	_mm_storeu_si128((__m128i*)vv,cmp);
+	std::cout << "<<c "<< vv[0] << "," << vv[1] << "," << vv[2] << "," << vv[3] << std::endl;
+	in = _mm_permutevar_ps(in,cmp);
+	_mm_store_ps(v,in);
+	std::cout << "2b: "<< v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+
+	pair =_mm_permute_ps(in,216);
+	_mm_store_ps(v,pair);
+	std::cout << "3a: "<< v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+	cmp = _mm_castps_si128(_mm_cmpgt_ps(in,pair));
+	cmp = _mm_add_epi32(cmp, _mm_setr_epi32(0, 2, 2, 3));
+	in = _mm_permutevar_ps(in,cmp);
+	_mm_store_ps(v,in);
+	std::cout << "3b: "<< v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+
+//	pair =_mm_permute_ps(in,177);
+////	_mm_store_ps(v,pair);
+////	std::cout << "1: "<< v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+//	cmp = _mm_castps_si128(_mm_cmpgt_ps(in,pair));
+//	cmp = _mm_add_epi32(cmp, _mm_setr_epi32(1, 1, 3, 3));
+//	in = _mm_permutevar_ps(in,cmp);
+//	_mm_store_ps(v,in);
+//	std::cout << "1: "<< v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+//
+//	pair =_mm_permute_ps(in,78);
+//	cmp = _mm_castps_si128(_mm_cmpgt_ps(in,pair));
+//	cmp = _mm_add_epi32(cmp, _mm_setr_epi32(1, 3, 1, 3));
+//	in = _mm_permutevar_ps(in,cmp);
+//	_mm_store_ps(v,in);
+//	std::cout << "2: "<< v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+//
+//	pair =_mm_permute_ps(in,216);
+//	cmp = _mm_castps_si128(_mm_cmpgt_ps(in,pair));
+//	cmp = _mm_add_epi32(cmp, _mm_setr_epi32(0, 2, 2, 3));
+//	in = _mm_permutevar_ps(in,cmp);
+//	_mm_store_ps(v,in);
+//	std::cout << "3: "<< v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+//
+//	_mm_store_ps(v,in);
+}
+
 int main(int argc, char **argv){
 	ArgParser ap;
 	ap.parseArgs(argc,argv);
@@ -116,17 +207,26 @@ int main(int argc, char **argv){
 
 	//debug(ap.getString("-f"),n,d,K);
 	//bench_fa(ap.getString("-f"),n,d,K);
-	bench_ta(ap.getString("-f"),n,d,K);
-	//bench_cfa(ap.getString("-f"),n,d,K);
-	//bench_maxscore(ap.getString("-f"),n,d,K);
-	//bench_cba(ap.getString("-f"),n,d,K);
-	bench_cba_opt(ap.getString("-f"),n,d,K);
-	//bench_cfa_opt(ap.getString("-f"),n,d,K);
+	//bench_na(ap.getString("-f"),n,d,K);
+//	bench_ta(ap.getString("-f"),n,d,K);
+//	//bench_cfa(ap.getString("-f"),n,d,K);
+//	//bench_maxscore(ap.getString("-f"),n,d,K);
+//	//bench_cba(ap.getString("-f"),n,d,K);
+//	//bench_cba_opt(ap.getString("-f"),n,d,K);
+//	//bench_cfa_opt(ap.getString("-f"),n,d,K);
+//	bench_lsa(ap.getString("-f"),n,d,K);
+//	bench_msa(ap.getString("-f"),n,d,K);
+//	bench_gsa(ap.getString("-f"),n,d,K);
+//	bench_tpac(ap.getString("-f"),n,d,K);
+//	bench_tpar(ap.getString("-f"),n,d,K);
 
-	bench_msa(ap.getString("-f"),n,d,K);
-	bench_gsa(ap.getString("-f"),n,d,K);
+	bench_ta_simd(ap.getString("-f"),n,d,K);
 
-	//test2();
+	//int v[4] = {0,2,1,3};
+//	float v[4] = {0.3,0.2,0.7,0.5};
+//	std::cout << "00: "<<v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
+//	simd4sort(v);
+//	std::cout << "ee: " <<v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
 
 	return 0;
 }

@@ -42,7 +42,7 @@ class File{
 		}
 
 		~File(){
-			if(this->data!=NULL && !this->gpu){ free(data); this->data = NULL; }
+			//if(this->data!=NULL && !this->gpu){ free(data); this->data = NULL; }
 		}
 
 		void load();
@@ -151,6 +151,30 @@ int File<T>::fetch(T *&p, uint64_t d, FILE *f){
 			break;
 		case 16:
 			count = fscanf(f,this->fetch_row,&p[0],&p[1],&p[2],&p[3],&p[4],&p[5],&p[6],&p[7],&p[8],&p[9],&p[10],&p[11],&p[12],&p[13],&p[14],&p[15]);
+			break;
+		case 18:
+			count = fscanf(f,this->fetch_row,&p[0],&p[1],&p[2],&p[3],&p[4],&p[5],&p[6],&p[7],&p[8],&p[9],&p[10],&p[11],&p[12],&p[13],&p[14],&p[15],&p[16],&p[17]);
+			break;
+		case 20:
+			count = fscanf(f,this->fetch_row,&p[0],&p[1],&p[2],&p[3],&p[4],&p[5],&p[6],&p[7],&p[8],&p[9],&p[10],&p[11],&p[12],&p[13],&p[14],&p[15],&p[16],&p[17],&p[18],&p[19]);
+			break;
+		case 22:
+			count = fscanf(f,this->fetch_row,&p[0],&p[1],&p[2],&p[3],&p[4],&p[5],&p[6],&p[7],&p[8],&p[9],&p[10],&p[11],&p[12],&p[13],&p[14],&p[15],&p[16],&p[17],&p[18],&p[19],&p[20],&p[21]);
+			break;
+		case 24:
+			count = fscanf(f,this->fetch_row,&p[0],&p[1],&p[2],&p[3],&p[4],&p[5],&p[6],&p[7],&p[8],&p[9],&p[10],&p[11],&p[12],&p[13],&p[14],&p[15],&p[16],&p[17],&p[18],&p[19],&p[20],&p[21],&p[22],&p[23]);
+			break;
+		case 26:
+			count = fscanf(f,this->fetch_row,&p[0],&p[1],&p[2],&p[3],&p[4],&p[5],&p[6],&p[7],&p[8],&p[9],&p[10],&p[11],&p[12],&p[13],&p[14],&p[15],&p[16],&p[17],&p[18],&p[19],&p[20],&p[21],&p[22],&p[23],&p[24],&p[25]);
+			break;
+		case 28:
+			count = fscanf(f,this->fetch_row,&p[0],&p[1],&p[2],&p[3],&p[4],&p[5],&p[6],&p[7],&p[8],&p[9],&p[10],&p[11],&p[12],&p[13],&p[14],&p[15],&p[16],&p[17],&p[18],&p[19],&p[20],&p[21],&p[22],&p[23],&p[24],&p[25],&p[26],&p[27]);
+			break;
+		case 30:
+			count = fscanf(f,this->fetch_row,&p[0],&p[1],&p[2],&p[3],&p[4],&p[5],&p[6],&p[7],&p[8],&p[9],&p[10],&p[11],&p[12],&p[13],&p[14],&p[15],&p[16],&p[17],&p[18],&p[19],&p[20],&p[21],&p[22],&p[23],&p[24],&p[25],&p[26],&p[27],&p[28],&p[29]);
+			break;
+		case 32:
+			count = fscanf(f,this->fetch_row,&p[0],&p[1],&p[2],&p[3],&p[4],&p[5],&p[6],&p[7],&p[8],&p[9],&p[10],&p[11],&p[12],&p[13],&p[14],&p[15],&p[16],&p[17],&p[18],&p[19],&p[20],&p[21],&p[22],&p[23],&p[24],&p[25],&p[26],&p[27],&p[28],&p[29],&p[30],&p[31]);
 			break;
 		default:
 			count = 0;

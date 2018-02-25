@@ -95,6 +95,7 @@ class AA{
 		Time<msecs> t;
 		double tt_init;//initialization time
 		double tt_processing;//processing time
+		double tt_ranking;//Ranking time
 		uint64_t pred_count;//count predicate evaluations
 		uint64_t tuple_count;//count predicate evaluations
 		uint64_t stop_pos;//stop pos for ordered lists
@@ -110,6 +111,7 @@ template<class T,class Z>
 AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->tt_init = 0;
 	this->tt_processing = 0;
+	this->tt_ranking = 0;
 	this->pred_count = 0;
 	this->tuple_count = 0;
 	this->stop_pos = 0;
@@ -126,7 +128,7 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 
 template<class T,class Z>
 AA<T,Z>::~AA(){
-	//if(this->cdata!=NULL) free(this->cdata);
+	if(this->cdata!=NULL) free(this->cdata);
 }
 
 /*
@@ -175,9 +177,11 @@ template<class T,class Z>
 void AA<T,Z>::benchmark(){
 	std::string exec_policy = "sequential";
 	if(this->topkp) exec_policy = "parallel";
+	std::cout << std::fixed << std::setprecision(4);
 	std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
 	std::cout << "tt_init: " << this->tt_init << std::endl;
 	std::cout << "tt_procesing: " << this->tt_processing << std::endl;
+	std::cout << "tt_ranking: " << this->tt_ranking << std::endl;
 
 	std::cout << "pred_count: " << this->pred_count << std::endl;
 	std::cout << "tuple_count: " << this->tuple_count << std::endl;

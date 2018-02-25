@@ -18,7 +18,23 @@
 #include "cpu_opt/CBAopt.h"
 #include "cpu_opt/cFAopt.h"
 #include "cpu_opt/MSA.h"
+#include "cpu_opt/LSA.h"
 #include "cpu_opt/GSA.h"
+#include "cpu_opt/TPAc.h"
+#include "cpu_opt/TPAr.h"
+#include "cpu_opt/TAcsimd.h"
+
+void bench_na(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	NA<float,uint32_t> na(f.rows(),f.items());
+
+	std::cout << "Loading data from file !!!" << std::endl;
+	f.load(na.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	na.init(); na.findTopK(k);
+	na.benchmark();
+}
 
 void bench_fa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
@@ -92,7 +108,8 @@ void bench_cba_opt(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	f.load(cba.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	cba.init(); cba.findTopK2(k);
+	cba.init();
+	cba.findTopK3(k);
 	cba.benchmark();
 }
 
@@ -105,7 +122,8 @@ void bench_cfa_opt(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	f.load(cfa_opt.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	cfa_opt.init(); cfa_opt.findTopK(k);
+	cfa_opt.init();
+	cfa_opt.findTopK(k);
 	cfa_opt.benchmark();
 }
 
@@ -123,6 +141,20 @@ void bench_msa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	msa.benchmark();
 }
 
+void bench_lsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	LSA<float,uint32_t> lsa(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" << std::endl;
+	f.load(lsa.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	lsa.init();
+	lsa.findTopK(k);
+	lsa.benchmark();
+}
+
 void bench_gsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	GSA<float,uint32_t> gsa(f.rows(),f.items());
@@ -133,8 +165,48 @@ void bench_gsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	gsa.init();
-
+	gsa.findTopK(k);
 	gsa.benchmark();
 }
 
+void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	TPAc<float,uint32_t> tpac(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" <<std::endl;
+	f.load(tpac.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	tpac.init();
+	tpac.findTopKsimd(k);
+	tpac.benchmark();
+}
+
+void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	TPAr<float,uint32_t> tpar(f.rows(),f.items());
+
+	std::cout << "Loading data from file !!!" <<std::endl;
+	f.load(tpar.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	tpar.init();
+	tpar.findTopK(k);
+	tpar.benchmark();
+}
+
+void bench_ta_simd(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	TAcsimd<float,uint32_t> ta_simd(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" <<std::endl;
+	f.load(ta_simd.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	ta_simd.init();
+	ta_simd.findTopK(k);
+	ta_simd.benchmark();
+}
 #endif

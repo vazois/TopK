@@ -297,4 +297,164 @@ void reorder_attr_16(T *&data,uint64_t n){
 	}
 }
 
+template<class T>
+void reorder_attr_18(T *&data,uint64_t n){
+	T tmp[18];
+	//std::sort(s.begin(), s.end(), std::greater<int>());
+
+	for(uint64_t i = 0;i < n;i++){
+		T *offset = &data[i];
+		tmp[0] = data[n*0 + i]; tmp[4] = data[n*4 + i]; tmp[8] = data[n*8 + i]; tmp[12] = data[n*12 + i]; tmp[16] = data[n*16 + i];
+		tmp[1] = data[n*1 + i]; tmp[5] = data[n*5 + i]; tmp[9] = data[n*9 + i]; tmp[13] = data[n*13 + i]; tmp[17] = data[n*17 + i];
+		tmp[2] = data[n*2 + i]; tmp[6] = data[n*6 + i]; tmp[10] = data[n*10 + i]; tmp[14] = data[n*14 + i];
+		tmp[3] = data[n*3 + i]; tmp[7] = data[n*7 + i]; tmp[11] = data[n*11 + i]; tmp[15] = data[n*15 + i];
+		std::sort(tmp , tmp + 18, std::greater<T>());
+
+		data[n*0 + i] = tmp[0]; data[n*4 + i] = tmp[4]; data[n*8 + i] = tmp[8]; data[n*12 + i] = tmp[12]; data[n*16 + i] = tmp[16];
+		data[n*1 + i] = tmp[1]; data[n*5 + i] = tmp[5]; data[n*9 + i] = tmp[9]; data[n*13 + i] = tmp[13]; data[n*17 + i] = tmp[17];
+		data[n*2 + i] = tmp[2]; data[n*6 + i] = tmp[6]; data[n*10 + i] = tmp[10]; data[n*14 + i] = tmp[14];
+		data[n*3 + i] = tmp[3]; data[n*7 + i] = tmp[7]; data[n*11 + i] = tmp[11]; data[n*15 + i] = tmp[15];
+	}
+}
+
+template<class T>
+void reorder_attr_20(T *&data,uint64_t n){
+	T tmp[20];
+	//std::sort(s.begin(), s.end(), std::greater<int>());
+
+	for(uint64_t i = 0;i < n;i++){
+		T *offset = &data[i];
+		tmp[0] = data[n*0 + i]; tmp[4] = data[n*4 + i]; tmp[8] = data[n*8 + i]; tmp[12] = data[n*12 + i]; tmp[16] = data[n*16 + i];
+		tmp[1] = data[n*1 + i]; tmp[5] = data[n*5 + i]; tmp[9] = data[n*9 + i]; tmp[13] = data[n*13 + i]; tmp[17] = data[n*17 + i];
+		tmp[2] = data[n*2 + i]; tmp[6] = data[n*6 + i]; tmp[10] = data[n*10 + i]; tmp[14] = data[n*14 + i]; tmp[18] = data[n*18 + i];
+		tmp[3] = data[n*3 + i]; tmp[7] = data[n*7 + i]; tmp[11] = data[n*11 + i]; tmp[15] = data[n*15 + i]; tmp[19] = data[n*19 + i];
+		std::sort(tmp , tmp + 20, std::greater<T>());
+
+		data[n*0 + i] = tmp[0]; data[n*4 + i] = tmp[4]; data[n*8 + i] = tmp[8]; data[n*12 + i] = tmp[12]; data[n*16 + i] = tmp[16];
+		data[n*1 + i] = tmp[1]; data[n*5 + i] = tmp[5]; data[n*9 + i] = tmp[9]; data[n*13 + i] = tmp[13]; data[n*17 + i] = tmp[17];
+		data[n*2 + i] = tmp[2]; data[n*6 + i] = tmp[6]; data[n*10 + i] = tmp[10]; data[n*14 + i] = tmp[14]; data[n*18 + i] = tmp[18];
+		data[n*3 + i] = tmp[3]; data[n*7 + i] = tmp[7]; data[n*11 + i] = tmp[11]; data[n*15 + i] = tmp[15]; data[n*19 + i] = tmp[19];
+	}
+}
+
+template<class T>
+void reorder_attr_22(T *&data,uint64_t n){
+	T tmp[22];
+	//std::sort(s.begin(), s.end(), std::greater<int>());
+
+	for(uint64_t i = 0;i < n;i++){
+		T *offset = &data[i];
+		tmp[0] = data[n*0 + i]; tmp[4] = data[n*4 + i]; tmp[8] = data[n*8 + i]; tmp[12] = data[n*12 + i]; tmp[16] = data[n*16 + i]; tmp[20] = data[n*20 + i];
+		tmp[1] = data[n*1 + i]; tmp[5] = data[n*5 + i]; tmp[9] = data[n*9 + i]; tmp[13] = data[n*13 + i]; tmp[17] = data[n*17 + i]; tmp[21] = data[n*21 + i];
+		tmp[2] = data[n*2 + i]; tmp[6] = data[n*6 + i]; tmp[10] = data[n*10 + i]; tmp[14] = data[n*14 + i]; tmp[18] = data[n*18 + i];
+		tmp[3] = data[n*3 + i]; tmp[7] = data[n*7 + i]; tmp[11] = data[n*11 + i]; tmp[15] = data[n*15 + i]; tmp[19] = data[n*19 + i];
+		std::sort(tmp , tmp + 22, std::greater<T>());
+
+		data[n*0 + i] = tmp[0]; data[n*4 + i] = tmp[4]; data[n*8 + i] = tmp[8]; data[n*12 + i] = tmp[12]; data[n*16 + i] = tmp[16]; data[n*20 + i] = tmp[20];
+		data[n*1 + i] = tmp[1]; data[n*5 + i] = tmp[5]; data[n*9 + i] = tmp[9]; data[n*13 + i] = tmp[13]; data[n*17 + i] = tmp[17]; data[n*21 + i] = tmp[21];
+		data[n*2 + i] = tmp[2]; data[n*6 + i] = tmp[6]; data[n*10 + i] = tmp[10]; data[n*14 + i] = tmp[14]; data[n*18 + i] = tmp[18];
+		data[n*3 + i] = tmp[3]; data[n*7 + i] = tmp[7]; data[n*11 + i] = tmp[11]; data[n*15 + i] = tmp[15]; data[n*19 + i] = tmp[19];
+	}
+}
+
+template<class T>
+void reorder_attr_24(T *&data,uint64_t n){
+	T tmp[24];
+	//std::sort(s.begin(), s.end(), std::greater<int>());
+
+	for(uint64_t i = 0;i < n;i++){
+		T *offset = &data[i];
+		tmp[0] = data[n*0 + i]; tmp[4] = data[n*4 + i]; tmp[8] = data[n*8 + i]; tmp[12] = data[n*12 + i]; tmp[16] = data[n*16 + i]; tmp[20] = data[n*20 + i];
+		tmp[1] = data[n*1 + i]; tmp[5] = data[n*5 + i]; tmp[9] = data[n*9 + i]; tmp[13] = data[n*13 + i]; tmp[17] = data[n*17 + i]; tmp[21] = data[n*21 + i];
+		tmp[2] = data[n*2 + i]; tmp[6] = data[n*6 + i]; tmp[10] = data[n*10 + i]; tmp[14] = data[n*14 + i]; tmp[18] = data[n*18 + i]; tmp[22] = data[n*22 + i];
+		tmp[3] = data[n*3 + i]; tmp[7] = data[n*7 + i]; tmp[11] = data[n*11 + i]; tmp[15] = data[n*15 + i]; tmp[19] = data[n*19 + i]; tmp[23] = data[n*23 + i];
+		std::sort(tmp , tmp + 24, std::greater<T>());
+
+		data[n*0 + i] = tmp[0]; data[n*4 + i] = tmp[4]; data[n*8 + i] = tmp[8]; data[n*12 + i] = tmp[12]; data[n*16 + i] = tmp[16]; data[n*20 + i] = tmp[20];
+		data[n*1 + i] = tmp[1]; data[n*5 + i] = tmp[5]; data[n*9 + i] = tmp[9]; data[n*13 + i] = tmp[13]; data[n*17 + i] = tmp[17]; data[n*21 + i] = tmp[21];
+		data[n*2 + i] = tmp[2]; data[n*6 + i] = tmp[6]; data[n*10 + i] = tmp[10]; data[n*14 + i] = tmp[14]; data[n*18 + i] = tmp[18]; data[n*22 + i] = tmp[22];
+		data[n*3 + i] = tmp[3]; data[n*7 + i] = tmp[7]; data[n*11 + i] = tmp[11]; data[n*15 + i] = tmp[15]; data[n*19 + i] = tmp[19]; data[n*23 + i] = tmp[23];
+	}
+}
+
+template<class T>
+void reorder_attr_26(T *&data,uint64_t n){
+	T tmp[26];
+	//std::sort(s.begin(), s.end(), std::greater<int>());
+
+	for(uint64_t i = 0;i < n;i++){
+		T *offset = &data[i];
+		tmp[0] = data[n*0 + i]; tmp[4] = data[n*4 + i]; tmp[8] = data[n*8 + i]; tmp[12] = data[n*12 + i]; tmp[16] = data[n*16 + i]; tmp[20] = data[n*20 + i]; tmp[24] = data[n*24 + i];
+		tmp[1] = data[n*1 + i]; tmp[5] = data[n*5 + i]; tmp[9] = data[n*9 + i]; tmp[13] = data[n*13 + i]; tmp[17] = data[n*17 + i]; tmp[21] = data[n*21 + i]; tmp[25] = data[n*25 + i];
+		tmp[2] = data[n*2 + i]; tmp[6] = data[n*6 + i]; tmp[10] = data[n*10 + i]; tmp[14] = data[n*14 + i]; tmp[18] = data[n*18 + i]; tmp[22] = data[n*22 + i];
+		tmp[3] = data[n*3 + i]; tmp[7] = data[n*7 + i]; tmp[11] = data[n*11 + i]; tmp[15] = data[n*15 + i]; tmp[19] = data[n*19 + i]; tmp[23] = data[n*23 + i];
+		std::sort(tmp , tmp + 26, std::greater<T>());
+
+		data[n*0 + i] = tmp[0]; data[n*4 + i] = tmp[4]; data[n*8 + i] = tmp[8]; data[n*12 + i] = tmp[12]; data[n*16 + i] = tmp[16]; data[n*20 + i] = tmp[20]; data[n*24 + i] = tmp[24];
+		data[n*1 + i] = tmp[1]; data[n*5 + i] = tmp[5]; data[n*9 + i] = tmp[9]; data[n*13 + i] = tmp[13]; data[n*17 + i] = tmp[17]; data[n*21 + i] = tmp[21]; data[n*25 + i] = tmp[25];
+		data[n*2 + i] = tmp[2]; data[n*6 + i] = tmp[6]; data[n*10 + i] = tmp[10]; data[n*14 + i] = tmp[14]; data[n*18 + i] = tmp[18]; data[n*22 + i] = tmp[22];
+		data[n*3 + i] = tmp[3]; data[n*7 + i] = tmp[7]; data[n*11 + i] = tmp[11]; data[n*15 + i] = tmp[15]; data[n*19 + i] = tmp[19]; data[n*23 + i] = tmp[23];
+	}
+}
+
+template<class T>
+void reorder_attr_28(T *&data,uint64_t n){
+	T tmp[28];
+	//std::sort(s.begin(), s.end(), std::greater<int>());
+
+	for(uint64_t i = 0;i < n;i++){
+		T *offset = &data[i];
+		tmp[0] = data[n*0 + i]; tmp[4] = data[n*4 + i]; tmp[8] = data[n*8 + i]; tmp[12] = data[n*12 + i]; tmp[16] = data[n*16 + i]; tmp[20] = data[n*20 + i]; tmp[24] = data[n*24 + i];
+		tmp[1] = data[n*1 + i]; tmp[5] = data[n*5 + i]; tmp[9] = data[n*9 + i]; tmp[13] = data[n*13 + i]; tmp[17] = data[n*17 + i]; tmp[21] = data[n*21 + i]; tmp[25] = data[n*25 + i];
+		tmp[2] = data[n*2 + i]; tmp[6] = data[n*6 + i]; tmp[10] = data[n*10 + i]; tmp[14] = data[n*14 + i]; tmp[18] = data[n*18 + i]; tmp[22] = data[n*22 + i]; tmp[26] = data[n*26 + i];
+		tmp[3] = data[n*3 + i]; tmp[7] = data[n*7 + i]; tmp[11] = data[n*11 + i]; tmp[15] = data[n*15 + i]; tmp[19] = data[n*19 + i]; tmp[23] = data[n*23 + i]; tmp[27] = data[n*27 + i];
+		std::sort(tmp , tmp + 28, std::greater<T>());
+
+		data[n*0 + i] = tmp[0]; data[n*4 + i] = tmp[4]; data[n*8 + i] = tmp[8]; data[n*12 + i] = tmp[12]; data[n*16 + i] = tmp[16]; data[n*20 + i] = tmp[20]; data[n*24 + i] = tmp[24];
+		data[n*1 + i] = tmp[1]; data[n*5 + i] = tmp[5]; data[n*9 + i] = tmp[9]; data[n*13 + i] = tmp[13]; data[n*17 + i] = tmp[17]; data[n*21 + i] = tmp[21]; data[n*25 + i] = tmp[25];
+		data[n*2 + i] = tmp[2]; data[n*6 + i] = tmp[6]; data[n*10 + i] = tmp[10]; data[n*14 + i] = tmp[14]; data[n*18 + i] = tmp[18]; data[n*22 + i] = tmp[22]; data[n*26 + i] = tmp[26];
+		data[n*3 + i] = tmp[3]; data[n*7 + i] = tmp[7]; data[n*11 + i] = tmp[11]; data[n*15 + i] = tmp[15]; data[n*19 + i] = tmp[19]; data[n*23 + i] = tmp[23]; data[n*27 + i] = tmp[27];
+	}
+}
+
+template<class T>
+void reorder_attr_30(T *&data,uint64_t n){
+	T tmp[30];
+	//std::sort(s.begin(), s.end(), std::greater<int>());
+
+	for(uint64_t i = 0;i < n;i++){
+		T *offset = &data[i];
+		tmp[0] = data[n*0 + i]; tmp[4] = data[n*4 + i]; tmp[8] = data[n*8 + i]; tmp[12] = data[n*12 + i]; tmp[16] = data[n*16 + i]; tmp[20] = data[n*20 + i]; tmp[24] = data[n*24 + i]; tmp[28] = data[n*28 + i];
+		tmp[1] = data[n*1 + i]; tmp[5] = data[n*5 + i]; tmp[9] = data[n*9 + i]; tmp[13] = data[n*13 + i]; tmp[17] = data[n*17 + i]; tmp[21] = data[n*21 + i]; tmp[25] = data[n*25 + i]; tmp[29] = data[n*29 + i];
+		tmp[2] = data[n*2 + i]; tmp[6] = data[n*6 + i]; tmp[10] = data[n*10 + i]; tmp[14] = data[n*14 + i]; tmp[18] = data[n*18 + i]; tmp[22] = data[n*22 + i]; tmp[26] = data[n*26 + i];
+		tmp[3] = data[n*3 + i]; tmp[7] = data[n*7 + i]; tmp[11] = data[n*11 + i]; tmp[15] = data[n*15 + i]; tmp[19] = data[n*19 + i]; tmp[23] = data[n*23 + i]; tmp[27] = data[n*27 + i];
+		std::sort(tmp , tmp + 30, std::greater<T>());
+
+		data[n*0 + i] = tmp[0]; data[n*4 + i] = tmp[4]; data[n*8 + i] = tmp[8]; data[n*12 + i] = tmp[12]; data[n*16 + i] = tmp[16]; data[n*20 + i] = tmp[20]; data[n*24 + i] = tmp[24]; data[n*28 + i] = tmp[28];
+		data[n*1 + i] = tmp[1]; data[n*5 + i] = tmp[5]; data[n*9 + i] = tmp[9]; data[n*13 + i] = tmp[13]; data[n*17 + i] = tmp[17]; data[n*21 + i] = tmp[21]; data[n*25 + i] = tmp[25]; data[n*29 + i] = tmp[29];
+		data[n*2 + i] = tmp[2]; data[n*6 + i] = tmp[6]; data[n*10 + i] = tmp[10]; data[n*14 + i] = tmp[14]; data[n*18 + i] = tmp[18]; data[n*22 + i] = tmp[22]; data[n*26 + i] = tmp[26];
+		data[n*3 + i] = tmp[3]; data[n*7 + i] = tmp[7]; data[n*11 + i] = tmp[11]; data[n*15 + i] = tmp[15]; data[n*19 + i] = tmp[19]; data[n*23 + i] = tmp[23]; data[n*27 + i] = tmp[27];
+	}
+}
+
+template<class T>
+void reorder_attr_32(T *&data,uint64_t n){
+	T tmp[32];
+	//std::sort(s.begin(), s.end(), std::greater<int>());
+
+	for(uint64_t i = 0;i < n;i++){
+		T *offset = &data[i];
+		tmp[0] = data[n*0 + i]; tmp[4] = data[n*4 + i]; tmp[8] = data[n*8 + i]; tmp[12] = data[n*12 + i]; tmp[16] = data[n*16 + i]; tmp[20] = data[n*20 + i]; tmp[24] = data[n*24 + i]; tmp[28] = data[n*28 + i];
+		tmp[1] = data[n*1 + i]; tmp[5] = data[n*5 + i]; tmp[9] = data[n*9 + i]; tmp[13] = data[n*13 + i]; tmp[17] = data[n*17 + i]; tmp[21] = data[n*21 + i]; tmp[25] = data[n*25 + i]; tmp[29] = data[n*29 + i];
+		tmp[2] = data[n*2 + i]; tmp[6] = data[n*6 + i]; tmp[10] = data[n*10 + i]; tmp[14] = data[n*14 + i]; tmp[18] = data[n*18 + i]; tmp[22] = data[n*22 + i]; tmp[26] = data[n*26 + i]; tmp[30] = data[n*30 + i];
+		tmp[3] = data[n*3 + i]; tmp[7] = data[n*7 + i]; tmp[11] = data[n*11 + i]; tmp[15] = data[n*15 + i]; tmp[19] = data[n*19 + i]; tmp[23] = data[n*23 + i]; tmp[27] = data[n*27 + i]; tmp[31] = data[n*31 + i];
+		std::sort(tmp , tmp + 32, std::greater<T>());
+
+		data[n*0 + i] = tmp[0]; data[n*4 + i] = tmp[4]; data[n*8 + i] = tmp[8]; data[n*12 + i] = tmp[12]; data[n*16 + i] = tmp[16]; data[n*20 + i] = tmp[20]; data[n*24 + i] = tmp[24]; data[n*28 + i] = tmp[28];
+		data[n*1 + i] = tmp[1]; data[n*5 + i] = tmp[5]; data[n*9 + i] = tmp[9]; data[n*13 + i] = tmp[13]; data[n*17 + i] = tmp[17]; data[n*21 + i] = tmp[21]; data[n*25 + i] = tmp[25]; data[n*29 + i] = tmp[29];
+		data[n*2 + i] = tmp[2]; data[n*6 + i] = tmp[6]; data[n*10 + i] = tmp[10]; data[n*14 + i] = tmp[14]; data[n*18 + i] = tmp[18]; data[n*22 + i] = tmp[22]; data[n*26 + i] = tmp[26]; data[n*30 + i] = tmp[30];
+		data[n*3 + i] = tmp[3]; data[n*7 + i] = tmp[7]; data[n*11 + i] = tmp[11]; data[n*15 + i] = tmp[15]; data[n*19 + i] = tmp[19]; data[n*23 + i] = tmp[23]; data[n*27 + i] = tmp[27]; data[n*31 + i] = tmp[31];
+	}
+}
+
 #endif

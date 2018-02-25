@@ -30,6 +30,7 @@ class CBAopt : public AA<T,Z>{
 		void findTopK2(uint64_t k);
 		void findTopK3(uint64_t k);
 		void findTopK4(uint64_t k);
+		void findTopK5(uint64_t k);
 
 	private:
 		uint64_t partition(Z *ids, T *scores, T *curr, uint64_t n, uint8_t remainder, T threshold );
@@ -72,6 +73,30 @@ void CBAopt<T,Z>::init(){
 			break;
 		case 16:
 			reorder_attr_16(this->cdata,this->n);
+			break;
+		case 18:
+			reorder_attr_18(this->cdata,this->n);
+			break;
+		case 20:
+			reorder_attr_20(this->cdata,this->n);
+			break;
+		case 22:
+			reorder_attr_22(this->cdata,this->n);
+			break;
+		case 24:
+			reorder_attr_24(this->cdata,this->n);
+			break;
+		case 26:
+			reorder_attr_26(this->cdata,this->n);
+			break;
+		case 28:
+			reorder_attr_28(this->cdata,this->n);
+			break;
+		case 30:
+			reorder_attr_30(this->cdata,this->n);
+			break;
+		case 32:
+			reorder_attr_32(this->cdata,this->n);
 			break;
 		default:
 			break;
@@ -180,13 +205,11 @@ void CBAopt<T,Z>::findTopK2(uint64_t k){
 	std::cout << this->algo << " find topK2 ...";
 
 	this->tuples =(cba_pair<T,Z>*)malloc(sizeof(cba_pair<T,Z>) * this->n);
+	this->t.start();
 	for(uint64_t i = 0; i < this->n;i++){
 		tuples[i].id = i;
 		tuples[i].score = this->cdata[i];
 	}
-
-	//Initialize
-	this->t.start();
 	uint64_t end = this->n;
 	for(uint8_t m =0;m < this->d;m++){
 		std::priority_queue<T, std::vector<T>, std::greater<T>> q;
@@ -252,20 +275,20 @@ void CBAopt<T,Z>::findTopK3(uint64_t k){
 	std::cout << this->algo << " find topK3 ...";
 
 	this->tuples =(cba_pair<T,Z>*)malloc(sizeof(cba_pair<T,Z>) * this->n+1);
+
+	//Initialize
+	this->t.start();
 	for(uint64_t i = 0; i < this->n;i++){
 		tuples[i].id = i;
 		tuples[i].score = this->cdata[i];
 	}
-
-	//Initialize
-	this->t.start();
 	cba_pair<T,Z> *first = &this->tuples[0];
 	cba_pair<T,Z> *last = &this->tuples[this->n];
 	for(uint8_t m =0;m < this->d;m++){
 		std::priority_queue<T, std::vector<T>, std::greater<T>> q;
 
 		first = &this->tuples[0];
-		while(first != last){
+		while(first < last){
 			if(q.size() < k){
 				q.push(first->score);
 			}else if(q.top() < first->score){
@@ -284,7 +307,7 @@ void CBAopt<T,Z>::findTopK3(uint64_t k){
 
 		if(m < this->d-1){
 			first = &this->tuples[0];
-			while(first != last){
+			while(first < last){
 				first->score+= this->cdata[(m+1)*this->n + first->id];
 				first++;
 			}
