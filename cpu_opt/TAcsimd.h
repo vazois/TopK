@@ -28,7 +28,7 @@ class TAcsimd : public AA<T,Z>{
 
 		void init();
 		void findTopK(uint64_t k);
-		void findTopK2(uint64_t k);
+		void findTopKsimd(uint64_t k);
 	private:
 		ta_pair<T,Z> *tuples;
 		T *gt_array;
@@ -58,17 +58,26 @@ void TAcsimd<T,Z>::init(){
 	std::unordered_set<Z> eset;
 	uint64_t ii = 0;
 	for(uint64_t i = 0; i < this->n; i++){
-		this->gt_array[i]=lists[i].score;
+		//T threshold=0;
+		T threshold=lists[i].score;
 		for(uint8_t m = 0; m < this->d; m++){
 			ta_pair<T,Z> p = lists[m*this->n + i];
-			this->gt_array[i]=this->gt_array[i]> p.score ? this->gt_array[i] : p.score;
+			//threshold+=p.score;
+			threshold=threshold> p.score ? threshold : p.score;
+		}
+
+		for(uint8_t m = 0; m < this->d; m++){
+			ta_pair<T,Z> p = lists[m*this->n + i];
 			if(eset.find(p.id) == eset.end()){
 				eset.insert(p.id);
 				for(uint8_t j = 0; j < this->d; j++){ cdata[j * this->n + ii] = this->cdata[j * this->n + p.id]; }
+				this->gt_array[ii] = threshold;
 				ii++;
+				//if(ii == this->n) break;
 			}
 		}
 	}
+
 	this->tt_init = this->t.lap();
 	free(this->cdata);
 	this->cdata = cdata;
@@ -80,9 +89,11 @@ void TAcsimd<T,Z>::findTopK(uint64_t k){
 	std::cout << this->algo << " find topKscalar ...";
 
 	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
-	T t_array[16];
-	__builtin_prefetch(t_array,1,3);
+//	T t_array[16];
+//	__builtin_prefetch(t_array,1,3);
 	this->t.start();
+	uint64_t step = 0;
+	this->tt_ranking = 0;
 	for(uint64_t i = 0; i < this->n; i+=4){
 		T score00 = 0;
 		T score01 = 0;
@@ -104,6 +115,7 @@ void TAcsimd<T,Z>::findTopK(uint64_t k){
 //			score07+= this->cdata[offset0+7];
 		}
 
+		//this->t2.start();
 		if(q.size() < k){//insert if empty space in queue
 			q.push(tuple<T,Z>(i,score00));
 			q.push(tuple<T,Z>(i+1,score01));
@@ -115,17 +127,19 @@ void TAcsimd<T,Z>::findTopK(uint64_t k){
 //			q.push(tuple<T,Z>(i+7,score07));
 		}else{//delete smallest element if current score is bigger
 			if(q.top().score < score00){ q.pop(); q.push(tuple<T,Z>(i,score00)); }
-			if(q.top().score < score01){ q.pop(); q.push(tuple<T,Z>(i,score01)); }
-			if(q.top().score < score02){ q.pop(); q.push(tuple<T,Z>(i,score02)); }
-			if(q.top().score < score03){ q.pop(); q.push(tuple<T,Z>(i,score03)); }
-//			if(q.top().score < score04){ q.pop(); q.push(tuple<T,Z>(i,score04)); }
-//			if(q.top().score < score05){ q.pop(); q.push(tuple<T,Z>(i,score05)); }
-//			if(q.top().score < score06){ q.pop(); q.push(tuple<T,Z>(i,score06)); }
-//			if(q.top().score < score07){ q.pop(); q.push(tuple<T,Z>(i,score07)); }
+			if(q.top().score < score01){ q.pop(); q.push(tuple<T,Z>(i+1,score01)); }
+			if(q.top().score < score02){ q.pop(); q.push(tuple<T,Z>(i+2,score02)); }
+			if(q.top().score < score03){ q.pop(); q.push(tuple<T,Z>(i+3,score03)); }
+//			if(q.top().score < score04){ q.pop(); q.push(tuple<T,Z>(i+4,score04)); }
+//			if(q.top().score < score05){ q.pop(); q.push(tuple<T,Z>(i+5,score05)); }
+//			if(q.top().score < score06){ q.pop(); q.push(tuple<T,Z>(i+6,score06)); }
+//			if(q.top().score < score07){ q.pop(); q.push(tuple<T,Z>(i+7,score07)); }
 		}
+		//this->tt_ranking+=this->t2.lap();
 
-		if(q.top().score > (this->gt_array[i+3] * this->d) ){
-			std::cout << "\nStopped at " << i << "= " << q.top().score << std::endl;
+		if((q.top().score) > (this->gt_array[i+3]*this->d) ){
+//		if((q.top().score) > (this->gt_array[i+3]) ){
+			std::cout << "\nStopped at " << i << "= " << q.top().score << "," << this->gt_array[i+3] << std::endl;
 			break;
 		}
 	}
@@ -133,7 +147,83 @@ void TAcsimd<T,Z>::findTopK(uint64_t k){
 
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
+	this->threshold = threshold;
+}
+
+template<class T, class Z>
+void TAcsimd<T,Z>::findTopKsimd(uint64_t k){
+	std::cout << this->algo << " find topKsimd ...";
+
+	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+	this->t.start();
+	uint64_t step = 0;
+	this->tt_ranking = 0;
+	T score[16];
+	__builtin_prefetch(score,1,3);
+	for(uint64_t i = 0; i < this->n; i+=16){
+		__m256 score00 = _mm256_setzero_ps();
+		__m256 score01 = _mm256_setzero_ps();
+		for(uint8_t m = 0; m < this->d; m++){
+			uint64_t offset00 = m * this->n + i;
+			uint64_t offset01 = m * this->n + i + 8;
+			__m256 load00 = _mm256_load_ps(&this->cdata[offset00]);
+			__m256 load01 = _mm256_load_ps(&this->cdata[offset01]);
+			score00 = _mm256_add_ps(score00,load00);
+			score01 = _mm256_add_ps(score01,load01);
+		}
+		_mm256_store_ps(&score[0],score00);
+		_mm256_store_ps(&score[8],score01);
+		if(q.size() < k){//insert if empty space in queue
+			q.push(tuple<T,Z>(i,score[0]));
+			q.push(tuple<T,Z>(i+1,score[1]));
+			q.push(tuple<T,Z>(i+2,score[2]));
+			q.push(tuple<T,Z>(i+3,score[3]));
+			q.push(tuple<T,Z>(i+4,score[4]));
+			q.push(tuple<T,Z>(i+5,score[5]));
+			q.push(tuple<T,Z>(i+6,score[6]));
+			q.push(tuple<T,Z>(i+7,score[7]));
+			q.push(tuple<T,Z>(i+8,score[8]));
+			q.push(tuple<T,Z>(i+9,score[9]));
+			q.push(tuple<T,Z>(i+10,score[10]));
+			q.push(tuple<T,Z>(i+11,score[11]));
+			q.push(tuple<T,Z>(i+12,score[12]));
+			q.push(tuple<T,Z>(i+13,score[13]));
+			q.push(tuple<T,Z>(i+14,score[14]));
+			q.push(tuple<T,Z>(i+15,score[15]));
+		}else{//delete smallest element if current score is bigger
+			if(q.top().score < score[0]){ q.pop(); q.push(tuple<T,Z>(i,score[0])); }
+			if(q.top().score < score[1]){ q.pop(); q.push(tuple<T,Z>(i+1,score[1])); }
+			if(q.top().score < score[2]){ q.pop(); q.push(tuple<T,Z>(i+2,score[2])); }
+			if(q.top().score < score[3]){ q.pop(); q.push(tuple<T,Z>(i+3,score[3])); }
+			if(q.top().score < score[4]){ q.pop(); q.push(tuple<T,Z>(i+4,score[4])); }
+			if(q.top().score < score[5]){ q.pop(); q.push(tuple<T,Z>(i+5,score[5])); }
+			if(q.top().score < score[6]){ q.pop(); q.push(tuple<T,Z>(i+6,score[6])); }
+			if(q.top().score < score[7]){ q.pop(); q.push(tuple<T,Z>(i+7,score[7])); }
+			if(q.top().score < score[8]){ q.pop(); q.push(tuple<T,Z>(i+8,score[8])); }
+			if(q.top().score < score[9]){ q.pop(); q.push(tuple<T,Z>(i+9,score[9])); }
+			if(q.top().score < score[10]){ q.pop(); q.push(tuple<T,Z>(i+10,score[10])); }
+			if(q.top().score < score[11]){ q.pop(); q.push(tuple<T,Z>(i+11,score[11])); }
+			if(q.top().score < score[12]){ q.pop(); q.push(tuple<T,Z>(i+12,score[12])); }
+			if(q.top().score < score[13]){ q.pop(); q.push(tuple<T,Z>(i+13,score[13])); }
+			if(q.top().score < score[14]){ q.pop(); q.push(tuple<T,Z>(i+14,score[14])); }
+			if(q.top().score < score[15]){ q.pop(); q.push(tuple<T,Z>(i+15,score[15])); }
+		}
+
+		if((q.top().score) > (this->gt_array[i+7]*this->d) ){
+//		if((q.top().score) > (this->gt_array[i+3]) ){
+			std::cout << "\nStopped at " << i << "= " << q.top().score << "," << this->gt_array[i+7] << std::endl;
+			break;
+		}
+	}
+	this->tt_processing = this->t.lap();
+
+	while(q.size() > 100){
+		q.pop();
+	}
+	T threshold = q.top().score;
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
 

@@ -127,7 +127,7 @@ void TA<T,Z>::findTopK(uint64_t k){
 			}
 		}
 		if(q.top().score >= threshold){
-//			std::cout << "stopped at: " << i << ", threshold: " << threshold << std::endl;
+			std::cout << "\nstopped at: " << i << ", threshold: " << threshold << std::endl;
 			this->stop_pos = i;
 			break;
 		}

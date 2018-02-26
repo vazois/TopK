@@ -93,6 +93,7 @@ class AA{
 		bool topkp;// Parallel TopK Calculation
 
 		Time<msecs> t;
+		Time<msecs> t2;
 		double tt_init;//initialization time
 		double tt_processing;//processing time
 		double tt_ranking;//Ranking time

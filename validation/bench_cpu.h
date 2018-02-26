@@ -209,9 +209,8 @@ void bench_ta_simd(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	ta_simd.init();
-	ta_simd.findTopK(k);
-	ta_simd.findTopK(k);
-//	ta_simd.findTopK(k);
+	//for(uint8_t m = 0; m < 10;m++) ta_simd.findTopK(k);
+	for(uint8_t m = 0; m < 10;m++) ta_simd.findTopKsimd(k);
 	ta_simd.benchmark();
 }
 #endif

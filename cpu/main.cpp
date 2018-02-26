@@ -208,7 +208,7 @@ int main(int argc, char **argv){
 	//debug(ap.getString("-f"),n,d,K);
 	//bench_fa(ap.getString("-f"),n,d,K);
 	//bench_na(ap.getString("-f"),n,d,K);
-	bench_ta(ap.getString("-f"),n,d,K);
+//	bench_ta(ap.getString("-f"),n,d,K);
 //	//bench_cfa(ap.getString("-f"),n,d,K);
 //	//bench_maxscore(ap.getString("-f"),n,d,K);
 //	//bench_cba(ap.getString("-f"),n,d,K);

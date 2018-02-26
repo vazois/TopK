@@ -7,7 +7,7 @@ END_N=$((16*1024*1024))
 START_D=2
 END_D=16
 
-distr=i
+distr=p
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
 #CPU:0,GPU:1
 device=$1
@@ -36,8 +36,8 @@ do
 		if [ ! -f data/$fname ] && [ $mem -eq 0 ] 
 		then
     		echo "Creating file <"$fname">"
-			cd data/; python skydata.py $n $d $distr $script; cd ..
-			#cd data/; time python rand.py $n $d $distr; cd ..
+			#cd data/; python skydata.py $n $d $distr $script; cd ..
+			cd data/; time python rand.py $n $d $distr; cd ..
 		fi
 		if [ ! -f data/$fname2 ]
 		then
