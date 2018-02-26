@@ -123,7 +123,6 @@ template<class T, class Z>
 void TPAc<T,Z>::findTopKsimd(uint64_t k){
 	std::cout << this->algo << " find topKsimd ...";
 	this->t.start();
-
 	T score[16];
 	__builtin_prefetch(score,1,3);
 	for(uint64_t i = 0; i < this->n; i+=16){
@@ -159,16 +158,22 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k){
 	this->tt_processing = this->t.lap();
 
 	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+//	uint64_t count_insert = 0;
+//	uint64_t count_pop = 0;
 	this->t.start();
 	for(uint64_t i = 0;i < this->n; i++){
 		if(q.size() < k){//insert if empty space in queue
 			q.push(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
+			//count_insert++;
 		}else if(q.top().score<this->tuples[i].score){//delete smallest element if current score is bigger
 			q.pop();
 			q.push(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
+			//count_pop++;
 		}
 	}
 	this->tt_ranking = this->t.lap();
+//	std::cout << std::endl << "count_insert = " <<count_insert << std::endl;
+//	std::cout << std::endl << "count_pop = " <<count_pop << std::endl;
 
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);

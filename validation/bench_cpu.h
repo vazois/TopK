@@ -56,7 +56,9 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	f.load(ta.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	ta.init(); ta.findTopK(k);
+	ta.init();
+	ta.findTopK(k);
+	ta.findTopK(k);
 	ta.benchmark();
 }
 
@@ -180,6 +182,7 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	tpac.init();
 	tpac.findTopKsimd(k);
+	tpac.findTopKsimd(k);
 	tpac.benchmark();
 }
 
@@ -207,6 +210,8 @@ void bench_ta_simd(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	ta_simd.init();
 	ta_simd.findTopK(k);
+	ta_simd.findTopK(k);
+//	ta_simd.findTopK(k);
 	ta_simd.benchmark();
 }
 #endif

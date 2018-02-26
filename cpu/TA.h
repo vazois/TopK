@@ -46,7 +46,6 @@ class TA : public AA<T,Z>{
 		std::vector<std::vector<pred<T,Z>>> lists;
 		pred<T,Z> **alists;
 	private:
-		std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
 		uint64_t capacity;
 };
 
@@ -101,7 +100,9 @@ template<class T,class Z>
 void TA<T,Z>::findTopK(uint64_t k){
 	std::cout << this->algo << " find topK ...";
 	std::unordered_set<Z> eset;
+	this->res.clear();
 
+	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	for(uint64_t i = 0; i < this->n;i++){
 		T threshold=0;
@@ -117,15 +118,15 @@ void TA<T,Z>::findTopK(uint64_t k){
 				if(STATS_EFF) this->pred_count+=this->d;
 				if(STATS_EFF) this->tuple_count+=1;
 				eset.insert(p.tid);
-				if(this->q.size() < k){//insert if empty space in queue
-					this->q.push(tuple<T,Z>(p.tid,score));
-				}else if(this->q.top().score<score){//delete smallest element if current score is bigger
-					this->q.pop();
-					this->q.push(tuple<T,Z>(p.tid,score));
+				if(q.size() < k){//insert if empty space in queue
+					q.push(tuple<T,Z>(p.tid,score));
+				}else if(q.top().score<score){//delete smallest element if current score is bigger
+					q.pop();
+					q.push(tuple<T,Z>(p.tid,score));
 				}
 			}
 		}
-		if(this->q.top().score >= threshold){
+		if(q.top().score >= threshold){
 //			std::cout << "stopped at: " << i << ", threshold: " << threshold << std::endl;
 			this->stop_pos = i;
 			break;
@@ -134,10 +135,10 @@ void TA<T,Z>::findTopK(uint64_t k){
 	this->tt_processing = this->t.lap();
 
 	T threshold = q.top().score;
-	while(!this->q.empty()){
+	while(!q.empty()){
 		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
-		this->res.push_back(this->q.top());
-		this->q.pop();
+		this->res.push_back(q.top());
+		q.pop();
 	}
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
@@ -147,7 +148,9 @@ template<class T,class Z>
 void TA<T,Z>::findTopK2(uint64_t k){
 	std::cout << this->algo << " find topK ...";
 	std::unordered_set<Z> eset;
+	this->res.clear();
 
+	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	for(uint64_t i = 0; i < this->n;i++){
 		T threshold=0;
@@ -163,15 +166,15 @@ void TA<T,Z>::findTopK2(uint64_t k){
 				if(STATS_EFF) this->pred_count+=this->d;
 				if(STATS_EFF) this->tuple_count+=1;
 				eset.insert(p.tid);
-				if(this->q.size() < k){//insert if empty space in queue
-					this->q.push(tuple<T,Z>(p.tid,score));
+				if(q.size() < k){//insert if empty space in queue
+					q.push(tuple<T,Z>(p.tid,score));
 				}else if(this->q.top().score<score){//delete smallest element if current score is bigger
-					this->q.pop();
-					this->q.push(tuple<T,Z>(p.tid,score));
+					q.pop();
+					q.push(tuple<T,Z>(p.tid,score));
 				}
 			}
 		}
-		if(this->q.top().score >= threshold){
+		if(q.top().score >= threshold){
 //			std::cout << "stopped at: " << i << ", threshold: " << threshold << std::endl;
 			break;
 		}
@@ -180,10 +183,10 @@ void TA<T,Z>::findTopK2(uint64_t k){
 
 	//Gather results for verification
 	T threshold = q.top().score;
-	while(!this->q.empty()){
+	while(!q.empty()){
 		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
-		this->res.push_back(this->q.top());
-		this->q.pop();
+		this->res.push_back(q.top());
+		q.pop();
 	}
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;

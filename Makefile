@@ -1,6 +1,10 @@
 CC=g++
 NVCC=/usr/local/cuda-8.0/bin/nvcc
 
+#REORDER APP
+CC_REORDER=input/main.cpp
+CC_EXE_RE=reorder_run
+
 #CPU CONFIGURATION
 CC_MAIN=cpu/main.cpp
 CC_FLAGS=-std=c++11
@@ -19,9 +23,13 @@ all: cpu_cc
 cpu_cc: 
 	$(CC) $(CC_FLAGS) $(CC_OPT_FLAGS) $(CC_MAIN) -o $(CC_EXE)
 
+reorder_cc:
+	$(CC) $(CC_FLAGS) $(CC_OPT_FLAGS) $(CC_REORDER) -o $(CC_EXE_RE)
+
 gpu_cc:
 	$(NVCC) -std=c++11 $(ARCH) $(GC_MAIN) -o $(GC_EXE) -I cub-1.7.4/
 	
 clean:
 	rm -rf $(CC_EXE)
-	rm -rf $(GC_EXE)  
+	rm -rf $(GC_EXE) 
+	rm -rf $(CC_EXE_RE) 

@@ -47,6 +47,7 @@ class File{
 
 		void load();
 		void load(T *&data);
+		void store(std::string fname, T *data);
 		uint64_t items(){return this->d;}
 		uint64_t rows(){return this->n;}
 		T* get_dt(){ return this->data; }
@@ -61,7 +62,10 @@ class File{
 		void line_specifier();
 		void read_scanf();
 		void read_scanf_t();
+		void write_printf_t();
 		int fetch(T *&p, uint64_t d, FILE *f);
+		void flush(T *&p, uint64_t d, FILE *f);
+
 
 	private:
 		T *data;
@@ -259,6 +263,93 @@ void File<T>::load(T *& data){
 	//t.lap("Read elapsed time (ms)!!!");
 }
 
+template<class T>
+void File<T>::flush(T *&p, uint64_t d, FILE *f){
+	int count = 0;
+	switch(d){
+		case 2:
+			count = fprintf(f,this->fetch_row,p[0],p[1]);
+			break;
+		case 4:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3]);
+			break;
+		case 6:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5]);
+			break;
+		case 8:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]);
+			break;
+		case 10:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9]);
+			break;
+		case 12:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11]);
+			break;
+		case 14:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13]);
+			break;
+		case 16:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15]);
+			break;
+		case 18:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],p[16],p[17]);
+			break;
+		case 20:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],p[16],p[17],p[18],p[19]);
+			break;
+		case 22:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],p[16],p[17],p[18],p[19],p[20],p[21]);
+			break;
+		case 24:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],p[16],p[17],p[18],p[19],p[20],p[21],p[22],p[23]);
+			break;
+		case 26:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],p[16],p[17],p[18],p[19],p[20],p[21],p[22],p[23],p[24],p[25]);
+			break;
+		case 28:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],p[16],p[17],p[18],p[19],p[20],p[21],p[22],p[23],p[24],p[25],p[26],p[27]);
+			break;
+		case 30:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],p[16],p[17],p[18],p[19],p[20],p[21],p[22],p[23],p[24],p[25],p[26],p[27],p[28],p[29]);
+			break;
+		case 32:
+			count = fprintf(f,this->fetch_row,p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],p[16],p[17],p[18],p[19],p[20],p[21],p[22],p[23],p[24],p[25],p[26],p[27],p[28],p[29],p[30],p[31]);
+			break;
+		default:
+			count = 0;
+			break;
+	}
+}
+
+template<class T>
+void File<T>::write_printf_t(){
+	FILE *f;
+	f = fopen(this->fname.c_str(), "w");
+	uint64_t i = 0;
+
+	T *buffer = (T*)malloc(sizeof(T) * this->d);
+	for(uint64_t i = 0; i < this->n; i++){
+		for(uint64_t m = 0; m < this->d; m++){
+			buffer[m] = this->data[m*this->n + i];
+		}
+		this->flush(buffer,this->d,f);
+		fprintf(f,"\n");
+	}
+
+	fclose(f);
+	free(buffer);
+}
+
+template<class T>
+void File<T>::store(std::string fname, T * data){
+	this->data = data;
+	this->fname = fname;
+	if (!this->transpose){
+
+	}else{
+		this->write_printf_t();
+	}
+}
 
 template<class T>
 void File<T>::sample(uint64_t limit){

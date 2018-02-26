@@ -23,12 +23,15 @@ else
   make gpu_cc
 fi
 
+make reorder_cc
+
 
 for (( n=$START_N; n<=$END_N; n*=2 ))
 do
 	for (( d=$START_D; d<=$END_D; d+=2 ))
 	do
 		fname='d_'$n'_'$d'_'$distr
+		fname2='d_'$n'_'$d'_'$distr'_o'
 		#echo "Processing ... "$fname
 		if [ ! -f data/$fname ] && [ $mem -eq 0 ] 
 		then
@@ -36,9 +39,11 @@ do
 			cd data/; python skydata.py $n $d $distr $script; cd ..
 			#cd data/; time python rand.py $n $d $distr; cd ..
 		fi
-		
-		#make cpu_cc ; ./cpu_run -f=data/$fname -n=$n -d=$d
-		#make gpu_cc ; ./gpu_run -f=data/$fname -n=$n -d=$d
+		if [ ! -f data/$fname2 ]
+		then
+			echo "Reorder data <"$fname2">"
+			#./reorder_run -f=data/$fname -n=$n -d=$d
+		fi
 		
 		if [ $device -eq 0 ]
 		then
@@ -54,6 +59,6 @@ do
 		fi
 		sleep 1
 		#rm -rf data/$fname
-		
+		echo "<--------------------------------------------------->"
 	done
 done
