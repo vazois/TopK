@@ -117,11 +117,13 @@ void TPAc<T,Z>::findTopK(uint64_t k){
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
+	free(this->tuples); this->tuples=NULL;
 }
 
 template<class T, class Z>
 void TPAc<T,Z>::findTopKsimd(uint64_t k){
 	std::cout << this->algo << " find topKsimd ...";
+	this->res.clear();
 	this->t.start();
 	T score[16];
 	__builtin_prefetch(score,1,3);
@@ -156,7 +158,7 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k){
 		this->tuples[i+15].score = score[7];
 	}
 	this->tt_processing = this->t.lap();
-
+	if(STATS_EFF) this->tuple_count=this->n;
 	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
 //	uint64_t count_insert = 0;
 //	uint64_t count_pop = 0;
@@ -177,6 +179,10 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k){
 
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
+	while(!q.empty()){
+		this->res.push_back(q.top());
+		q.pop();
+	}
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }

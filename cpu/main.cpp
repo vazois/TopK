@@ -1,7 +1,6 @@
 #include<limits>
 
 #include "validation/bench_cpu.h"
-#include "validation/debug_cpu.h"
 #include <stdio.h>
 #include <cstdint>
 
@@ -209,19 +208,14 @@ int main(int argc, char **argv){
 	//bench_fa(ap.getString("-f"),n,d,K);
 	//bench_na(ap.getString("-f"),n,d,K);
 //	bench_ta(ap.getString("-f"),n,d,K);
-//	//bench_cfa(ap.getString("-f"),n,d,K);
-//	//bench_maxscore(ap.getString("-f"),n,d,K);
-//	//bench_cba(ap.getString("-f"),n,d,K);
-//	//bench_cba_opt(ap.getString("-f"),n,d,K);
-//	//bench_cfa_opt(ap.getString("-f"),n,d,K);
 //	bench_lsa(ap.getString("-f"),n,d,K);
 //	bench_msa(ap.getString("-f"),n,d,K);
 //	bench_gsa(ap.getString("-f"),n,d,K);
 	bench_tpac(ap.getString("-f"),n,d,K);
 //	bench_tpar(ap.getString("-f"),n,d,K);
+//	bench_ta_simd(ap.getString("-f"),n,d,K);
 
-	bench_ta_simd(ap.getString("-f"),n,d,K);
-
+	bench_qla(ap.getString("-f"),n,d,K);
 
 //	float v[4] = {0.3,0.2,0.7,0.5};
 //	std::cout << "00: "<<v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;

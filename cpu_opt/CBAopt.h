@@ -41,7 +41,6 @@ class CBAopt : public AA<T,Z>{
 		cba_pair<T,Z> *tuples;
 		Z *ids;
 		T *scores;
-
 };
 
 template<class T,class Z>

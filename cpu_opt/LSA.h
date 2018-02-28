@@ -15,21 +15,27 @@ class LSA : public AA<T,Z>{
 		LSA(uint64_t n, uint64_t d) : AA<T,Z>(n,d){
 			this->algo = "LSA";
 			this->tuples = NULL;
+			this->ids = NULL;
+			this->scores = NULL;
 		}
 
 		~LSA(){
 			if(this->tuples != NULL) free(this->tuples);
+			if(this->ids != NULL) free(this->ids);
+			if(this->scores != NULL) free(this->scores);
 		}
 
 		void init();
-		void findTopK3(uint64_t k);
-		void findTopK2(uint64_t k);
 		void findTopK(uint64_t k);
+		void findTopKscalar(uint64_t k);
 
 	private:
 		static inline bool cmp_lsa_pairs(const lsa_pair<T,Z> &a, const lsa_pair<T,Z> &b){ return a.score > b.score; };
+		uint64_t partition(Z *ids, T *scores, T *curr, uint64_t n, uint8_t remainder, T threshold );
 		lsa_pair<T,Z>* partition(lsa_pair<T,Z> *first, lsa_pair<T,Z> *last, T *curr, uint8_t remainder, T threshold);
 		lsa_pair<T,Z> *tuples;
+		Z *ids;
+		T *scores;
 };
 
 template<class T, class Z>
@@ -87,24 +93,6 @@ void LSA<T,Z>::init(){
 		default:
 			break;
 	}
-
-//	lsa_pair<T,Z> *tt = (lsa_pair<T,Z>*) malloc(sizeof(lsa_pair<T,Z>) * this->n );
-//	for(uint64_t i = 0;i <this->n;i++){
-//		tt[i].id=i;
-//		tt[i].score=this->cdata[(this->d-1) * this->n + i];
-//	}
-//	__gnu_parallel::sort(tt,tt + this->n,LSA<T,Z>::cmp_lsa_pairs);
-//
-//	T *cdata = (T*)malloc(sizeof(T) * this->n * this->d);
-//	for(uint64_t i=0;i<this->n;i++){
-//		for(uint8_t m =0; m < this->d;m++){
-//			cdata[ m * this->n + i] = this->cdata[m*this->n + tt[i].id];
-//		}
-//	}
-//	free(this->cdata);
-//	this->cdata = cdata;
-//
-//	free(tt);
 	this->tt_init = this->t.lap();
 }
 
@@ -130,7 +118,7 @@ lsa_pair<T,Z>* LSA<T,Z>::partition(lsa_pair<T,Z> *first, lsa_pair<T,Z> *last, T 
 template<class T, class Z>
 void LSA<T,Z>::findTopK(uint64_t k){
 	std::cout << this->algo << " find topK ...";
-
+	this->res.clear();
 	this->tuples = (lsa_pair<T,Z>*)malloc(sizeof(lsa_pair<T,Z>*) * this->n);
 	this->t.start();
 	for(uint64_t i = 0; i < this->n; i++){
@@ -168,17 +156,15 @@ void LSA<T,Z>::findTopK(uint64_t k){
 			while(first < last){
 				first->score+= this->cdata[(m+1)*this->n + first->id];
 				first++;
-				//size++;
 			}
-			//std::cout << (int)m << " = " << size << std::endl;
 		}
 	}
 	this->tt_processing = this->t.lap();
 
 	T threshold = this->tuples[0].score;
 	for(uint64_t i = 0; i < k;i++){
-		//std::cout << i << std::endl;
 		threshold = threshold < this->tuples[i].score ? threshold : this->tuples[i].score;
+		this->res.push_back(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
 	}
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
@@ -186,101 +172,78 @@ void LSA<T,Z>::findTopK(uint64_t k){
 }
 
 template<class T, class Z>
-void LSA<T,Z>::findTopK3(uint64_t k){
-	std::cout << this->algo << " find topK3 ...";
+uint64_t LSA<T,Z>::partition(Z *ids, T *scores, T *curr, uint64_t n, uint8_t remainder, T threshold ){
+	uint64_t first = 0;
+	uint64_t last = n;
 
-	this->tuples = (lsa_pair<T,Z>*)malloc(sizeof(lsa_pair<T,Z>*) * this->n);
-	this->t.start();
-	for(uint64_t i = 0; i < this->n; i++){
-		this->tuples[i].id = i;
-		this->tuples[i].score = 0;
-	}
-
-	lsa_pair<T,Z> *first = this->tuples;
-	lsa_pair<T,Z> *last = this->tuples + this->n;
-	for(uint8_t m = 0; m < this->d; m++){
-		//Accumulate scores
-		first = this->tuples;
-		while(first < last){
-			first->score += this->cdata[m * this->n + first->id];
-			first++;
+	while(first < last){
+		while ( scores[first] + curr[ids[first]]*remainder >= threshold ) {
+			++first;
+			if (first==last) return first;
 		}
 
-		//Find Threshold
-		first = this->tuples;
-		std::priority_queue<T, std::vector<T>, std::greater<T>> q;
-		while(first < last){
-			if(q.size() < k){
-				q.push(first->score);
-			}else if(q.top() < first->score){
-				q.pop();
-				q.push(first->score);
-			}
-			first++;
-		}
-		T threshold = q.top();
-		//std::cout << "t: " << threshold << std::endl;
+		do{
+			--last;
+			if (first==last) return first;
+		}while(scores[last] + curr[ids[last]]*remainder < threshold);
 
-		first = this->tuples;
-		uint8_t remainder = this->d-(m+1);
-		last = this->partition(first,last,&this->cdata[m * this->n],remainder,threshold);
+		std::swap(ids[first],ids[last]);
+		std::swap(scores[first],scores[last]);
 	}
-	this->tt_processing = this->t.lap();
-
-	T threshold = this->tuples[0].score;
-	for(uint64_t i = 0; i < k;i++){
-		//std::cout << i << std::endl;
-		threshold = threshold < this->tuples[i].score ? threshold : this->tuples[i].score;
-	}
-	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
-	this->threshold = threshold;
+	return first;
 }
 
 template<class T, class Z>
-void LSA<T,Z>::findTopK2(uint64_t k){
-	std::cout << this->algo << " find topK2 ...";
+void LSA<T,Z>::findTopKscalar(uint64_t k){
+	std::cout << this->algo << " find topKscalar ...";
+	this->res.clear();
+	this->ids = (Z*)malloc(sizeof(Z) * this->n);
+	this->scores = (T*)malloc(sizeof(T) * this->n);
 
-	this->tuples = (lsa_pair<T,Z>*)malloc(sizeof(lsa_pair<T,Z>*) * this->n);
 	this->t.start();
 	for(uint64_t i = 0; i < this->n; i++){
-		this->tuples[i].id = i;
-		this->tuples[i].score = 0;
+		this->ids[i] = i;
+		this->scores[i] = this->cdata[i];
 	}
 
-	lsa_pair<T,Z> *first = this->tuples;
-	lsa_pair<T,Z> *last = this->tuples + this->n;
+	uint64_t end = this->n;
 	for(uint8_t m = 0; m < this->d; m++){
-		//Accumulate scores & Find thresholds
-		first = this->tuples;
-		//std::cout<< first << "," << last << " : " << (last - first) <<std::endl;
-
+		//Find threshold
 		std::priority_queue<T, std::vector<T>, std::greater<T>> q;
-		while(first < last){
-			first->score += this->cdata[m * this->n + first->id];
+		for(uint64_t i = 0; i < this->n; i++){
 			if(q.size() < k){
-				q.push(first->score);
-			}else if(q.top() < first->score){
+				q.push(this->scores[i]);
+			}else if(q.top()<this->scores[i]){
 				q.pop();
-				q.push(first->score);
+				q.push(this->scores[i]);
 			}
-			first++;
 		}
 		T threshold = q.top();
 		//std::cout << "t: " << threshold << std::endl;
 
-		first = this->tuples;
-		uint8_t remainder = this->d-(m+1);
-		last = this->partition(first,last,&this->cdata[m * this->n],remainder,threshold);
+		//Partition data
+		uint32_t remainder = this->d-(m+1);
+		end = this->partition(ids,scores,&this->cdata[m * this->n],end,remainder,threshold);
+
+		if( m < this->d-1 ){
+			for(uint64_t i = 0; i < end;i++){
+				scores[i] += this->cdata[(m+1) * this->n + ids[i]];
+			}
+		}
 	}
 	this->tt_processing = this->t.lap();
 
-	T threshold = this->tuples[0].score;
-	for(uint64_t i = 0; i < k;i++){
-		//std::cout << i << std::endl;
-		threshold = threshold < this->tuples[i].score ? threshold : this->tuples[i].score;
+	T threshold = scores[0];
+	for(uint64_t i = 0;i<k;i++){
+		threshold = threshold < scores[i] ? threshold : scores[i];
+		this->res.push_back(tuple<T,Z>(ids[i],scores[i]));
 	}
+	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+
 	this->threshold = threshold;
+	free(this->ids); this->ids = NULL;
+	free(this->scores); this->scores = NULL;
 }
 
 #endif
