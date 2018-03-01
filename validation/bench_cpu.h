@@ -16,8 +16,10 @@
 #include "cpu_opt/TPAr.h"
 #include "cpu_opt/TAcsimd.h"
 #include "cpu_opt/QLA.h"
+#include "cpu_opt/PTA.h"
 
-#define ITER 5
+#define ITER 10
+#define IMP 1//0:Scalar 1:SIMD 2:Threads + SIMD
 
 void bench_fa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
@@ -87,20 +89,6 @@ void bench_gsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	gsa.benchmark();
 }
 
-void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,false,n,d);
-	TPAc<float,uint32_t> tpac(f.rows(),f.items());
-	f.set_transpose(true);
-
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(tpac.get_cdata());
-
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	tpac.init();
-	for(uint8_t m = 0; m < ITER;m++) tpac.findTopKsimd(k);
-	tpac.benchmark();
-}
-
 void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	TPAr<float,uint32_t> tpar(f.rows(),f.items());
@@ -123,23 +111,101 @@ void bench_ta_simd(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	f.load(ta_simd.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	ta_simd.init2();
-	//for(uint8_t m = 0; m < 10;m++) ta_simd.findTopK(k);
-	for(uint8_t m = 0; m < ITER;m++) ta_simd.findTopKsimd(k);
-	ta_simd.benchmark();
+	ta_simd.init3();
+	ta_simd.set_iter(ITER);
+	for(uint8_t i = 2; i < f.items();i+=2){
+		//Warm up
+		if (IMP == 0){
+			ta_simd.findTopKscalar(k,i);
+		}else if(IMP == 1){
+			ta_simd.findTopKsimd(k,i);
+		}else if(IMP == 2){
+			ta_simd.findTopKthreads(k,i);
+		}
+		ta_simd.reset_clocks();
+		//Benchmark
+		for(uint8_t m = 0; m < ITER;m++){
+			if (IMP == 0){
+				ta_simd.findTopKscalar(k,i);
+			}else if(IMP == 1){
+				ta_simd.findTopKsimd(k,i);
+			}else if(IMP == 2){
+				ta_simd.findTopKthreads(k,i);
+			}
+		}
+		ta_simd.benchmark();
+	}
 }
 
-void bench_qla(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	QLA<float,uint32_t> qla(f.rows(),f.items());
+	TPAc<float,uint32_t> tpac(f.rows(),f.items());
 	f.set_transpose(true);
 
 	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(qla.get_cdata());
+	f.load(tpac.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	qla.init();
-	for(uint8_t m = 0; m < ITER;m++) qla.findTopK(k);
-	qla.benchmark();
+	tpac.init();
+	tpac.set_iter(ITER);
+	for(uint8_t i = 2; i < f.items();i+=2){
+		//Warm up
+		if (IMP == 0){
+			tpac.findTopKscalar(k,i);
+		}else if(IMP == 1){
+			tpac.findTopKsimd(k,i);
+		}else if(IMP == 2){
+			tpac.findTopKthreads(k,i);
+		}
+		tpac.reset_clocks();
+		//Benchmark
+		for(uint8_t m = 0; m < ITER;m++){
+			if (IMP == 0){
+				tpac.findTopKscalar(k,i);
+			}else if(IMP == 1){
+				tpac.findTopKsimd(k,i);
+			}else if(IMP == 2){
+				tpac.findTopKthreads(k,i);
+			}
+		}
+		tpac.benchmark();
+	}
 }
+
+void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	PTA<float,uint32_t> pta(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" <<std::endl;
+	f.load(pta.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	pta.init();
+	pta.set_iter(ITER);
+	for(uint8_t i = 2; i < f.items();i+=2){
+		//Warm up
+		if (IMP == 0){
+			pta.findTopKscalar(k,i);
+		}else if(IMP == 1){
+			pta.findTopKsimd(k,i);
+		}else if(IMP == 2){
+			pta.findTopKthreads(k,i);
+		}
+		pta.reset_clocks();
+		//Benchmark
+		for(uint8_t m = 0; m < ITER;m++){
+			if (IMP == 0){
+				pta.findTopKscalar(k,i);
+			}else if(IMP == 1){
+				pta.findTopKsimd(k,i);
+			}else if(IMP == 2){
+				pta.findTopKthreads(k,i);
+			}
+		}
+		pta.benchmark();
+	}
+}
+
+
 #endif

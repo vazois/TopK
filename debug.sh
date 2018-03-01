@@ -4,8 +4,8 @@
 
 START_N=$((16*1024*1024))
 END_N=$((16*1024*1024))
-START_D=2
-END_D=16
+START_D=18
+END_D=18
 
 distr=i
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA

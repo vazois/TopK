@@ -1,29 +1,29 @@
-#ifndef TAc_SIMD_H
-#define TAc_SIMD_H
+#ifndef PTA_H
+#define PTA_H
 
 #include "../cpu/AA.h"
 
 template<class T, class Z>
-struct ta_pair{
+struct pta_pair{
 	Z id;
 	T score;
 };
 
 template<class T, class Z>
-struct ta_pt{
+struct pta_pt{
 	Z id;
 	Z pos;
 	T score;
 };
 
 template<class T,class Z>
-static bool cmp_ta_pair(const ta_pair<T,Z> &a, const ta_pair<T,Z> &b){ return a.score > b.score; };
+static bool cmp_pta_pair(const pta_pair<T,Z> &a, const pta_pair<T,Z> &b){ return a.score > b.score; };
 
 template<class T,class Z>
-static bool cmp_ta_pt_pos(const ta_pt<T,Z> &a, const ta_pt<T,Z> &b){ return a.pos < b.pos; };
+static bool cmp_pta_pt_pos(const pta_pt<T,Z> &a, const pta_pt<T,Z> &b){ return a.pos < b.pos; };
 
 template<class T,class Z>
-static bool cmp_ta_pt_pos_score(const ta_pt<T,Z> &a, const ta_pt<T,Z> &b){
+static bool cmp_pta_pt_pos_score(const pta_pt<T,Z> &a, const pta_pt<T,Z> &b){
 	if(a.pos == b.pos){
 		return a.score > b.score;
 	}else{
@@ -33,128 +33,33 @@ static bool cmp_ta_pt_pos_score(const ta_pt<T,Z> &a, const ta_pt<T,Z> &b){
 };
 
 template<class T, class Z>
-class TAcsimd : public AA<T,Z>{
+class PTA : public AA<T,Z>{
 	public:
-		TAcsimd(uint64_t n, uint64_t d) : AA<T,Z>(n,d){
-			this->algo = "TAsimd";
+		PTA(uint64_t n, uint64_t d) : AA<T,Z>(n,d){
+			this->algo = "PTA";
 			this->gt_array = NULL;
 			this->pt = NULL;
 		}
 
-		~TAcsimd(){
+		~PTA(){
 			if(this->gt_array!=NULL) free(this->gt_array);
 			if(this->pt != NULL) free(this->pt);
 		}
 
 		void init();
-		void init2();
-		void init3();
 		void findTopKscalar(uint64_t k,uint8_t qq);
 		void findTopKsimd(uint64_t k,uint8_t qq);
 		void findTopKthreads(uint64_t k,uint8_t qq);
 	private:
 		T *gt_array;
-		ta_pt<T,Z> *pt;
+		pta_pt<T,Z> *pt;
 		T acc;
 };
 
 template<class T, class Z>
-void TAcsimd<T,Z>::init(){
-	ta_pair<T,Z> *lists = (ta_pair<T,Z>*)malloc(sizeof(ta_pair<T,Z>)*this->n*this->d);
-	this->gt_array = (T*)malloc(sizeof(T)*this->n);
-	this->t.start();
-	//this->tt_init = this->t.lap();
-	for(uint8_t m = 0; m < this->d; m++){
-		for(uint64_t i = 0; i < this->n; i++){
-			lists[m*this->n + i].id = i;
-			lists[m*this->n + i].score = this->cdata[m*this->n + i];
-		}
-	}
-	for(uint8_t m = 0;m<this->d;m++){ __gnu_parallel::sort(&lists[m*this->n],(&lists[m*this->n]) + this->n,cmp_ta_pair<T,Z>); }
-
-	T *cdata = (T*)malloc(sizeof(T)*this->n*this->d);
-	std::unordered_set<Z> eset;
-	uint64_t ii = 0;
-	for(uint64_t i = 0; i < this->n; i++){
-		//T threshold=0;
-		T threshold=lists[i].score;
-		for(uint8_t m = 0; m < this->d; m++){
-			ta_pair<T,Z> p = lists[m*this->n + i];
-			//threshold+=p.score;
-			threshold=threshold> p.score ? threshold : p.score;
-		}
-
-		for(uint8_t m = 0; m < this->d; m++){
-			ta_pair<T,Z> p = lists[m*this->n + i];
-			if(eset.find(p.id) == eset.end()){
-				eset.insert(p.id);
-				for(uint8_t j = 0; j < this->d; j++){ cdata[j * this->n + ii] = this->cdata[j * this->n + p.id]; }
-				this->gt_array[ii] = threshold;
-				ii++;
-				//if(ii == this->n) break;
-			}
-		}
-	}
-	this->tt_init = this->t.lap();
-	free(this->cdata); this->cdata = cdata;
-	free(lists);
-}
-
-template<class T, class Z>
-void TAcsimd<T,Z>::init2(){
-	ta_pair<T,Z> *lists = (ta_pair<T,Z>*)malloc(sizeof(ta_pair<T,Z>)*this->n*this->d);
-	this->gt_array = (T*)malloc(sizeof(T)*this->n);
-	Z *p_array = (Z*)malloc(sizeof(Z)*this->n);
-	this->t.start();
-	//this->tt_init = this->t.lap();
-	for(uint8_t m = 0; m < this->d; m++){
-		for(uint64_t i = 0; i < this->n; i++){
-			lists[m*this->n + i].id = i;
-			lists[m*this->n + i].score = this->cdata[m*this->n + i];
-		}
-	}
-	for(uint8_t m = 0;m<this->d;m++){ __gnu_parallel::sort(&lists[m*this->n],(&lists[m*this->n]) + this->n,cmp_ta_pair<T,Z>); }
-	for(uint64_t i = 0; i < this->n; i++){ p_array[i] = this->n; }
-
-	uint64_t ii = 0;
-	for(uint64_t i = 0; i < this->n; i++){
-		//T threshold=0;
-		T threshold=lists[i].score;
-		for(uint8_t m = 0; m < this->d; m++){
-			ta_pair<T,Z> p = lists[m*this->n + i];
-			//threshold+=p.score;
-			threshold=threshold> p.score ? threshold : p.score;
-		}
-		for(uint8_t m = 0; m < this->d; m++){
-			ta_pair<T,Z> p = lists[m*this->n + i];
-			if(p_array[p.id] == this->n){
-				p_array[p.id] = ii;
-				this->gt_array[ii] = threshold;
-				ii++;
-				//if(ii == this->n){ m = this->d; i =this->n;}
-			}
-		}
-	}
-
-	free(lists);
-	//T *cdata = (T*)malloc(sizeof(T)*this->n*this->d);
-	T *cdata = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
-	for(uint64_t i = 0; i < this->n; i++){
-		for(uint8_t j = 0; j < this->d; j++){
-			cdata[j * this->n + p_array[i]] = this->cdata[j * this->n + i];
-		}
-	}
-	free(p_array);
-
-	this->tt_init = this->t.lap();
-	free(this->cdata); this->cdata = cdata;
-}
-
-template<class T, class Z>
-void TAcsimd<T,Z>::init3(){
-	ta_pair<T,Z> *list = (ta_pair<T,Z>*)malloc(sizeof(ta_pair<T,Z>)*this->n);
-	this->pt = (ta_pt<T,Z>*)malloc(sizeof(ta_pt<T,Z>)*this->n);
-	ta_pair<T,Z> *thres = (ta_pair<T,Z>*)malloc(sizeof(ta_pair<T,Z>)*this->n);
+void PTA<T,Z>::init(){
+	pta_pair<T,Z> *list = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
+	this->pt = (pta_pt<T,Z>*)malloc(sizeof(pta_pt<T,Z>)*this->n);
 	this->t.start();
 	for(uint64_t i = 0; i < this->n; i++){
 		this->pt[i].id = i;
@@ -167,18 +72,18 @@ void TAcsimd<T,Z>::init3(){
 			list[i].id = i;
 			list[i].score = this->cdata[m*this->n + i];
 		}
-		__gnu_parallel::sort(&list[0],(&list[0]) + this->n,cmp_ta_pair<T,Z>);//data based on attribute//
+		__gnu_parallel::sort(&list[0],(&list[0]) + this->n,cmp_pta_pair<T,Z>);//data based on attribute//
 
 		//Find Minimum Position and threshold for that position//
 		for(uint64_t i = 0; i < this->n; i++){
-			ta_pair<T,Z> p = list[i];
+			pta_pair<T,Z> p = list[i];
 			this->pt[p.id].pos = pt[p.id].pos < i ? pt[p.id].pos : i;// Best position according to lists
 			this->pt[p.id].score = pt[p.id].score > p.score ? pt[p.id].score : p.score;// Maximum attribute for threshold calculation
 		}
 		//
 	}
 	free(list);
-	__gnu_parallel::sort(&pt[0],(&pt[0]) + this->n,cmp_ta_pt_pos_score<T,Z>);
+	__gnu_parallel::sort(&pt[0],(&pt[0]) + this->n,cmp_pta_pt_pos_score<T,Z>);
 
 //	for(uint64_t i = 0; i < 25; i++){
 //		std::cout << std::dec << std::setfill('0') << std::setw(2);
@@ -201,7 +106,7 @@ void TAcsimd<T,Z>::init3(){
 	//Reordered data based on min position//
 	T *cdata = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
 	for(uint64_t i = 0; i < this->n; i++){
-		ta_pt<T,Z> p = this->pt[i];
+		pta_pt<T,Z> p = this->pt[i];
 		for(uint8_t m = 0; m < this->d; m++){
 			cdata[m * this->n + i] = this->cdata[m * this->n + p.id];
 		}
@@ -211,7 +116,7 @@ void TAcsimd<T,Z>::init3(){
 }
 
 template<class T, class Z>
-void TAcsimd<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
+void PTA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
 
 	this->tuple_count = 0;
@@ -275,7 +180,7 @@ void TAcsimd<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 }
 
 template<class T, class Z>
-void TAcsimd<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
+void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 	std::cout << this->algo << " find topKsimd (" << (int)qq << "D) ...";
 
 	this->tuple_count = 0;
@@ -351,7 +256,7 @@ void TAcsimd<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 }
 
 template<class T, class Z>
-void TAcsimd<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
+void PTA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 	std::cout << this->algo << " find topKthreads (" << (int)qq << "D) ...";
 
 	this->tuple_count = 0;

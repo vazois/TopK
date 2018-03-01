@@ -11,7 +11,7 @@
 #include <emmintrin.h>//SSE3
 #include <immintrin.h>//AVX and AVX2 // AVX-512
 
-#define THREADS 8
+#define THREADS 1
 #define STATS_EFF true
 
 #include <parallel/algorithm>
@@ -82,6 +82,13 @@ class AA{
 
 		void make_distinct();
 
+		void set_iter(uint32_t iter){this->iter = iter;}
+
+		void reset_clocks(){
+			this->tt_processing = 0;
+			this->tt_ranking = 0;
+		}
+
 	protected:
 		std::string algo;
 		std::vector<tuple<T,Z>> res;
@@ -97,6 +104,7 @@ class AA{
 		double tt_init;//initialization time
 		double tt_processing;//processing time
 		double tt_ranking;//Ranking time
+		uint32_t iter;
 		uint64_t pred_count;//count predicate evaluations
 		uint64_t tuple_count;//count predicate evaluations
 		uint64_t stop_pos;//stop pos for ordered lists
@@ -113,6 +121,7 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->tt_init = 0;
 	this->tt_processing = 0;
 	this->tt_ranking = 0;
+	this->iter = 1;
 	this->pred_count = 0;
 	this->tuple_count = 0;
 	this->stop_pos = 0;
@@ -181,8 +190,8 @@ void AA<T,Z>::benchmark(){
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
 	std::cout << "tt_init: " << this->tt_init << std::endl;
-	std::cout << "tt_procesing: " << this->tt_processing << std::endl;
-	std::cout << "tt_ranking: " << this->tt_ranking << std::endl;
+	std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
+	std::cout << "tt_ranking: " << this->tt_ranking/this->iter << std::endl;
 
 	std::cout << "pred_count: " << this->pred_count << std::endl;
 	std::cout << "tuple_count: " << this->tuple_count << std::endl;
