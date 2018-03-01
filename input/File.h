@@ -248,7 +248,8 @@ template<class T>
 void File<T>::load(T *& data){
 	if(data == NULL){
 		//std::cout << "Load <data> pointer NULL!!!" << std::endl;
-		data = (T*)malloc(sizeof(T) * (this->n) * (this->d));
+		//data = (T*)malloc(sizeof(T) * (this->n) * (this->d));
+		data = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
 	}
 	this->data=data;
 	this->line_specifier();

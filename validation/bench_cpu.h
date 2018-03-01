@@ -139,7 +139,6 @@ void bench_qla(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	qla.init();
-	//for(uint8_t m = 0; m < 10;m++) ta_simd.findTopK(k);
 	for(uint8_t m = 0; m < ITER;m++) qla.findTopK(k);
 	qla.benchmark();
 }

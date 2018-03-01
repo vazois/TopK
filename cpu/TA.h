@@ -70,7 +70,7 @@ template<class T,class Z>
 void TA<T,Z>::findTopK(uint64_t k){
 	std::cout << this->algo << " find topK ...";
 	std::unordered_set<Z> eset;
-	this->res.clear();
+	if(this->res.size() > 0) this->res.clear();
 
 	if(STATS_EFF) this->pred_count=0;
 	if(STATS_EFF) this->tuple_count=0;

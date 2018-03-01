@@ -31,6 +31,7 @@ class  TPAc : public AA<T,Z>{
 
 template<class T, class Z>
 void TPAc<T,Z>::init(){
+	std::cout << this->algo << " Init ..." << std::endl;
 	this->tuples = (tpac_pair<T,Z>*) malloc(sizeof(tpac_pair<T,Z>)*this->n);
 	this->t.start();
 	for(uint64_t i = 0; i < this->n; i++){
@@ -123,9 +124,9 @@ void TPAc<T,Z>::findTopK(uint64_t k){
 template<class T, class Z>
 void TPAc<T,Z>::findTopKsimd(uint64_t k){
 	std::cout << this->algo << " find topKsimd ...";
-	this->res.clear();
+	if(this->res.size() > 0) this->res.clear();
 	this->t.start();
-	T score[16];
+	float score[16] __attribute__((aligned(32)));
 	__builtin_prefetch(score,1,3);
 	for(uint64_t i = 0; i < this->n; i+=16){
 		__m256 score00 = _mm256_setzero_ps();
@@ -138,7 +139,8 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k){
 			score00 = _mm256_add_ps(score00,load00);
 			score01 = _mm256_add_ps(score01,load01);
 		}
-		_mm256_store_ps(score,score00);
+		_mm256_store_ps(&score[0],score00);
+		_mm256_store_ps(&score[8],score01);
 		this->tuples[i].score = score[0];
 		this->tuples[i+1].score = score[1];
 		this->tuples[i+2].score = score[2];
@@ -147,15 +149,14 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k){
 		this->tuples[i+5].score = score[5];
 		this->tuples[i+6].score = score[6];
 		this->tuples[i+7].score = score[7];
-		_mm256_store_ps(score,score01);
-		this->tuples[i+8].score = score[0];
-		this->tuples[i+9].score = score[1];
-		this->tuples[i+10].score = score[2];
-		this->tuples[i+11].score = score[3];
-		this->tuples[i+12].score = score[4];
-		this->tuples[i+13].score = score[5];
-		this->tuples[i+14].score = score[6];
-		this->tuples[i+15].score = score[7];
+		this->tuples[i+8].score = score[8];
+		this->tuples[i+9].score = score[9];
+		this->tuples[i+10].score = score[10];
+		this->tuples[i+11].score = score[11];
+		this->tuples[i+12].score = score[12];
+		this->tuples[i+13].score = score[13];
+		this->tuples[i+14].score = score[14];
+		this->tuples[i+15].score = score[15];
 	}
 	this->tt_processing = this->t.lap();
 	if(STATS_EFF) this->tuple_count=this->n;
