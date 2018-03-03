@@ -73,14 +73,14 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 			score06+= this->cdata[offset0+6];// + this->cdata[offset1+6];
 			score07+= this->cdata[offset0+7];// + this->cdata[offset1+7];
 		}
-		this->tuples[i].score = score00;
-		this->tuples[i+1].score = score01;
-		this->tuples[i+2].score = score02;
-		this->tuples[i+3].score = score03;
-		this->tuples[i+4].score = score04;
-		this->tuples[i+5].score = score05;
-		this->tuples[i+6].score = score06;
-		this->tuples[i+7].score = score07;
+		scores[i] = score00;
+		scores[i+1] = score01;
+		scores[i+2] = score02;
+		scores[i+3] = score03;
+		scores[i+4] = score04;
+		scores[i+5] = score05;
+		scores[i+6] = score06;
+		scores[i+7] = score07;
 	}
 	this->tt_processing += this->t.lap();
 
@@ -88,10 +88,10 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 	this->t.start();
 	for(uint64_t i = 0;i < this->n; i++){
 		if(q.size() < k){//insert if empty space in queue
-			q.push(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
-		}else if(q.top().score<this->tuples[i].score){//delete smallest element if current score is bigger
+			q.push(tuple<T,Z>(i,scores[i]));
+		}else if(q.top().score<scores[i]){//delete smallest element if current score is bigger
 			q.pop();
-			q.push(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
+			q.push(tuple<T,Z>(i,scores[i]));
 		}
 	}
 	this->tt_ranking += this->t.lap();

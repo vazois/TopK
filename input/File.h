@@ -195,12 +195,7 @@ void File<T>::read_scanf(){
 	uint64_t i = 0;
 
 	T *ptr = &data[i];
-//	std::cout << this->fetch_row << std::endl;
 	while(fetch(ptr,d,f) > 0){
-	//while(fscanf(f,"%f,%f",&ptr[0],&ptr[1]) > 0){
-//		std::cout << "(" << i/d << ")";
-//		for(uint8_t m = 0; m < d; m++) std::cout << ptr[m] << " ";
-//		std::cout << std::endl;
 		i+=(d);
 		ptr = &data[i];
 	}
@@ -215,6 +210,9 @@ void File<T>::read_scanf_t(){
 	f = fopen(this->fname.c_str(), "r");
 	uint64_t i = 0;
 
+	float progress = 0.0;
+	uint64_t step = 1024;
+
 	T *buffer = (T*)malloc(sizeof(T) * this->d);
 	T *ptr = &(data[i]);
 	while(this->fetch(buffer,this->d,f) > 0){
@@ -222,6 +220,12 @@ void File<T>::read_scanf_t(){
 			ptr[ j * this->n + i ] = buffer[j];
 		}
 		i++;
+
+		if((i & (step - 1)) == 0){
+			std::cout << "Progress: [" << int(progress * 100.0) << "] %\r";
+			std::cout.flush();
+			progress += ((float)step)/this->n; // for demonstration only
+		}
 	}
 
 	fclose(f);

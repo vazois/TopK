@@ -181,7 +181,11 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	f.load(pta.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	pta.init();
+	//pta.init();
+	//pta.init2();
+	pta.init3();
+	pta.benchmark();
+	//return ;
 	pta.set_iter(ITER);
 	for(uint8_t i = 2; i < f.items();i+=2){
 		//Warm up

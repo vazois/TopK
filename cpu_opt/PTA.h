@@ -16,11 +16,20 @@ struct pta_pt{
 	T score;
 };
 
+template<class Z>
+struct pta_ps{
+	Z id;
+	Z pos;
+};
+
 template<class T,class Z>
 static bool cmp_pta_pair(const pta_pair<T,Z> &a, const pta_pair<T,Z> &b){ return a.score > b.score; };
 
 template<class T,class Z>
 static bool cmp_pta_pt_pos(const pta_pt<T,Z> &a, const pta_pt<T,Z> &b){ return a.pos < b.pos; };
+
+template<class Z>
+static bool cmp_pta_ps(const pta_ps<Z> &a, const pta_ps<Z> &b){ return a.pos < b.pos; };
 
 template<class T,class Z>
 static bool cmp_pta_pt_pos_score(const pta_pt<T,Z> &a, const pta_pt<T,Z> &b){
@@ -37,23 +46,27 @@ class PTA : public AA<T,Z>{
 	public:
 		PTA(uint64_t n, uint64_t d) : AA<T,Z>(n,d){
 			this->algo = "PTA";
-			this->gt_array = NULL;
 			this->pt = NULL;
+			//this->threshold_array = NULL;
+			this->tarray=NULL;
 		}
 
 		~PTA(){
-			if(this->gt_array!=NULL) free(this->gt_array);
 			if(this->pt != NULL) free(this->pt);
+			//if(this->threshold_array != NULL) free(this->threshold_array);
+			if(this->tarray != NULL){ free(this->tarray); }
 		}
 
 		void init();
+		void init2();
+		void init3();
 		void findTopKscalar(uint64_t k,uint8_t qq);
 		void findTopKsimd(uint64_t k,uint8_t qq);
 		void findTopKthreads(uint64_t k,uint8_t qq);
 	private:
-		T *gt_array;
 		pta_pt<T,Z> *pt;
-		T acc;
+		//T *threshold_array;
+		T *tarray;
 };
 
 template<class T, class Z>
@@ -80,7 +93,6 @@ void PTA<T,Z>::init(){
 			this->pt[p.id].pos = pt[p.id].pos < i ? pt[p.id].pos : i;// Best position according to lists
 			this->pt[p.id].score = pt[p.id].score > p.score ? pt[p.id].score : p.score;// Maximum attribute for threshold calculation
 		}
-		//
 	}
 	free(list);
 	__gnu_parallel::sort(&pt[0],(&pt[0]) + this->n,cmp_pta_pt_pos_score<T,Z>);
@@ -105,14 +117,166 @@ void PTA<T,Z>::init(){
 
 	//Reordered data based on min position//
 	T *cdata = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
-	for(uint64_t i = 0; i < this->n; i++){
-		pta_pt<T,Z> p = this->pt[i];
-		for(uint8_t m = 0; m < this->d; m++){
+	for(uint8_t m = 0; m < this->d; m++){
+		for(uint64_t i = 0; i < this->n; i++){
+			pta_pt<T,Z> p = this->pt[i];
 			cdata[m * this->n + i] = this->cdata[m * this->n + p.id];
 		}
 	}
 	free(this->cdata); this->cdata = cdata;
+
+//#if IMPL ==0
+//	this->threshold_array = (T*)malloc(sizeof(T)*(this->n/8) * this->d);
+//	for(uint8_t m = 0; m < this->d; m++){
+//		uint64_t ii = 0;
+//		for(uint64_t i = 0; i < this->n; i+=8){
+//			pta_pt<T,Z> p = this->pt[i];
+//			this->threshold_array[m * (this->n/8) + ii] = ;
+//			ii++;
+//		}
+//	}
+//#endif
 	this->tt_init = this->t.lap();
+}
+
+template<class T, class Z>
+void PTA<T,Z>::init2(){
+	pta_pair<T,Z> *max_attr = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
+	this->t.start();
+
+	float mx[16] __attribute__((aligned(32)));
+	__builtin_prefetch(mx,1,3);
+	for(uint64_t i = 0; i < this->n; i+=16){
+		__m256 max00 = _mm256_setzero_ps();
+		__m256 max01 = _mm256_setzero_ps();
+		for(uint8_t m = 0; m < this->d; m++){
+			uint64_t offset00 = m * this->n + i;
+			uint64_t offset01 = m * this->n + i + 8;
+			__m256 load00 = _mm256_load_ps(&this->cdata[offset00]);
+			__m256 load01 = _mm256_load_ps(&this->cdata[offset01]);
+
+			max00 = _mm256_max_ps(max00,load00);
+			max01 = _mm256_max_ps(max01,load01);
+		}
+		_mm256_store_ps(&mx[0],max00);
+		_mm256_store_ps(&mx[8],max01);
+		max_attr[i].id = i; max_attr[i].score = mx[0];
+		max_attr[i+1].id = i+1; max_attr[i+1].score = mx[1];
+		max_attr[i+2].id = i+2; max_attr[i+2].score = mx[2];
+		max_attr[i+3].id = i+3; max_attr[i+3].score = mx[3];
+		max_attr[i+4].id = i+4; max_attr[i+4].score = mx[4];
+		max_attr[i+5].id = i+5; max_attr[i+5].score = mx[5];
+		max_attr[i+6].id = i+6; max_attr[i+6].score = mx[6];
+		max_attr[i+7].id = i+7; max_attr[i+7].score = mx[7];
+		max_attr[i+8].id = i+8; max_attr[i+8].score = mx[8];
+		max_attr[i+9].id = i+9; max_attr[i+9].score = mx[9];
+		max_attr[i+10].id = i+10; max_attr[i+10].score = mx[10];
+		max_attr[i+11].id = i+11; max_attr[i+11].score = mx[11];
+		max_attr[i+12].id = i+12; max_attr[i+12].score = mx[12];
+		max_attr[i+13].id = i+13; max_attr[i+13].score = mx[13];
+		max_attr[i+14].id = i+14; max_attr[i+14].score = mx[14];
+		max_attr[i+15].id = i+15; max_attr[i+15].score = mx[15];
+	}
+	__gnu_parallel::sort(&max_attr[0],(&max_attr[0]) + this->n,cmp_pta_pair<T,Z>);//data based on attribute//
+
+	T *cdata = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
+	for(uint8_t m = 0; m < this->d; m++){
+		for(uint64_t i = 0; i < this->n; i++){
+			pta_pair<T,Z> p = max_attr[i];
+			cdata[m * this->n + i] = this->cdata[m * this->n + p.id];
+		}
+	}
+	free(this->cdata); this->cdata = cdata;
+
+	for(uint64_t i = 0; i < 25; i++){
+		std::cout << std::fixed << std::setprecision(4);
+		std::cout <<" < " << max_attr[i].score;
+		std::cout << " > || ";
+		for(uint8_t m = 0; m < this->d; m++){
+			std::cout << this->cdata[m * this->n + i] << " ";
+		}
+		std::cout << " || ";
+		std::cout << std::endl;
+	}
+	free(max_attr);
+
+	this->tt_init = this->t.lap();
+}
+
+template<class T, class Z>
+void PTA<T,Z>::init3(){
+	pta_pair<T,Z> *list = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
+	pta_ps<Z> *tpos = (pta_ps<Z>*)malloc(sizeof(pta_ps<Z>)*this->n);
+
+	this->t.start();
+	//<<<< Reorder Base Table >>>>//
+	for(uint64_t i = 0; i < this->n; i++){ tpos[i].id = i; tpos[i].pos = this->n; }
+	for(uint8_t m = 0; m < this->d; m++){
+		for(uint64_t i = 0; i < this->n; i++){
+			list[i].id = i;
+			list[i].score = this->cdata[m*this->n + i];
+		}
+		__gnu_parallel::sort(&list[0],(&list[0]) + this->n,cmp_pta_pair<T,Z>);//data based on attribute//
+
+		for(uint64_t i = 0; i < this->n; i++){
+			pta_pair<T,Z> p = list[i];
+			if(tpos[p.id].pos > i){ tpos[p.id].pos = i; }
+		}
+	}
+	free(list);
+	__gnu_parallel::sort(&tpos[0],(&tpos[0]) + this->n,cmp_pta_ps<Z>);//data based on attribute//
+
+	T *cdata = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
+	for(uint64_t i = 0; i < this->n; i++){
+		for(uint8_t m = 0; m < this->d; m++){
+			cdata[m * this->n + i] = this->cdata[m * this->n + tpos[i].id];
+		}
+	}
+	free(this->cdata); this->cdata = cdata;
+
+	for(uint64_t i = 0; i < 25; i++){
+		std::cout << std::dec << std::setfill('0') << std::setw(4);
+		std::cout << "<" << tpos[i].pos << ">";
+		std::cout << std::fixed << std::setprecision(4);
+		std::cout << " || ";
+		for(uint8_t m = 0; m < this->d; m++){
+			std::cout << this->cdata[m * this->n + i] << " ";
+		}
+		std::cout << " || ";
+		std::cout << std::endl;
+	}
+
+	//Create Threshold array
+//	#if IMP == 0
+		this->tarray = (T*)malloc(sizeof(T)*(this->n >> 4) * this->d);
+//	#else
+//		this->tarray = (T*)malloc(sizeof(T)*(this->n >> 4) * this->d);
+//	#endif
+	list = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
+	for(uint8_t m = 0; m < this->d; m++){
+		for(uint64_t i = 0; i < this->n; i++){
+			list[i].id = i;
+			list[i].score = this->cdata[m*this->n + i];
+		}
+		__gnu_parallel::sort(&list[0],(&list[0]) + this->n,cmp_pta_pair<T,Z>);
+		uint64_t ii = 0;
+//		#if IMP == 0
+			for(uint64_t i = 0; i < this->n; i+=16){
+				this->tarray[m*(this->n >> 4) + ii] = list[tpos[i].pos].score;
+				ii++;
+			}
+//		#else
+//			for(uint64_t i = 0; i < this->n; i+=16){
+//				this->tarray[m*(this->n >> 4) + ii] = list[tpos[i].pos].score;
+//				ii++;
+//			}
+//		#endif
+	}
+	free(tpos);
+	free(list);
+
+	this->tt_init = this->t.lap();
+
 }
 
 template<class T, class Z>
@@ -122,51 +286,46 @@ void PTA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 	this->tuple_count = 0;
 	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
-	uint64_t step = 0;
 	this->tt_ranking = 0;
-	for(uint64_t i = 0; i < this->n; i+=8){
-		T score00 = 0;
-		T score01 = 0;
-		T score02 = 0;
-		T score03 = 0;
-		T score04 = 0;
-		T score05 = 0;
-		T score06 = 0;
-		T score07 = 0;
+	uint64_t ii = 0;
+	for(uint64_t i = 0; i < this->n; i+=16){
+		T score00 = 0; T score01 = 0; T score02 = 0; T score03 = 0; T score04 = 0; T score05 = 0; T score06 = 0; T score07 = 0;
+		T score08 = 0; T score09 = 0; T score10 = 0; T score11 = 0; T score12 = 0; T score13 = 0; T score14 = 0; T score15 = 0;
+
+		T threshold = 0;
 		for(uint8_t m = 0; m < qq; m++){
 			uint64_t offset0 = m * this->n + i;
-			score00+= this->cdata[offset0];
-			score01+= this->cdata[offset0+1];
-			score02+= this->cdata[offset0+2];
-			score03+= this->cdata[offset0+3];
-			score04+= this->cdata[offset0+4];
-			score05+= this->cdata[offset0+5];
-			score06+= this->cdata[offset0+6];
-			score07+= this->cdata[offset0+7];
-		}
-		if(q.size() < k){//insert if empty space in queue
-			q.push(tuple<T,Z>(i,score00));
-			q.push(tuple<T,Z>(i+1,score01));
-			q.push(tuple<T,Z>(i+2,score02));
-			q.push(tuple<T,Z>(i+3,score03));
-			q.push(tuple<T,Z>(i+4,score04));
-			q.push(tuple<T,Z>(i+5,score05));
-			q.push(tuple<T,Z>(i+6,score06));
-			q.push(tuple<T,Z>(i+7,score07));
-		}else{//delete smallest element if current score is bigger
-			if(q.top().score < score00){ q.pop(); q.push(tuple<T,Z>(i,score00)); }
-			if(q.top().score < score01){ q.pop(); q.push(tuple<T,Z>(i+1,score01)); }
-			if(q.top().score < score02){ q.pop(); q.push(tuple<T,Z>(i+2,score02)); }
-			if(q.top().score < score03){ q.pop(); q.push(tuple<T,Z>(i+3,score03)); }
-			if(q.top().score < score04){ q.pop(); q.push(tuple<T,Z>(i+4,score04)); }
-			if(q.top().score < score05){ q.pop(); q.push(tuple<T,Z>(i+5,score05)); }
-			if(q.top().score < score06){ q.pop(); q.push(tuple<T,Z>(i+6,score06)); }
-			if(q.top().score < score07){ q.pop(); q.push(tuple<T,Z>(i+7,score07)); }
-		}
+			T a00 = this->cdata[offset0+0]; T a01 = this->cdata[offset0+1]; T a02 = this->cdata[offset0+2]; T a03 = this->cdata[offset0+3];
+			T a04 = this->cdata[offset0+4]; T a05 = this->cdata[offset0+5]; T a06 = this->cdata[offset0+6]; T a07 = this->cdata[offset0+7];
+			T a08 = this->cdata[offset0+8]; T a09 = this->cdata[offset0+9]; T a10 = this->cdata[offset0+10]; T a11 = this->cdata[offset0+11];
+			T a12 = this->cdata[offset0+12]; T a13 = this->cdata[offset0+13]; T a14 = this->cdata[offset0+14]; T a15 = this->cdata[offset0+15];
+			score00+= a00; score01+= a01; score02+= a02; score03+= a03; score04+= a04; score05+= a05; score06+= a06; score07+= a07;
+			score08+= a08; score09+= a09; score10+= a10; score11+= a11; score12+= a12; score13+= a13; score14+= a14; score15+= a15;
 
-		if(STATS_EFF) this->tuple_count+=4;
-		if((q.top().score) > (this->pt[i+7].score*this->d) ){
-			//std::cout << "\nStopped at " << i << "= " << q.top().score << "," << this->pt[i+7].score << std::endl;
+			uint64_t toffset0 = m * (this->n >> 4) + ii;
+			threshold += this->tarray[toffset0];
+		}
+		ii++;
+
+		if(q.size() < k){//insert if empty space in queue
+			q.push(tuple<T,Z>(i,score00)); q.push(tuple<T,Z>(i+1,score01)); q.push(tuple<T,Z>(i+2,score02)); q.push(tuple<T,Z>(i+3,score03));
+			q.push(tuple<T,Z>(i+4,score04)); q.push(tuple<T,Z>(i+5,score05)); q.push(tuple<T,Z>(i+6,score06)); q.push(tuple<T,Z>(i+7,score07));
+			q.push(tuple<T,Z>(i+8,score08)); q.push(tuple<T,Z>(i+9,score09)); q.push(tuple<T,Z>(i+10,score10)); q.push(tuple<T,Z>(i+11,score11));
+			q.push(tuple<T,Z>(i+12,score12)); q.push(tuple<T,Z>(i+13,score13)); q.push(tuple<T,Z>(i+14,score14)); q.push(tuple<T,Z>(i+15,score15));
+		}else{//delete smallest element if current score is bigger
+			if(q.top().score < score00){ q.pop(); q.push(tuple<T,Z>(i,score00)); } if(q.top().score < score01){ q.pop(); q.push(tuple<T,Z>(i+1,score01)); }
+			if(q.top().score < score02){ q.pop(); q.push(tuple<T,Z>(i+2,score02)); } if(q.top().score < score03){ q.pop(); q.push(tuple<T,Z>(i+3,score03)); }
+			if(q.top().score < score04){ q.pop(); q.push(tuple<T,Z>(i+4,score04)); } if(q.top().score < score05){ q.pop(); q.push(tuple<T,Z>(i+5,score05)); }
+			if(q.top().score < score06){ q.pop(); q.push(tuple<T,Z>(i+6,score06)); } if(q.top().score < score07){ q.pop(); q.push(tuple<T,Z>(i+7,score07)); }
+
+			if(q.top().score < score08){ q.pop(); q.push(tuple<T,Z>(i+8,score08)); } if(q.top().score < score09){ q.pop(); q.push(tuple<T,Z>(i+9,score09)); }
+			if(q.top().score < score10){ q.pop(); q.push(tuple<T,Z>(i+10,score10)); } if(q.top().score < score11){ q.pop(); q.push(tuple<T,Z>(i+11,score11)); }
+			if(q.top().score < score12){ q.pop(); q.push(tuple<T,Z>(i+12,score12)); } if(q.top().score < score13){ q.pop(); q.push(tuple<T,Z>(i+13,score13)); }
+			if(q.top().score < score14){ q.pop(); q.push(tuple<T,Z>(i+14,score14)); } if(q.top().score < score15){ q.pop(); q.push(tuple<T,Z>(i+15,score15)); }
+		}
+		if(STATS_EFF) this->tuple_count+=16;
+		if((q.top().score) > threshold ){
+			//std::cout << "\nStopped at " << i << "= " << q.top().score << "," << threshold << std::endl;
 			break;
 		}
 	}
@@ -190,9 +349,11 @@ void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 	this->tt_ranking = 0;
 	float score[16] __attribute__((aligned(32)));
 	__builtin_prefetch(score,1,3);
+	uint64_t ii = 0;
 	for(uint64_t i = 0; i < this->n; i+=16){
 		__m256 score00 = _mm256_setzero_ps();
 		__m256 score01 = _mm256_setzero_ps();
+		T threshold = 0;
 		for(uint8_t m = 0; m < qq; m++){
 			uint64_t offset00 = m * this->n + i;
 			uint64_t offset01 = m * this->n + i + 8;
@@ -200,7 +361,12 @@ void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 			__m256 load01 = _mm256_load_ps(&this->cdata[offset01]);
 			score00 = _mm256_add_ps(score00,load00);
 			score01 = _mm256_add_ps(score01,load01);
+
+			uint64_t toffset0 = m * (this->n >> 4) + ii;
+			threshold += this->tarray[toffset0];
 		}
+		ii++;
+
 		_mm256_store_ps(&score[0],score00);
 		_mm256_store_ps(&score[8],score01);
 		if(q.size() < k){//insert if empty space in queue
@@ -240,9 +406,8 @@ void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 		}
 
 		if(STATS_EFF) this->tuple_count+=16;
-		//if((q.top().score) > (this->gt_array[i+15]*this->d) ){
-		if((q.top().score) > (this->pt[i+15].score*this->d) ){
-			//std::cout << "\nStopped at " << i << "= " << q.top().score << "," << this->gt_array[i+7] << std::endl;
+		if((q.top().score) > threshold ){
+			//std::cout << "\nStopped at " << i << "= " << q.top().score << "," << threshold << std::endl;
 			break;
 		}
 	}
@@ -334,6 +499,5 @@ void PTA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 	std::cout << " threshold=[" << threshold <<"] (" << q[0].size() << ")" << std::endl;
 	this->threshold = threshold;
 }
-
 
 #endif
