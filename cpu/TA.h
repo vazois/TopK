@@ -39,7 +39,7 @@ class TA : public AA<T,Z>{
 		}
 
 		void init();
-		void findTopK(uint64_t k);
+		void findTopK(uint64_t k,uint8_t qq);
 
 		std::vector<std::vector<pred<T,Z>>> lists;
 		pred<T,Z> **alists;
@@ -67,8 +67,8 @@ void TA<T,Z>::init(){
 }
 
 template<class T,class Z>
-void TA<T,Z>::findTopK(uint64_t k){
-	std::cout << this->algo << " find topK ...";
+void TA<T,Z>::findTopK(uint64_t k,uint8_t qq){
+	std::cout << this->algo << " find topK (" << (int)qq << "D) ...";
 	std::unordered_set<Z> eset;
 	if(this->res.size() > 0) this->res.clear();
 
@@ -79,13 +79,13 @@ void TA<T,Z>::findTopK(uint64_t k){
 	this->t.start();
 	for(uint64_t i = 0; i < this->n;i++){
 		T threshold=0;
-		for(uint8_t j = 0; j < this->d;j++){
+		for(uint8_t j = 0; j < qq;j++){
 			pred<T,Z> p = this->lists[j][i];
 			threshold+=p.attr;
 
 			if(eset.find(p.tid) == eset.end()){
 				T score = 0;
-				for(uint8_t m = 0; m < this->d; m++){
+				for(uint8_t m = 0; m < qq; m++){
 					score+=this->cdata[p.tid * this->d + m];
 				}
 				if(STATS_EFF) this->pred_count+=this->d;
@@ -100,12 +100,12 @@ void TA<T,Z>::findTopK(uint64_t k){
 			}
 		}
 		if(q.top().score >= threshold){
-			std::cout << "\nstopped at: " << i << ", threshold: " << threshold << std::endl;
+			//std::cout << "\nstopped at: " << i << ", threshold: " << threshold << std::endl;
 			this->stop_pos = i;
 			break;
 		}
 	}
-	this->tt_processing = this->t.lap();
+	this->tt_processing += this->t.lap();
 
 	T threshold = q.top().score;
 	while(!q.empty()){
@@ -113,6 +113,7 @@ void TA<T,Z>::findTopK(uint64_t k){
 		this->res.push_back(q.top());
 		q.pop();
 	}
+	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }

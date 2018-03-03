@@ -47,13 +47,11 @@ class PTA : public AA<T,Z>{
 		PTA(uint64_t n, uint64_t d) : AA<T,Z>(n,d){
 			this->algo = "PTA";
 			this->pt = NULL;
-			//this->threshold_array = NULL;
 			this->tarray=NULL;
 		}
 
 		~PTA(){
 			if(this->pt != NULL) free(this->pt);
-			//if(this->threshold_array != NULL) free(this->threshold_array);
 			if(this->tarray != NULL){ free(this->tarray); }
 		}
 
@@ -65,7 +63,6 @@ class PTA : public AA<T,Z>{
 		void findTopKthreads(uint64_t k,uint8_t qq);
 	private:
 		pta_pt<T,Z> *pt;
-		//T *threshold_array;
 		T *tarray;
 };
 
@@ -234,24 +231,20 @@ void PTA<T,Z>::init3(){
 	}
 	free(this->cdata); this->cdata = cdata;
 
-	for(uint64_t i = 0; i < 25; i++){
-		std::cout << std::dec << std::setfill('0') << std::setw(4);
-		std::cout << "<" << tpos[i].pos << ">";
-		std::cout << std::fixed << std::setprecision(4);
-		std::cout << " || ";
-		for(uint8_t m = 0; m < this->d; m++){
-			std::cout << this->cdata[m * this->n + i] << " ";
-		}
-		std::cout << " || ";
-		std::cout << std::endl;
-	}
+//	for(uint64_t i = 0; i < 25; i++){
+//		std::cout << std::dec << std::setfill('0') << std::setw(4);
+//		std::cout << "<" << tpos[i].pos << ">";
+//		std::cout << std::fixed << std::setprecision(4);
+//		std::cout << " || ";
+//		for(uint8_t m = 0; m < this->d; m++){
+//			std::cout << this->cdata[m * this->n + i] << " ";
+//		}
+//		std::cout << " || ";
+//		std::cout << std::endl;
+//	}
 
 	//Create Threshold array
-//	#if IMP == 0
-		this->tarray = (T*)malloc(sizeof(T)*(this->n >> 4) * this->d);
-//	#else
-//		this->tarray = (T*)malloc(sizeof(T)*(this->n >> 4) * this->d);
-//	#endif
+	this->tarray = (T*)malloc(sizeof(T)*(this->n >> 4) * this->d);
 	list = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
 	for(uint8_t m = 0; m < this->d; m++){
 		for(uint64_t i = 0; i < this->n; i++){
@@ -260,23 +253,14 @@ void PTA<T,Z>::init3(){
 		}
 		__gnu_parallel::sort(&list[0],(&list[0]) + this->n,cmp_pta_pair<T,Z>);
 		uint64_t ii = 0;
-//		#if IMP == 0
-			for(uint64_t i = 0; i < this->n; i+=16){
-				this->tarray[m*(this->n >> 4) + ii] = list[tpos[i].pos].score;
-				ii++;
-			}
-//		#else
-//			for(uint64_t i = 0; i < this->n; i+=16){
-//				this->tarray[m*(this->n >> 4) + ii] = list[tpos[i].pos].score;
-//				ii++;
-//			}
-//		#endif
+		for(uint64_t i = 0; i < this->n; i+=16){
+			this->tarray[m*(this->n >> 4) + ii] = list[tpos[i].pos].score;
+			ii++;
+		}
 	}
 	free(tpos);
 	free(list);
-
 	this->tt_init = this->t.lap();
-
 }
 
 template<class T, class Z>
@@ -428,16 +412,21 @@ void PTA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q[THREADS];
 	this->t.start();
 	omp_set_num_threads(THREADS);
+	Z tuple_count[THREADS];
+	for(uint32_t m = 0; m < THREADS; m++) tuple_count[m] = 0;
 #pragma omp parallel
 {
 	uint32_t thread_id = omp_get_thread_num();
 	uint64_t start = ((uint64_t)thread_id)*(this->n)/THREADS;
 	uint64_t end = ((uint64_t)(thread_id+1))*(this->n)/THREADS;
+	uint64_t ii = ((uint64_t)thread_id)*(this->n >> 4)/THREADS;
 	float score[16] __attribute__((aligned(32)));
+	T tp_count = 0;
 	__builtin_prefetch(score,1,3);
-	for(uint64_t i = start; i < this->n; i+=(16)){
+	for(uint64_t i = start; i < end; i+=(16)){
 		__m256 score00 = _mm256_setzero_ps();
 		__m256 score01 = _mm256_setzero_ps();
+		T threshold = 0;
 		for(uint8_t m = 0; m < qq; m++){
 			uint64_t offset00 = m * this->n + i;
 			uint64_t offset01 = m * this->n + i + 8;
@@ -445,6 +434,9 @@ void PTA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 			__m256 load01 = _mm256_load_ps(&this->cdata[offset01]);
 			score00 = _mm256_add_ps(score00,load00);
 			score01 = _mm256_add_ps(score01,load01);
+
+			uint64_t toffset0 = m * (this->n >> 4) + ii;
+			threshold += this->tarray[toffset0];
 		}
 		_mm256_store_ps(&score[0],score00);
 		_mm256_store_ps(&score[8],score01);
@@ -483,18 +475,32 @@ void PTA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 			if(q[thread_id].top().score < score[14]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+14,score[14])); }
 			if(q[thread_id].top().score < score[15]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+15,score[15])); }
 		}
-
-		if(STATS_EFF) this->tuple_count+=16;
-		if((q[thread_id].top().score) > (this->pt[i+15].score*this->d) ){
-			//std::cout << "\nStopped at " << i << "= " << q.top().score << "," << this->gt_array[i+7] << std::endl;
+		if(STATS_EFF) tp_count+=16;
+		if((q[thread_id].top().score) > threshold ){
+			//std::cout << "\nStopped at " << i << "= " << q.top().score << "," << threshold << std::endl;
 			break;
 		}
 	}
+	if(STATS_EFF) tuple_count[thread_id]=tp_count;
 }
+	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> _q;
+	for(uint32_t m = 0 ; m < THREADS; m++){
+		while(!q[m].empty()){
+			if(_q.size() < k) _q.push(q[m].top());
+			else if( _q.top().score < q[m].top().score ){
+				_q.pop();
+				_q.push(q[m].top());
+			}
+			q[m].pop();
+		}
+	}
 	this->tt_processing += this->t.lap();
 
-	while(q[0].size() > 100){ q[0].pop(); }
-	T threshold = q[0].top().score;
+	if(STATS_EFF){
+		for(uint32_t m = 1; m < THREADS; m++) tuple_count[0] += tuple_count[m];
+		this->tuple_count = tuple_count[0];
+	}
+	T threshold = _q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << q[0].size() << ")" << std::endl;
 	this->threshold = threshold;

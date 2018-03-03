@@ -194,10 +194,21 @@ void File<T>::read_scanf(){
 	f = fopen(this->fname.c_str(), "r");
 	uint64_t i = 0;
 
+	float progress = 0.0;
+	uint64_t step = 1024;
+	uint64_t ii = 0;
+
 	T *ptr = &data[i];
 	while(fetch(ptr,d,f) > 0){
 		i+=(d);
 		ptr = &data[i];
+
+		if((ii & (step - 1)) == 0){
+			std::cout << "Progress: [" << int(progress * 100.0) << "] %\r";
+			std::cout.flush();
+			progress += ((float)step)/this->n; // for demonstration only
+		}
+		ii++;
 	}
 
 	fclose(f);

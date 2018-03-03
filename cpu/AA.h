@@ -11,7 +11,7 @@
 #include <emmintrin.h>//SSE3
 #include <immintrin.h>//AVX and AVX2 // AVX-512
 
-#define THREADS 1
+#define THREADS 8
 #define STATS_EFF true
 
 #include <parallel/algorithm>
@@ -187,7 +187,7 @@ template<class T,class Z>
 void AA<T,Z>::benchmark(){
 	std::string exec_policy = "sequential";
 	if(this->topkp) exec_policy = "parallel";
-	std::cout << std::fixed << std::setprecision(4);
+	std::cout << std::fixed << std::setprecision(8);
 	std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
 	std::cout << "tt_init: " << this->tt_init << std::endl;
 	std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;

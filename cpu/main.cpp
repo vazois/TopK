@@ -209,6 +209,7 @@ int main(int argc, char **argv){
 //	simd4sort(v);
 //	std::cout << "ee: " <<v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
 
+	//bench_ta(ap.getString("-f"),n,d,K);
 	//bench_tpac(ap.getString("-f"),n,d,K);
 	//bench_ta_simd(ap.getString("-f"),n,d,K);
 	//bench_qla(ap.getString("-f"),n,d,K);

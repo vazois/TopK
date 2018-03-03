@@ -33,19 +33,6 @@ void bench_fa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	fa.benchmark();
 }
 
-void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,false,n,d);
-	TA<float,uint32_t> ta(f.rows(),f.items());
-
-	std::cout << "Loading data from file !!!" << std::endl;
-	f.load(ta.get_cdata());
-
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	ta.init();
-	for(uint8_t m = 0; m < ITER;m++) ta.findTopK(k);
-	ta.benchmark();
-}
-
 void bench_msa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	MSA<float,uint32_t> msa(f.rows(),f.items());
@@ -137,6 +124,40 @@ void bench_ta_simd(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	}
 }
 
+void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	TA<float,uint32_t> ta(f.rows(),f.items());
+
+	std::cout << "Loading data from file !!!" <<std::endl;
+	f.load(ta.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	ta.init();
+	ta.set_iter(ITER);
+	for(uint8_t i = 2; i < f.items();i+=2){
+		//Warm up
+		if (IMP == 0){
+			ta.findTopK(k,i);
+		}else if(IMP == 1){
+			ta.findTopK(k,i);
+		}else if(IMP == 2){
+			ta.findTopK(k,i);
+		}
+		ta.reset_clocks();
+		//Benchmark
+		for(uint8_t m = 0; m < ITER;m++){
+			if (IMP == 0){
+				ta.findTopK(k,i);
+			}else if(IMP == 1){
+				ta.findTopK(k,i);
+			}else if(IMP == 2){
+				ta.findTopK(k,i);
+			}
+		}
+		ta.benchmark();
+	}
+}
+
 void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	TPAc<float,uint32_t> tpac(f.rows(),f.items());
@@ -184,7 +205,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	//pta.init();
 	//pta.init2();
 	pta.init3();
-	pta.benchmark();
+	//pta.benchmark();
 	//return ;
 	pta.set_iter(ITER);
 	for(uint8_t i = 2; i < f.items();i+=2){
@@ -210,6 +231,5 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 		pta.benchmark();
 	}
 }
-
 
 #endif
