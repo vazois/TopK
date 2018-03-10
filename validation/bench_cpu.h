@@ -11,14 +11,12 @@
 
 #include "cpu_opt/MSA.h"
 #include "cpu_opt/LSA.h"
-#include "cpu_opt/GSA.h"
 #include "cpu_opt/TPAc.h"
 #include "cpu_opt/TPAr.h"
-#include "cpu_opt/TAcsimd.h"
-#include "cpu_opt/QLA.h"
 #include "cpu_opt/PTA.h"
+#include "cpu_opt/SLA.h"
 
-#define ITER 10
+#define ITER 1
 #define IMP 1//0:Scalar 1:SIMD 2:Threads + SIMD
 
 void bench_fa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
@@ -62,68 +60,6 @@ void bench_lsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	lsa.benchmark();
 }
 
-void bench_gsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,false,n,d);
-	GSA<float,uint32_t> gsa(f.rows(),f.items());
-	f.set_transpose(true);
-
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(gsa.get_cdata());
-
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	gsa.init();
-	gsa.findTopK(k);
-	gsa.benchmark();
-}
-
-void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,false,n,d);
-	TPAr<float,uint32_t> tpar(f.rows(),f.items());
-
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(tpar.get_cdata());
-
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	tpar.init();
-	tpar.findTopK(k);
-	tpar.benchmark();
-}
-
-void bench_ta_simd(std::string fname,uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,false,n,d);
-	TAcsimd<float,uint32_t> ta_simd(f.rows(),f.items());
-	f.set_transpose(true);
-
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(ta_simd.get_cdata());
-
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	ta_simd.init3();
-	ta_simd.set_iter(ITER);
-	for(uint8_t i = 2; i < f.items();i+=2){
-		//Warm up
-		if (IMP == 0){
-			ta_simd.findTopKscalar(k,i);
-		}else if(IMP == 1){
-			ta_simd.findTopKsimd(k,i);
-		}else if(IMP == 2){
-			ta_simd.findTopKthreads(k,i);
-		}
-		ta_simd.reset_clocks();
-		//Benchmark
-		for(uint8_t m = 0; m < ITER;m++){
-			if (IMP == 0){
-				ta_simd.findTopKscalar(k,i);
-			}else if(IMP == 1){
-				ta_simd.findTopKsimd(k,i);
-			}else if(IMP == 2){
-				ta_simd.findTopKthreads(k,i);
-			}
-		}
-		ta_simd.benchmark();
-	}
-}
-
 void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	TA<float,uint32_t> ta(f.rows(),f.items());
@@ -158,6 +94,19 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	}
 }
 
+void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	TPAr<float,uint32_t> tpar(f.rows(),f.items());
+
+	std::cout << "Loading data from file !!!" <<std::endl;
+	f.load(tpar.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	tpar.init();
+	tpar.findTopK(k);
+	tpar.benchmark();
+}
+
 void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	TPAc<float,uint32_t> tpac(f.rows(),f.items());
@@ -169,7 +118,7 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	tpac.init();
 	tpac.set_iter(ITER);
-	for(uint8_t i = 2; i < f.items();i+=2){
+	for(uint8_t i = 2; i <= f.items();i+=2){
 		//Warm up
 		if (IMP == 0){
 			tpac.findTopKscalar(k,i);
@@ -208,7 +157,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	//pta.benchmark();
 	//return ;
 	pta.set_iter(ITER);
-	for(uint8_t i = 2; i < f.items();i+=2){
+	for(uint8_t i = 2; i <= f.items();i+=2){
 		//Warm up
 		if (IMP == 0){
 			pta.findTopKscalar(k,i);
@@ -230,6 +179,19 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 		}
 		pta.benchmark();
 	}
+}
+
+void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	SLA<float,uint32_t> sla(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" <<std::endl;
+	f.load(sla.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	sla.init();
+	sla.benchmark();
 }
 
 #endif

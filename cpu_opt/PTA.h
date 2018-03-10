@@ -206,7 +206,7 @@ void PTA<T,Z>::init3(){
 	pta_ps<Z> *tpos = (pta_ps<Z>*)malloc(sizeof(pta_ps<Z>)*this->n);
 
 	this->t.start();
-	//<<<< Reorder Base Table >>>>//
+	//Find seen position for each tuple//
 	for(uint64_t i = 0; i < this->n; i++){ tpos[i].id = i; tpos[i].pos = this->n; }
 	for(uint8_t m = 0; m < this->d; m++){
 		for(uint64_t i = 0; i < this->n; i++){
@@ -221,16 +221,27 @@ void PTA<T,Z>::init3(){
 		}
 	}
 	free(list);
+	///////////////////////////////////////////////////////////////////////
+
+	//Reorder base table using seen position//
+	uint32_t THREADS_ = 32;
+	omp_set_num_threads(THREADS_);
 	__gnu_parallel::sort(&tpos[0],(&tpos[0]) + this->n,cmp_pta_ps<Z>);//data based on attribute//
 
 	T *cdata = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
-	for(uint64_t i = 0; i < this->n; i++){
-		for(uint8_t m = 0; m < this->d; m++){
-			cdata[m * this->n + i] = this->cdata[m * this->n + tpos[i].id];
+	#pragma omp parallel
+	{
+		uint32_t thread_id = omp_get_thread_num();
+		uint64_t start = ((uint64_t)thread_id)*(this->n)/THREADS_;
+		uint64_t end = ((uint64_t)(thread_id+1))*(this->n)/THREADS_;
+		for(uint64_t i = start; i < end; i++){
+			for(uint8_t m = 0; m < this->d; m++){
+				cdata[m * this->n + i] = this->cdata[m * this->n + tpos[i].id];
+			}
 		}
 	}
 	free(this->cdata); this->cdata = cdata;
-
+	///////////////////////////////////////////////////////////////////////
 //	for(uint64_t i = 0; i < 25; i++){
 //		std::cout << std::dec << std::setfill('0') << std::setw(4);
 //		std::cout << "<" << tpos[i].pos << ">";
@@ -258,6 +269,7 @@ void PTA<T,Z>::init3(){
 			ii++;
 		}
 	}
+
 	free(tpos);
 	free(list);
 	this->tt_init = this->t.lap();
@@ -266,8 +278,9 @@ void PTA<T,Z>::init3(){
 template<class T, class Z>
 void PTA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
 
-	this->tuple_count = 0;
 	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	this->tt_ranking = 0;
@@ -306,6 +319,7 @@ void PTA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 			if(q.top().score < score10){ q.pop(); q.push(tuple<T,Z>(i+10,score10)); } if(q.top().score < score11){ q.pop(); q.push(tuple<T,Z>(i+11,score11)); }
 			if(q.top().score < score12){ q.pop(); q.push(tuple<T,Z>(i+12,score12)); } if(q.top().score < score13){ q.pop(); q.push(tuple<T,Z>(i+13,score13)); }
 			if(q.top().score < score14){ q.pop(); q.push(tuple<T,Z>(i+14,score14)); } if(q.top().score < score15){ q.pop(); q.push(tuple<T,Z>(i+15,score15)); }
+			if(STATS_EFF) this->pop_count+=16;
 		}
 		if(STATS_EFF) this->tuple_count+=16;
 		if((q.top().score) > threshold ){
@@ -325,8 +339,9 @@ void PTA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 template<class T, class Z>
 void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 	std::cout << this->algo << " find topKsimd (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
 
-	this->tuple_count = 0;
 	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	uint64_t step = 0;
@@ -387,6 +402,7 @@ void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 			if(q.top().score < score[13]){ q.pop(); q.push(tuple<T,Z>(i+13,score[13])); }
 			if(q.top().score < score[14]){ q.pop(); q.push(tuple<T,Z>(i+14,score[14])); }
 			if(q.top().score < score[15]){ q.pop(); q.push(tuple<T,Z>(i+15,score[15])); }
+			if(STATS_EFF) this->pop_count+=16;
 		}
 
 		if(STATS_EFF) this->tuple_count+=16;
@@ -407,8 +423,9 @@ void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 template<class T, class Z>
 void PTA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 	std::cout << this->algo << " find topKthreads (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
 
-	this->tuple_count = 0;
 	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q[THREADS];
 	this->t.start();
 	omp_set_num_threads(THREADS);

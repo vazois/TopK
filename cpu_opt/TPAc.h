@@ -48,6 +48,9 @@ void TPAc<T,Z>::init(){
 template<class T, class Z>
 void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+
 	if(this->res.size() > 0) this->res.clear();
 	this->t.start();
 	for(uint64_t i = 0; i < this->n; i+=8){
@@ -92,6 +95,7 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 		}else if(q.top().score<scores[i]){//delete smallest element if current score is bigger
 			q.pop();
 			q.push(tuple<T,Z>(i,scores[i]));
+			if(STATS_EFF) this->pop_count++;
 		}
 	}
 	this->tt_ranking += this->t.lap();
@@ -105,7 +109,10 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 template<class T, class Z>
 void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 	std::cout << this->algo << " find topKsimd (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
+
 	this->t.start();
 	float score[16] __attribute__((aligned(32)));
 	__builtin_prefetch(score,1,3);
@@ -147,11 +154,10 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 	for(uint64_t i = 0;i < this->n; i++){
 		if(q.size() < k){//insert if empty space in queue
 			q.push(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
-			//count_insert++;
 		}else if(q.top().score<this->tuples[i].score){//delete smallest element if current score is bigger
 			q.pop();
 			q.push(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
-			//count_pop++;
+			if(STATS_EFF) this->pop_count++;
 		}
 	}
 	this->tt_ranking += this->t.lap();
@@ -169,7 +175,10 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 template<class T, class Z>
 void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 	std::cout << this->algo << " find topKthreads (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
+
 	omp_set_num_threads(THREADS);
 	this->t.start();
 #pragma omp parallel

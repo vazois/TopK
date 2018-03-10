@@ -71,9 +71,9 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq){
 	std::cout << this->algo << " find topK (" << (int)qq << "D) ...";
 	std::unordered_set<Z> eset;
 	if(this->res.size() > 0) this->res.clear();
-
 	if(STATS_EFF) this->pred_count=0;
-	if(STATS_EFF) this->tuple_count=0;
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
 
 	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
@@ -96,6 +96,7 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq){
 				}else if(q.top().score<score){//delete smallest element if current score is bigger
 					q.pop();
 					q.push(tuple<T,Z>(p.tid,score));
+					if(STATS_EFF) this->pop_count+=16;
 				}
 			}
 		}

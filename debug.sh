@@ -2,10 +2,10 @@
 
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
-START_N=$((16*1024*1024))
-END_N=$((16*1024*1024))
-START_D=18
-END_D=18
+START_N=$((1*1024*1024))
+END_N=$((1*1024*1024))
+START_D=8
+END_D=8
 
 distr=i
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
@@ -23,7 +23,7 @@ else
   make gpu_cc
 fi
 
-make reorder_cc
+#make reorder_cc
 
 
 for (( n=$START_N; n<=$END_N; n*=2 ))

@@ -11,7 +11,7 @@
 #include <emmintrin.h>//SSE3
 #include <immintrin.h>//AVX and AVX2 // AVX-512
 
-#define THREADS 8
+#define THREADS 16
 #define STATS_EFF true
 
 #include <parallel/algorithm>
@@ -107,6 +107,7 @@ class AA{
 		uint32_t iter;
 		uint64_t pred_count;//count predicate evaluations
 		uint64_t tuple_count;//count predicate evaluations
+		uint64_t pop_count;//Count number of pops in priority queue//
 		uint64_t stop_pos;//stop pos for ordered lists
 		T threshold;
 
@@ -124,6 +125,7 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->iter = 1;
 	this->pred_count = 0;
 	this->tuple_count = 0;
+	this->pop_count = 0;
 	this->stop_pos = 0;
 	this->threshold = 0;
 	this->n = n;
@@ -195,6 +197,7 @@ void AA<T,Z>::benchmark(){
 
 	std::cout << "pred_count: " << this->pred_count << std::endl;
 	std::cout << "tuple_count: " << this->tuple_count << std::endl;
+	std::cout << "pop_count: " << this->pop_count << std::endl;
 	std::cout << "stop_pos: " << this->stop_pos << std::endl;
 	std::cout << "Base Table Footprint (MB): " << ((float)this->bt_bytes)/(1024*1024) << std::endl;
 	std::cout << "Auxiliary Structures Footprint (MB): " << ((float)this->ax_bytes)/(1024*1024) << std::endl;

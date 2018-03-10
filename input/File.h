@@ -341,7 +341,6 @@ template<class T>
 void File<T>::write_printf_t(){
 	FILE *f;
 	f = fopen(this->fname.c_str(), "w");
-	uint64_t i = 0;
 
 	T *buffer = (T*)malloc(sizeof(T) * this->d);
 	for(uint64_t i = 0; i < this->n; i++){
