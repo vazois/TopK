@@ -1,8 +1,8 @@
-#ifndef SLA_H
-#define SLA_H
+#ifndef PSLA_H
+#define PSLA_H
 
 /*
- * Skyline Layered Aggregation
+ * Parallel Skyline Layered Aggregation
  */
 
 #include "../cpu/AA.h"
@@ -13,13 +13,13 @@
 #define SLA_QSIZE 8
 
 template<class T, class Z>
-class SLA : public AA<T,Z>{
+class PSLA : public AA<T,Z>{
 	public:
-		SLA(uint64_t n, uint64_t d) : AA<T,Z>(n,d){
+		PSLA(uint64_t n, uint64_t d) : AA<T,Z>(n,d){
 			this->algo = "SLA";
 		};
 
-		~SLA(){
+		~PSLA(){
 
 		};
 
@@ -28,30 +28,46 @@ class SLA : public AA<T,Z>{
 
 	private:
 		std::vector<std::vector<Z>> layers;
-
-		T** sky_data(T **cdata);
-		void build_layers(T **cdata);
-		void create_graph(T **cdata);
 		uint64_t partition_table(uint64_t first, uint64_t last, std::unordered_set<uint32_t> layer_set, T **cdata, Z *offset);
 };
 
 template<class T, class Z>
-T** SLA<T,Z>::sky_data(T **cdata){
-	if(cdata == NULL){
-		cdata = static_cast<T**>(aligned_alloc(32, sizeof(T*) * (this->n)));
-		for(uint64_t i = 0; i < this->n; i++) cdata[i] = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->d)));
+uint64_t PSLA<T,Z>::partition_table(uint64_t first, uint64_t last, std::unordered_set<uint32_t> layer_set, T **cdata, Z *offset){
+	while(first < last){
+		while(layer_set.find(first) == layer_set.end()){//Find a skyline point
+			++first;
+			if(first == last) return first;
+		}
+
+		do{//Find a non-skyline point
+			--last;
+			if(first == last) return first;
+		}while(layer_set.find(last) != layer_set.end());
+		offset[first] = offset[last];
+		memcpy(cdata[first],cdata[last],sizeof(T)*this->d);
+		++first;
 	}
+	return first;
+}
+
+template<class T, class Z>
+void PSLA<T,Z>::init(){
+	/////////////////////////////////
+	//Copy data to compute skyline//
+	////////////////////////////////
+	T **cdata = static_cast<T**>(aligned_alloc(32, sizeof(T*) * (this->n)));
+	for(uint64_t i = 0; i < this->n; i++) cdata[i] = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->d)));
 	for(uint64_t i = 0; i < this->n; i++){
 		for(uint8_t m = 0; m < this->d; m++){
 			//cdata[i][m] = this->cdata[m*this->n + i];
 			cdata[i][m] = (1.0f - this->cdata[m*this->n + i]);//Calculate maximum skyline
 		}
 	}
-	return cdata;
-}
 
-template<class T, class Z>
-void SLA<T,Z>::build_layers(T **cdata){
+	///////////////////////////
+	//Compute Skyline Layers//
+	//////////////////////////
+	this->t.start();
 	Z *offset = (Z*)malloc(sizeof(Z)*this->n);
 	for(uint64_t i = 0; i < this->n; i++) offset[i]=i;
 	uint64_t first = 0;
@@ -85,6 +101,8 @@ void SLA<T,Z>::build_layers(T **cdata){
 	for(uint64_t i = 0; i < last; i++) layer.push_back(offset[i]);
 	this->layers.push_back(layer);
 	std::cout << "Layer count: " << this->layers.size() << std::endl;
+	for(uint64_t i = 0; i < this->n; i++) free(cdata[i]);
+	free(cdata);
 	free(offset);
 
 	//DEBUG//
@@ -94,50 +112,6 @@ void SLA<T,Z>::build_layers(T **cdata){
 		for(uint32_t j = 0; j < this->layers[i].size();j++){ st.insert(this->layers[i][j]); }
 	}
 	std::cout << "set values: <" << st.size() << " ? " << this->n << ">" << std::endl;
-}
-
-template<class T, class Z>
-void SLA<T,Z>::create_graph(T **cdata){
-
-}
-
-template<class T, class Z>
-uint64_t SLA<T,Z>::partition_table(uint64_t first, uint64_t last, std::unordered_set<uint32_t> layer_set, T **cdata, Z *offset){
-	while(first < last){
-		while(layer_set.find(first) == layer_set.end()){//Find a skyline point
-			++first;
-			if(first == last) return first;
-		}
-
-		do{//Find a non-skyline point
-			--last;
-			if(first == last) return first;
-		}while(layer_set.find(last) != layer_set.end());
-		offset[first] = offset[last];
-		memcpy(cdata[first],cdata[last],sizeof(T)*this->d);
-		++first;
-	}
-	return first;
-}
-
-template<class T, class Z>
-void SLA<T,Z>::init(){
-	///////////////////////////////////////
-	//Copy data to compute skyline layers//
-	//////////////////////////////////////
-	T **cdata = NULL;
-	cdata = this->sky_data(cdata);
-
-	///////////////////////////
-	//Compute Skyline Layers//
-	//////////////////////////
-	this->t.start();
-	this->build_layers(cdata);
-
-	cdata = this->sky_data(cdata);
-
-	for(uint64_t i = 0; i < this->n; i++) free(cdata[i]);
-	free(cdata);
 
 	//////////////////////
 	//Reorder base table//
@@ -159,10 +133,12 @@ void SLA<T,Z>::init(){
 }
 
 template<class T, class Z>
-void SLA<T,Z>::findTopK(uint64_t k, uint8_t qq){
+void PSLA<T,Z>::findTopK(uint64_t k, uint8_t qq){
 	this->t.start();
 
 	this->tt_processing=this->t.lap();
 }
+
+
 
 #endif

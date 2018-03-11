@@ -12,6 +12,7 @@
 #include <immintrin.h>//AVX and AVX2 // AVX-512
 
 #define THREADS 16
+#define ITHREADS 32 //INITIALIZATION THREADS
 #define STATS_EFF true
 
 #include <parallel/algorithm>

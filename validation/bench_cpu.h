@@ -70,7 +70,7 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	ta.init();
 	ta.set_iter(ITER);
-	for(uint8_t i = 2; i < f.items();i+=2){
+	for(uint8_t i = 2; i <= f.items();i+=2){
 		//Warm up
 		if (IMP == 0){
 			ta.findTopK(k,i);
@@ -151,11 +151,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	f.load(pta.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	//pta.init();
-	//pta.init2();
-	pta.init3();
-	//pta.benchmark();
-	//return ;
+	pta.init();
 	pta.set_iter(ITER);
 	for(uint8_t i = 2; i <= f.items();i+=2){
 		//Warm up

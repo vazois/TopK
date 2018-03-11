@@ -56,8 +56,6 @@ class PTA : public AA<T,Z>{
 		}
 
 		void init();
-		void init2();
-		void init3();
 		void findTopKscalar(uint64_t k,uint8_t qq);
 		void findTopKsimd(uint64_t k,uint8_t qq);
 		void findTopKthreads(uint64_t k,uint8_t qq);
@@ -68,140 +66,6 @@ class PTA : public AA<T,Z>{
 
 template<class T, class Z>
 void PTA<T,Z>::init(){
-	pta_pair<T,Z> *list = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
-	this->pt = (pta_pt<T,Z>*)malloc(sizeof(pta_pt<T,Z>)*this->n);
-	this->t.start();
-	for(uint64_t i = 0; i < this->n; i++){
-		this->pt[i].id = i;
-		this->pt[i].pos = this->n;
-		this->pt[i].score = 0;
-	}
-
-	for(uint8_t m = 0; m < this->d; m++){
-		for(uint64_t i = 0; i < this->n; i++){
-			list[i].id = i;
-			list[i].score = this->cdata[m*this->n + i];
-		}
-		__gnu_parallel::sort(&list[0],(&list[0]) + this->n,cmp_pta_pair<T,Z>);//data based on attribute//
-
-		//Find Minimum Position and threshold for that position//
-		for(uint64_t i = 0; i < this->n; i++){
-			pta_pair<T,Z> p = list[i];
-			this->pt[p.id].pos = pt[p.id].pos < i ? pt[p.id].pos : i;// Best position according to lists
-			this->pt[p.id].score = pt[p.id].score > p.score ? pt[p.id].score : p.score;// Maximum attribute for threshold calculation
-		}
-	}
-	free(list);
-	__gnu_parallel::sort(&pt[0],(&pt[0]) + this->n,cmp_pta_pt_pos_score<T,Z>);
-
-//	for(uint64_t i = 0; i < 25; i++){
-//		std::cout << std::dec << std::setfill('0') << std::setw(2);
-//		std::cout << i << ": ";
-//		std::cout << std::dec << std::setfill('0') << std::setw(8);
-//		std::cout << this->pt[i].id << ",";
-//		std::cout << std::dec << std::setfill('0') << std::setw(8);
-//		std::cout << this->pt[i].pos << ",";
-//		std::cout << std::fixed << std::setprecision(4);
-//		std::cout << this->pt[i].score;
-//
-//		std::cout << " || ";
-//		for(uint8_t m = 0; m < this->d; m++){
-//			std::cout << this->cdata[m * this->n + pt[i].id] << " ";
-//		}
-//		std::cout << " || ";
-//		std::cout << std::endl;
-//	}
-
-	//Reordered data based on min position//
-	T *cdata = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
-	for(uint8_t m = 0; m < this->d; m++){
-		for(uint64_t i = 0; i < this->n; i++){
-			pta_pt<T,Z> p = this->pt[i];
-			cdata[m * this->n + i] = this->cdata[m * this->n + p.id];
-		}
-	}
-	free(this->cdata); this->cdata = cdata;
-
-//#if IMPL ==0
-//	this->threshold_array = (T*)malloc(sizeof(T)*(this->n/8) * this->d);
-//	for(uint8_t m = 0; m < this->d; m++){
-//		uint64_t ii = 0;
-//		for(uint64_t i = 0; i < this->n; i+=8){
-//			pta_pt<T,Z> p = this->pt[i];
-//			this->threshold_array[m * (this->n/8) + ii] = ;
-//			ii++;
-//		}
-//	}
-//#endif
-	this->tt_init = this->t.lap();
-}
-
-template<class T, class Z>
-void PTA<T,Z>::init2(){
-	pta_pair<T,Z> *max_attr = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
-	this->t.start();
-
-	float mx[16] __attribute__((aligned(32)));
-	__builtin_prefetch(mx,1,3);
-	for(uint64_t i = 0; i < this->n; i+=16){
-		__m256 max00 = _mm256_setzero_ps();
-		__m256 max01 = _mm256_setzero_ps();
-		for(uint8_t m = 0; m < this->d; m++){
-			uint64_t offset00 = m * this->n + i;
-			uint64_t offset01 = m * this->n + i + 8;
-			__m256 load00 = _mm256_load_ps(&this->cdata[offset00]);
-			__m256 load01 = _mm256_load_ps(&this->cdata[offset01]);
-
-			max00 = _mm256_max_ps(max00,load00);
-			max01 = _mm256_max_ps(max01,load01);
-		}
-		_mm256_store_ps(&mx[0],max00);
-		_mm256_store_ps(&mx[8],max01);
-		max_attr[i].id = i; max_attr[i].score = mx[0];
-		max_attr[i+1].id = i+1; max_attr[i+1].score = mx[1];
-		max_attr[i+2].id = i+2; max_attr[i+2].score = mx[2];
-		max_attr[i+3].id = i+3; max_attr[i+3].score = mx[3];
-		max_attr[i+4].id = i+4; max_attr[i+4].score = mx[4];
-		max_attr[i+5].id = i+5; max_attr[i+5].score = mx[5];
-		max_attr[i+6].id = i+6; max_attr[i+6].score = mx[6];
-		max_attr[i+7].id = i+7; max_attr[i+7].score = mx[7];
-		max_attr[i+8].id = i+8; max_attr[i+8].score = mx[8];
-		max_attr[i+9].id = i+9; max_attr[i+9].score = mx[9];
-		max_attr[i+10].id = i+10; max_attr[i+10].score = mx[10];
-		max_attr[i+11].id = i+11; max_attr[i+11].score = mx[11];
-		max_attr[i+12].id = i+12; max_attr[i+12].score = mx[12];
-		max_attr[i+13].id = i+13; max_attr[i+13].score = mx[13];
-		max_attr[i+14].id = i+14; max_attr[i+14].score = mx[14];
-		max_attr[i+15].id = i+15; max_attr[i+15].score = mx[15];
-	}
-	__gnu_parallel::sort(&max_attr[0],(&max_attr[0]) + this->n,cmp_pta_pair<T,Z>);//data based on attribute//
-
-	T *cdata = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
-	for(uint8_t m = 0; m < this->d; m++){
-		for(uint64_t i = 0; i < this->n; i++){
-			pta_pair<T,Z> p = max_attr[i];
-			cdata[m * this->n + i] = this->cdata[m * this->n + p.id];
-		}
-	}
-	free(this->cdata); this->cdata = cdata;
-
-	for(uint64_t i = 0; i < 25; i++){
-		std::cout << std::fixed << std::setprecision(4);
-		std::cout <<" < " << max_attr[i].score;
-		std::cout << " > || ";
-		for(uint8_t m = 0; m < this->d; m++){
-			std::cout << this->cdata[m * this->n + i] << " ";
-		}
-		std::cout << " || ";
-		std::cout << std::endl;
-	}
-	free(max_attr);
-
-	this->tt_init = this->t.lap();
-}
-
-template<class T, class Z>
-void PTA<T,Z>::init3(){
 	pta_pair<T,Z> *list = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
 	pta_ps<Z> *tpos = (pta_ps<Z>*)malloc(sizeof(pta_ps<Z>)*this->n);
 
@@ -222,18 +86,16 @@ void PTA<T,Z>::init3(){
 	}
 	free(list);
 	///////////////////////////////////////////////////////////////////////
-
+	omp_set_num_threads(ITHREADS);
 	//Reorder base table using seen position//
-	uint32_t THREADS_ = 32;
-	omp_set_num_threads(THREADS_);
 	__gnu_parallel::sort(&tpos[0],(&tpos[0]) + this->n,cmp_pta_ps<Z>);//data based on attribute//
 
 	T *cdata = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
 	#pragma omp parallel
 	{
 		uint32_t thread_id = omp_get_thread_num();
-		uint64_t start = ((uint64_t)thread_id)*(this->n)/THREADS_;
-		uint64_t end = ((uint64_t)(thread_id+1))*(this->n)/THREADS_;
+		uint64_t start = ((uint64_t)thread_id)*(this->n)/ITHREADS;
+		uint64_t end = ((uint64_t)(thread_id+1))*(this->n)/ITHREADS;
 		for(uint64_t i = start; i < end; i++){
 			for(uint8_t m = 0; m < this->d; m++){
 				cdata[m * this->n + i] = this->cdata[m * this->n + tpos[i].id];
