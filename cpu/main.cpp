@@ -1,12 +1,10 @@
 #include<limits>
-
-#include "validation/bench_cpu.h"
 #include <stdio.h>
 #include <cstdint>
-
 #include <stdio.h>
 #include <tmmintrin.h>
 
+#include "validation/bench_cpu.h"
 #include "test/Tests.h"
 
 #define RUN_PAR false

@@ -18,7 +18,7 @@ mem=0
 
 if [ $device -eq 0 ]
 then
-  make cpu_cc
+	make cpu_cc IDIM=$END_D
 else
   make gpu_cc
 fi

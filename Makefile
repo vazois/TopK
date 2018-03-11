@@ -5,11 +5,16 @@ NVCC=/usr/local/cuda-8.0/bin/nvcc
 CC_REORDER=input/main.cpp
 CC_EXE_RE=reorder_run
 
+DIMS=${IDIM}
+V=VERBOSE
+DT=0
+PROFILER=0
+
 #CPU CONFIGURATION
-CC_MAIN=cpu/main.cpp
+CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp
 CC_FLAGS=-std=c++11
 CC_EXE=cpu_run
-CC_OPT_FLAGS= -O3 -ffast-math -funroll-loops -msse -msse2 -msse3 -msse4.1 -mbmi2 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64 -fopenmp
+CC_OPT_FLAGS= -O3 -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -msse -msse2 -msse3 -msse4.1 -mbmi2 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64 -fopenmp
 
 #GPU CONFIGURATION
 GC_MAIN=gpu/main.cu
