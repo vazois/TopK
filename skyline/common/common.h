@@ -44,7 +44,7 @@ static const uint32_t SHIFTS[] = { 1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1
 
 typedef struct TUPLE {
   float elems[NUM_DIMS];
-  int pid;
+  uint32_t pid;
 //  TUPLE(const int id, float* data): pid(id) {
 //    for (uint32_t d = 0; d < NUM_DIMS; ++d) {
 //      elems[d] = data[d];

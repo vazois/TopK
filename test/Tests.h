@@ -161,4 +161,110 @@ void simd4sort(float *v){
 //	_mm_store_ps(v,in);
 }
 
+bool DT(float *p, float *q, uint8_t d){
+	uint32_t dt = 0xFF;
+	uint32_t mask = 0xFF;
+
+	__m128 p4_00,q4_00;
+	__m128 p4_01,q4_01;
+	__m128 gt4_00, gt4_01;
+	__m256 p8_00,q8_00;
+	__m256 p8_01,q8_01;
+	__m256 gt8_00,gt8_01;
+
+	switch(d){
+		case 4:
+			mask =0xF;
+			p4_00 = _mm_load_ps(p);
+			q4_00 = _mm_load_ps(q);
+			gt4_00 = _mm_cmp_ps(p4_00,q4_00,14);
+			dt = dt & _mm_movemask_ps(gt4_00);
+			break;
+		case 8:
+			p8_00 = _mm256_load_ps(p);
+			q8_00 = _mm256_load_ps(q);
+			gt8_00 = _mm256_cmp_ps(p8_00,q8_00,14);
+			dt = dt & _mm256_movemask_ps(gt8_00);
+			break;
+		case 12:
+			p8_00 = _mm256_load_ps(p);
+			q8_00 = _mm256_load_ps(q);
+			p4_00 = _mm_load_ps(&p[8]);
+			q4_00 = _mm_load_ps(&q[8]);
+
+			gt4_00 = _mm_cmp_ps(p4_00,q4_00,14);
+			gt8_00 = _mm256_set_m128(gt4_00,gt4_00);
+			gt8_01 = _mm256_cmp_ps(p8_00,q8_00,14);
+
+			gt8_00 = _mm256_and_ps(gt8_00,gt8_01);
+			dt = dt & _mm256_movemask_ps(gt8_00);
+			break;
+		case 16:
+			p8_00 = _mm256_load_ps(p);
+			q8_00 = _mm256_load_ps(q);
+			p8_01 = _mm256_load_ps(&p[8]);
+			q8_01 = _mm256_load_ps(&q[8]);
+
+			gt8_00 = _mm256_cmp_ps(p8_00,q8_00,14);
+			gt8_01 = _mm256_cmp_ps(p8_01,q8_01,14);
+			gt8_00 = _mm256_and_ps(gt8_00,gt8_01);
+
+			dt = dt & _mm256_movemask_ps(gt8_00);
+			break;
+		default:
+			break;
+	};
+
+	return (mask == dt);
+}
+
+void test_dt(){
+	float cdata4[8] __attribute__((aligned(32))) = {
+		0.730,0.620,0.811,0.919,
+		0.630,0.520,0.411,0.319
+	};
+	float cdata8[16] __attribute__((aligned(32))) = {
+		0.730,0.620,0.811,0.919,0.542,0.410,0.901,0.722,
+		0.630,0.520,0.411,0.319,0.242,0.110,0.001,0.222
+	};
+	float cdata12[24] __attribute__((aligned(32))) = {
+		0.730,0.620,0.811,0.919,0.542,0.410,0.901,0.722,0.730,0.620,0.811,0.919,
+		0.630,0.520,0.411,0.319,0.242,0.110,0.001,0.222,0.630,0.520,0.411,0.319
+	};
+
+	float cdata16[32] __attribute__((aligned(32))) = {
+		0.730,0.620,0.811,0.919,0.542,0.410,0.901,0.722,0.730,0.620,0.811,0.919,0.542,0.410,0.901,0.722,
+		0.630,0.520,0.411,0.319,0.242,0.110,0.001,0.222,0.630,0.520,0.411,0.319,0.242,0.110,0.001,0.222
+	};
+	bool dom;
+
+	for(uint64_t i = 0; i < 100;i++){
+	dom = DT(&cdata4[0],&cdata4[4],4);
+	std::cout << "(4) p dominates q ? " << "(" << dom << ")" << std::endl;
+	dom = DT(&cdata4[4],&cdata4[0],4);
+	std::cout << "(4) q dominates p ? " << "(" << dom << ")" << std::endl;
+	}
+
+	for(uint64_t i = 0; i < 100;i++){
+	dom = DT(&cdata8[0],&cdata8[8],8);
+	std::cout << "(8) p dominates q ? " << "(" << dom << ")" << std::endl;
+	dom = DT(&cdata8[8],&cdata8[0],8);
+	std::cout << "(8) q dominates p ? " << "(" << dom << ")" << std::endl;
+	}
+
+	for(uint64_t i = 0; i < 100;i++){
+	dom = DT(&cdata12[0],&cdata12[12],12);
+	std::cout << "(12) p dominates q ? " << "(" << dom << ")" << std::endl;
+	dom = DT(&cdata12[12],&cdata12[0],12);
+	std::cout << "(12) q dominates p ? " << "(" << dom << ")" << std::endl;
+	}
+
+	for(uint64_t i = 0; i < 100;i++){
+	dom = DT(&cdata16[0],&cdata16[16],16);
+	std::cout << "(16) p dominates q ? " << "(" << dom << ")" << std::endl;
+	dom = DT(&cdata16[16],&cdata16[0],16);
+	std::cout << "(16) q dominates p ? " << "(" << dom << ")" << std::endl;
+	}
+}
+
 #endif

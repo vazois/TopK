@@ -143,7 +143,7 @@ void PTA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 
-	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	this->tt_ranking = 0;
 	uint64_t ii = 0;
@@ -167,20 +167,20 @@ void PTA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 		ii++;
 
 		if(q.size() < k){//insert if empty space in queue
-			q.push(tuple<T,Z>(i,score00)); q.push(tuple<T,Z>(i+1,score01)); q.push(tuple<T,Z>(i+2,score02)); q.push(tuple<T,Z>(i+3,score03));
-			q.push(tuple<T,Z>(i+4,score04)); q.push(tuple<T,Z>(i+5,score05)); q.push(tuple<T,Z>(i+6,score06)); q.push(tuple<T,Z>(i+7,score07));
-			q.push(tuple<T,Z>(i+8,score08)); q.push(tuple<T,Z>(i+9,score09)); q.push(tuple<T,Z>(i+10,score10)); q.push(tuple<T,Z>(i+11,score11));
-			q.push(tuple<T,Z>(i+12,score12)); q.push(tuple<T,Z>(i+13,score13)); q.push(tuple<T,Z>(i+14,score14)); q.push(tuple<T,Z>(i+15,score15));
+			q.push(tuple_<T,Z>(i,score00)); q.push(tuple_<T,Z>(i+1,score01)); q.push(tuple_<T,Z>(i+2,score02)); q.push(tuple_<T,Z>(i+3,score03));
+			q.push(tuple_<T,Z>(i+4,score04)); q.push(tuple_<T,Z>(i+5,score05)); q.push(tuple_<T,Z>(i+6,score06)); q.push(tuple_<T,Z>(i+7,score07));
+			q.push(tuple_<T,Z>(i+8,score08)); q.push(tuple_<T,Z>(i+9,score09)); q.push(tuple_<T,Z>(i+10,score10)); q.push(tuple_<T,Z>(i+11,score11));
+			q.push(tuple_<T,Z>(i+12,score12)); q.push(tuple_<T,Z>(i+13,score13)); q.push(tuple_<T,Z>(i+14,score14)); q.push(tuple_<T,Z>(i+15,score15));
 		}else{//delete smallest element if current score is bigger
-			if(q.top().score < score00){ q.pop(); q.push(tuple<T,Z>(i,score00)); } if(q.top().score < score01){ q.pop(); q.push(tuple<T,Z>(i+1,score01)); }
-			if(q.top().score < score02){ q.pop(); q.push(tuple<T,Z>(i+2,score02)); } if(q.top().score < score03){ q.pop(); q.push(tuple<T,Z>(i+3,score03)); }
-			if(q.top().score < score04){ q.pop(); q.push(tuple<T,Z>(i+4,score04)); } if(q.top().score < score05){ q.pop(); q.push(tuple<T,Z>(i+5,score05)); }
-			if(q.top().score < score06){ q.pop(); q.push(tuple<T,Z>(i+6,score06)); } if(q.top().score < score07){ q.pop(); q.push(tuple<T,Z>(i+7,score07)); }
+			if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(i,score00)); } if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(i+1,score01)); }
+			if(q.top().score < score02){ q.pop(); q.push(tuple_<T,Z>(i+2,score02)); } if(q.top().score < score03){ q.pop(); q.push(tuple_<T,Z>(i+3,score03)); }
+			if(q.top().score < score04){ q.pop(); q.push(tuple_<T,Z>(i+4,score04)); } if(q.top().score < score05){ q.pop(); q.push(tuple_<T,Z>(i+5,score05)); }
+			if(q.top().score < score06){ q.pop(); q.push(tuple_<T,Z>(i+6,score06)); } if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(i+7,score07)); }
 
-			if(q.top().score < score08){ q.pop(); q.push(tuple<T,Z>(i+8,score08)); } if(q.top().score < score09){ q.pop(); q.push(tuple<T,Z>(i+9,score09)); }
-			if(q.top().score < score10){ q.pop(); q.push(tuple<T,Z>(i+10,score10)); } if(q.top().score < score11){ q.pop(); q.push(tuple<T,Z>(i+11,score11)); }
-			if(q.top().score < score12){ q.pop(); q.push(tuple<T,Z>(i+12,score12)); } if(q.top().score < score13){ q.pop(); q.push(tuple<T,Z>(i+13,score13)); }
-			if(q.top().score < score14){ q.pop(); q.push(tuple<T,Z>(i+14,score14)); } if(q.top().score < score15){ q.pop(); q.push(tuple<T,Z>(i+15,score15)); }
+			if(q.top().score < score08){ q.pop(); q.push(tuple_<T,Z>(i+8,score08)); } if(q.top().score < score09){ q.pop(); q.push(tuple_<T,Z>(i+9,score09)); }
+			if(q.top().score < score10){ q.pop(); q.push(tuple_<T,Z>(i+10,score10)); } if(q.top().score < score11){ q.pop(); q.push(tuple_<T,Z>(i+11,score11)); }
+			if(q.top().score < score12){ q.pop(); q.push(tuple_<T,Z>(i+12,score12)); } if(q.top().score < score13){ q.pop(); q.push(tuple_<T,Z>(i+13,score13)); }
+			if(q.top().score < score14){ q.pop(); q.push(tuple_<T,Z>(i+14,score14)); } if(q.top().score < score15){ q.pop(); q.push(tuple_<T,Z>(i+15,score15)); }
 			if(STATS_EFF) this->pop_count+=16;
 		}
 		if(STATS_EFF) this->tuple_count+=16;
@@ -204,7 +204,7 @@ void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 
-	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	uint64_t step = 0;
 	this->tt_ranking = 0;
@@ -231,39 +231,39 @@ void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 		_mm256_store_ps(&score[0],score00);
 		_mm256_store_ps(&score[8],score01);
 		if(q.size() < k){//insert if empty space in queue
-			q.push(tuple<T,Z>(i,score[0]));
-			q.push(tuple<T,Z>(i+1,score[1]));
-			q.push(tuple<T,Z>(i+2,score[2]));
-			q.push(tuple<T,Z>(i+3,score[3]));
-			q.push(tuple<T,Z>(i+4,score[4]));
-			q.push(tuple<T,Z>(i+5,score[5]));
-			q.push(tuple<T,Z>(i+6,score[6]));
-			q.push(tuple<T,Z>(i+7,score[7]));
-			q.push(tuple<T,Z>(i+8,score[8]));
-			q.push(tuple<T,Z>(i+9,score[9]));
-			q.push(tuple<T,Z>(i+10,score[10]));
-			q.push(tuple<T,Z>(i+11,score[11]));
-			q.push(tuple<T,Z>(i+12,score[12]));
-			q.push(tuple<T,Z>(i+13,score[13]));
-			q.push(tuple<T,Z>(i+14,score[14]));
-			q.push(tuple<T,Z>(i+15,score[15]));
+			q.push(tuple_<T,Z>(i,score[0]));
+			q.push(tuple_<T,Z>(i+1,score[1]));
+			q.push(tuple_<T,Z>(i+2,score[2]));
+			q.push(tuple_<T,Z>(i+3,score[3]));
+			q.push(tuple_<T,Z>(i+4,score[4]));
+			q.push(tuple_<T,Z>(i+5,score[5]));
+			q.push(tuple_<T,Z>(i+6,score[6]));
+			q.push(tuple_<T,Z>(i+7,score[7]));
+			q.push(tuple_<T,Z>(i+8,score[8]));
+			q.push(tuple_<T,Z>(i+9,score[9]));
+			q.push(tuple_<T,Z>(i+10,score[10]));
+			q.push(tuple_<T,Z>(i+11,score[11]));
+			q.push(tuple_<T,Z>(i+12,score[12]));
+			q.push(tuple_<T,Z>(i+13,score[13]));
+			q.push(tuple_<T,Z>(i+14,score[14]));
+			q.push(tuple_<T,Z>(i+15,score[15]));
 		}else{//delete smallest element if current score is bigger
-			if(q.top().score < score[0]){ q.pop(); q.push(tuple<T,Z>(i,score[0])); }
-			if(q.top().score < score[1]){ q.pop(); q.push(tuple<T,Z>(i+1,score[1])); }
-			if(q.top().score < score[2]){ q.pop(); q.push(tuple<T,Z>(i+2,score[2])); }
-			if(q.top().score < score[3]){ q.pop(); q.push(tuple<T,Z>(i+3,score[3])); }
-			if(q.top().score < score[4]){ q.pop(); q.push(tuple<T,Z>(i+4,score[4])); }
-			if(q.top().score < score[5]){ q.pop(); q.push(tuple<T,Z>(i+5,score[5])); }
-			if(q.top().score < score[6]){ q.pop(); q.push(tuple<T,Z>(i+6,score[6])); }
-			if(q.top().score < score[7]){ q.pop(); q.push(tuple<T,Z>(i+7,score[7])); }
-			if(q.top().score < score[8]){ q.pop(); q.push(tuple<T,Z>(i+8,score[8])); }
-			if(q.top().score < score[9]){ q.pop(); q.push(tuple<T,Z>(i+9,score[9])); }
-			if(q.top().score < score[10]){ q.pop(); q.push(tuple<T,Z>(i+10,score[10])); }
-			if(q.top().score < score[11]){ q.pop(); q.push(tuple<T,Z>(i+11,score[11])); }
-			if(q.top().score < score[12]){ q.pop(); q.push(tuple<T,Z>(i+12,score[12])); }
-			if(q.top().score < score[13]){ q.pop(); q.push(tuple<T,Z>(i+13,score[13])); }
-			if(q.top().score < score[14]){ q.pop(); q.push(tuple<T,Z>(i+14,score[14])); }
-			if(q.top().score < score[15]){ q.pop(); q.push(tuple<T,Z>(i+15,score[15])); }
+			if(q.top().score < score[0]){ q.pop(); q.push(tuple_<T,Z>(i,score[0])); }
+			if(q.top().score < score[1]){ q.pop(); q.push(tuple_<T,Z>(i+1,score[1])); }
+			if(q.top().score < score[2]){ q.pop(); q.push(tuple_<T,Z>(i+2,score[2])); }
+			if(q.top().score < score[3]){ q.pop(); q.push(tuple_<T,Z>(i+3,score[3])); }
+			if(q.top().score < score[4]){ q.pop(); q.push(tuple_<T,Z>(i+4,score[4])); }
+			if(q.top().score < score[5]){ q.pop(); q.push(tuple_<T,Z>(i+5,score[5])); }
+			if(q.top().score < score[6]){ q.pop(); q.push(tuple_<T,Z>(i+6,score[6])); }
+			if(q.top().score < score[7]){ q.pop(); q.push(tuple_<T,Z>(i+7,score[7])); }
+			if(q.top().score < score[8]){ q.pop(); q.push(tuple_<T,Z>(i+8,score[8])); }
+			if(q.top().score < score[9]){ q.pop(); q.push(tuple_<T,Z>(i+9,score[9])); }
+			if(q.top().score < score[10]){ q.pop(); q.push(tuple_<T,Z>(i+10,score[10])); }
+			if(q.top().score < score[11]){ q.pop(); q.push(tuple_<T,Z>(i+11,score[11])); }
+			if(q.top().score < score[12]){ q.pop(); q.push(tuple_<T,Z>(i+12,score[12])); }
+			if(q.top().score < score[13]){ q.pop(); q.push(tuple_<T,Z>(i+13,score[13])); }
+			if(q.top().score < score[14]){ q.pop(); q.push(tuple_<T,Z>(i+14,score[14])); }
+			if(q.top().score < score[15]){ q.pop(); q.push(tuple_<T,Z>(i+15,score[15])); }
 			if(STATS_EFF) this->pop_count+=16;
 		}
 
@@ -288,7 +288,7 @@ void PTA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 
-	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q[THREADS];
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q[THREADS];
 	this->t.start();
 	omp_set_num_threads(THREADS);
 	Z tuple_count[THREADS];
@@ -320,39 +320,39 @@ void PTA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 		_mm256_store_ps(&score[0],score00);
 		_mm256_store_ps(&score[8],score01);
 		if(q[thread_id].size() < k){//insert if empty space in queue
-			q[thread_id].push(tuple<T,Z>(i,score[0]));
-			q[thread_id].push(tuple<T,Z>(i+1,score[1]));
-			q[thread_id].push(tuple<T,Z>(i+2,score[2]));
-			q[thread_id].push(tuple<T,Z>(i+3,score[3]));
-			q[thread_id].push(tuple<T,Z>(i+4,score[4]));
-			q[thread_id].push(tuple<T,Z>(i+5,score[5]));
-			q[thread_id].push(tuple<T,Z>(i+6,score[6]));
-			q[thread_id].push(tuple<T,Z>(i+7,score[7]));
-			q[thread_id].push(tuple<T,Z>(i+8,score[8]));
-			q[thread_id].push(tuple<T,Z>(i+9,score[9]));
-			q[thread_id].push(tuple<T,Z>(i+10,score[10]));
-			q[thread_id].push(tuple<T,Z>(i+11,score[11]));
-			q[thread_id].push(tuple<T,Z>(i+12,score[12]));
-			q[thread_id].push(tuple<T,Z>(i+13,score[13]));
-			q[thread_id].push(tuple<T,Z>(i+14,score[14]));
-			q[thread_id].push(tuple<T,Z>(i+15,score[15]));
+			q[thread_id].push(tuple_<T,Z>(i,score[0]));
+			q[thread_id].push(tuple_<T,Z>(i+1,score[1]));
+			q[thread_id].push(tuple_<T,Z>(i+2,score[2]));
+			q[thread_id].push(tuple_<T,Z>(i+3,score[3]));
+			q[thread_id].push(tuple_<T,Z>(i+4,score[4]));
+			q[thread_id].push(tuple_<T,Z>(i+5,score[5]));
+			q[thread_id].push(tuple_<T,Z>(i+6,score[6]));
+			q[thread_id].push(tuple_<T,Z>(i+7,score[7]));
+			q[thread_id].push(tuple_<T,Z>(i+8,score[8]));
+			q[thread_id].push(tuple_<T,Z>(i+9,score[9]));
+			q[thread_id].push(tuple_<T,Z>(i+10,score[10]));
+			q[thread_id].push(tuple_<T,Z>(i+11,score[11]));
+			q[thread_id].push(tuple_<T,Z>(i+12,score[12]));
+			q[thread_id].push(tuple_<T,Z>(i+13,score[13]));
+			q[thread_id].push(tuple_<T,Z>(i+14,score[14]));
+			q[thread_id].push(tuple_<T,Z>(i+15,score[15]));
 		}else{//delete smallest element if current score is bigger
-			if(q[thread_id].top().score < score[0]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i,score[0])); }
-			if(q[thread_id].top().score < score[1]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+1,score[1])); }
-			if(q[thread_id].top().score < score[2]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+2,score[2])); }
-			if(q[thread_id].top().score < score[3]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+3,score[3])); }
-			if(q[thread_id].top().score < score[4]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+4,score[4])); }
-			if(q[thread_id].top().score < score[5]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+5,score[5])); }
-			if(q[thread_id].top().score < score[6]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+6,score[6])); }
-			if(q[thread_id].top().score < score[7]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+7,score[7])); }
-			if(q[thread_id].top().score < score[8]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+8,score[8])); }
-			if(q[thread_id].top().score < score[9]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+9,score[9])); }
-			if(q[thread_id].top().score < score[10]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+10,score[10])); }
-			if(q[thread_id].top().score < score[11]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+11,score[11])); }
-			if(q[thread_id].top().score < score[12]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+12,score[12])); }
-			if(q[thread_id].top().score < score[13]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+13,score[13])); }
-			if(q[thread_id].top().score < score[14]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+14,score[14])); }
-			if(q[thread_id].top().score < score[15]){ q[thread_id].pop(); q[thread_id].push(tuple<T,Z>(i+15,score[15])); }
+			if(q[thread_id].top().score < score[0]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i,score[0])); }
+			if(q[thread_id].top().score < score[1]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+1,score[1])); }
+			if(q[thread_id].top().score < score[2]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+2,score[2])); }
+			if(q[thread_id].top().score < score[3]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+3,score[3])); }
+			if(q[thread_id].top().score < score[4]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+4,score[4])); }
+			if(q[thread_id].top().score < score[5]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+5,score[5])); }
+			if(q[thread_id].top().score < score[6]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+6,score[6])); }
+			if(q[thread_id].top().score < score[7]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+7,score[7])); }
+			if(q[thread_id].top().score < score[8]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+8,score[8])); }
+			if(q[thread_id].top().score < score[9]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+9,score[9])); }
+			if(q[thread_id].top().score < score[10]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+10,score[10])); }
+			if(q[thread_id].top().score < score[11]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+11,score[11])); }
+			if(q[thread_id].top().score < score[12]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+12,score[12])); }
+			if(q[thread_id].top().score < score[13]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+13,score[13])); }
+			if(q[thread_id].top().score < score[14]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+14,score[14])); }
+			if(q[thread_id].top().score < score[15]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+15,score[15])); }
 		}
 		if(STATS_EFF) tp_count+=16;
 		if((q[thread_id].top().score) > threshold ){
@@ -362,7 +362,7 @@ void PTA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 	}
 	if(STATS_EFF) tuple_count[thread_id]=tp_count;
 }
-	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> _q;
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> _q;
 	for(uint32_t m = 0 ; m < THREADS; m++){
 		while(!q[m].empty()){
 			if(_q.size() < k) _q.push(q[m].top());

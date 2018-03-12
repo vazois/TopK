@@ -8,8 +8,10 @@
 #include <mmintrin.h>//MMX
 #include <xmmintrin.h>//SSE
 #include <emmintrin.h>//SSE2
-#include <emmintrin.h>//SSE3
 #include <immintrin.h>//AVX and AVX2 // AVX-512
+
+#define _mm256_set_m128(va, vb) \
+        _mm256_insertf128_ps(_mm256_castps128_ps256(vb), va, 1)
 
 #define THREADS 16
 #define ITHREADS 32 //INITIALIZATION THREADS
@@ -35,15 +37,15 @@ struct pred{
  * Tuple structure
  */
 template<class T,class Z>
-struct tuple{
-	tuple(){ tid = 0; score = 0; }
-	tuple(Z t, T s){ tid = t; score = s; }
+struct tuple_{
+	tuple_(){ tid = 0; score = 0; }
+	tuple_(Z t, T s){ tid = t; score = s; }
 	Z tid;
 	T score;
 };
 
 template<class T,class Z>
-static bool cmp_score(const tuple<T,Z> &a, const tuple<T,Z> &b){ return a.score > b.score; };
+static bool cmp_score(const tuple_<T,Z> &a, const tuple_<T,Z> &b){ return a.score > b.score; };
 
 template<class T,class Z>
 static bool cmp_max_pred(const pred<T,Z> &a, const pred<T,Z> &b){ return a.attr > b.attr; };
@@ -53,7 +55,7 @@ class PQComparison{
 	public:
 		PQComparison(){};
 
-		bool operator() (const tuple<T,Z>& lhs, const tuple<T,Z>& rhs) const{
+		bool operator() (const tuple_<T,Z>& lhs, const tuple_<T,Z>& rhs) const{
 			return (lhs.score>rhs.score);
 		}
 };
@@ -69,7 +71,7 @@ class AA{
 
 		void compare(AA<T,Z> b);
 		void compare_t(AA<T,Z> b);
-		std::vector<tuple<T,Z>> get_res(){ return this->res; };
+		std::vector<tuple_<T,Z>> get_res(){ return this->res; };
 		std::string get_algo(){ return this->algo; };
 		T get_thres(){return this->threshold;}
 
@@ -92,7 +94,7 @@ class AA{
 
 	protected:
 		std::string algo;
-		std::vector<tuple<T,Z>> res;
+		std::vector<tuple_<T,Z>> res;
 		T *cdata;
 		uint64_t n;
 		uint64_t d;

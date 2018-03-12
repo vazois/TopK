@@ -47,6 +47,7 @@ private:
   EPTUPLE* data_; /**< Array of input data points */
   vector<uint32_t> skyline_; /**< Vector in which the skyline result will be copied */
   vector<pair<uint32_t, uint32_t> > part_map_; /**< Data structure used in Phase I computation */
+
 };
 
 #endif /* HYBRID_H_ */

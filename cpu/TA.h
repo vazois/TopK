@@ -76,7 +76,7 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq){
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 
-	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	for(uint64_t i = 0; i < this->n;i++){
 		T threshold=0;
@@ -93,10 +93,10 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq){
 				if(STATS_EFF) this->tuple_count+=1;
 				eset.insert(p.tid);
 				if(q.size() < k){//insert if empty space in queue
-					q.push(tuple<T,Z>(p.tid,score00));
+					q.push(tuple_<T,Z>(p.tid,score00));
 				}else if(q.top().score<score00){//delete smallest element if current score is bigger
 					q.pop();
-					q.push(tuple<T,Z>(p.tid,score00));
+					q.push(tuple_<T,Z>(p.tid,score00));
 					if(STATS_EFF) this->pop_count+=1;
 				}
 			}
@@ -129,7 +129,7 @@ void TA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 
-	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	for(uint64_t i = 0; i < this->n;i++){
 		T threshold=0;
@@ -146,10 +146,10 @@ void TA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 				if(STATS_EFF) this->tuple_count+=1;
 				eset.insert(p.tid);
 				if(q.size() < k){//insert if empty space in queue
-					q.push(tuple<T,Z>(p.tid,score00));
+					q.push(tuple_<T,Z>(p.tid,score00));
 				}else if(q.top().score<score00){//delete smallest element if current score is bigger
 					q.pop();
-					q.push(tuple<T,Z>(p.tid,score00));
+					q.push(tuple_<T,Z>(p.tid,score00));
 					if(STATS_EFF) this->pop_count+=1;
 				}
 			}

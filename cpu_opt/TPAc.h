@@ -87,14 +87,14 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 	}
 	this->tt_processing += this->t.lap();
 
-	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	for(uint64_t i = 0;i < this->n; i++){
 		if(q.size() < k){//insert if empty space in queue
-			q.push(tuple<T,Z>(i,scores[i]));
+			q.push(tuple_<T,Z>(i,scores[i]));
 		}else if(q.top().score<scores[i]){//delete smallest element if current score is bigger
 			q.pop();
-			q.push(tuple<T,Z>(i,scores[i]));
+			q.push(tuple_<T,Z>(i,scores[i]));
 			if(STATS_EFF) this->pop_count++;
 		}
 	}
@@ -149,14 +149,14 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 	this->tt_processing += this->t.lap();
 
 	if(STATS_EFF) this->tuple_count=this->n;
-	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	for(uint64_t i = 0;i < this->n; i++){
 		if(q.size() < k){//insert if empty space in queue
-			q.push(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
+			q.push(tuple_<T,Z>(this->tuples[i].id,this->tuples[i].score));
 		}else if(q.top().score<this->tuples[i].score){//delete smallest element if current score is bigger
 			q.pop();
-			q.push(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
+			q.push(tuple_<T,Z>(this->tuples[i].id,this->tuples[i].score));
 			if(STATS_EFF) this->pop_count++;
 		}
 	}
@@ -223,15 +223,15 @@ void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 	this->tt_processing += this->t.lap();
 
 	if(STATS_EFF) this->tuple_count=this->n;
-	std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 	for(uint64_t i = 0;i < this->n; i++){
 		if(q.size() < k){//insert if empty space in queue
-			q.push(tuple<T,Z>(i,scores[i]));
+			q.push(tuple_<T,Z>(i,scores[i]));
 			//count_insert++;
 		}else if(q.top().score<scores[i]){//delete smallest element if current score is bigger
 			q.pop();
-			q.push(tuple<T,Z>(i,scores[i]));
+			q.push(tuple_<T,Z>(i,scores[i]));
 			//count_pop++;
 		}
 	}

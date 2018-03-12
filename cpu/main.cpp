@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <stdio.h>
 #include <tmmintrin.h>
+#include <immintrin.h>
 
 #include "validation/bench_cpu.h"
 #include "test/Tests.h"
@@ -54,7 +55,7 @@ int main(int argc, char **argv){
 	//bench_tpac(ap.getString("-f"),n,d,K);
 	//bench_pta(ap.getString("-f"),n,d,K);
 	bench_sla(ap.getString("-f"),n,d,K);
-	//test_pstof();
+	//test_dt();
 
 	return 0;
 }

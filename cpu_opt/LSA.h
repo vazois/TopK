@@ -164,7 +164,7 @@ void LSA<T,Z>::findTopK(uint64_t k){
 	T threshold = this->tuples[0].score;
 	for(uint64_t i = 0; i < k;i++){
 		threshold = threshold < this->tuples[i].score ? threshold : this->tuples[i].score;
-		this->res.push_back(tuple<T,Z>(this->tuples[i].id,this->tuples[i].score));
+		this->res.push_back(tuple_<T,Z>(this->tuples[i].id,this->tuples[i].score));
 	}
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
@@ -236,7 +236,7 @@ void LSA<T,Z>::findTopKscalar(uint64_t k){
 	T threshold = scores[0];
 	for(uint64_t i = 0;i<k;i++){
 		threshold = threshold < scores[i] ? threshold : scores[i];
-		this->res.push_back(tuple<T,Z>(ids[i],scores[i]));
+		this->res.push_back(tuple_<T,Z>(ids[i],scores[i]));
 	}
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;

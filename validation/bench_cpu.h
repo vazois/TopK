@@ -187,6 +187,7 @@ void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	sla.init();
+	sla.findTopK(k,d);
 	sla.benchmark();
 }
 

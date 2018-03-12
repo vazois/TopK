@@ -26,7 +26,7 @@ class FA : public AA<T,Z>{
 		void findTopK(uint64_t k);
 
 	protected:
-		std::priority_queue<T, std::vector<tuple<T,Z>>, PQComparison<T,Z>> q;
+		std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 		std::vector<std::vector<pred<T,Z>>> lists;
 		std::vector<rrpred<Z>> rrlist;
 };
@@ -78,17 +78,17 @@ void FA<T,Z>::findTopK(uint64_t k){
 	}
 
 	//Gather results and evaluate scores
-	std::vector<tuple<T,Z>> res;
+	std::vector<tuple_<T,Z>> res;
 	for(typename std::unordered_map<Z,uint8_t>::iterator it = tmap.begin(); it!=tmap.end(); ++it){
 		uint64_t tid = it->first;
 		T score = 0;
 		for(uint64_t j = 0; j < this->d; j++){ score+= this->cdata[tid * this->d + j]; }
 
 		if(this->q.size() < k){//insert if empty space in queue
-			this->q.push(tuple<T,Z>(tid,score));
+			this->q.push(tuple_<T,Z>(tid,score));
 		}else if(this->q.top().score<score){//delete smallest element if current score is bigger
 			this->q.pop();
-			this->q.push(tuple<T,Z>(tid,score));
+			this->q.push(tuple_<T,Z>(tid,score));
 		}
 
 		this->pred_count+=this->d;
