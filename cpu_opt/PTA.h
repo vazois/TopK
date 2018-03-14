@@ -9,13 +9,6 @@ struct pta_pair{
 	T score;
 };
 
-template<class T, class Z>
-struct pta_pt{
-	Z id;
-	Z pos;
-	T score;
-};
-
 template<class Z>
 struct pta_ps{
 	Z id;
@@ -25,33 +18,18 @@ struct pta_ps{
 template<class T,class Z>
 static bool cmp_pta_pair(const pta_pair<T,Z> &a, const pta_pair<T,Z> &b){ return a.score > b.score; };
 
-template<class T,class Z>
-static bool cmp_pta_pt_pos(const pta_pt<T,Z> &a, const pta_pt<T,Z> &b){ return a.pos < b.pos; };
-
 template<class Z>
 static bool cmp_pta_ps(const pta_ps<Z> &a, const pta_ps<Z> &b){ return a.pos < b.pos; };
-
-template<class T,class Z>
-static bool cmp_pta_pt_pos_score(const pta_pt<T,Z> &a, const pta_pt<T,Z> &b){
-	if(a.pos == b.pos){
-		return a.score > b.score;
-	}else{
-		return a.pos < b.pos;
-	}
-
-};
 
 template<class T, class Z>
 class PTA : public AA<T,Z>{
 	public:
 		PTA(uint64_t n, uint64_t d) : AA<T,Z>(n,d){
 			this->algo = "PTA";
-			this->pt = NULL;
 			this->tarray=NULL;
 		}
 
 		~PTA(){
-			if(this->pt != NULL) free(this->pt);
 			if(this->tarray != NULL){ free(this->tarray); }
 		}
 
@@ -60,7 +38,6 @@ class PTA : public AA<T,Z>{
 		void findTopKsimd(uint64_t k,uint8_t qq);
 		void findTopKthreads(uint64_t k,uint8_t qq);
 	private:
-		pta_pt<T,Z> *pt;
 		T *tarray;
 };
 
@@ -117,7 +94,7 @@ void PTA<T,Z>::init(){
 //	}
 
 	//Create Threshold array
-	this->tarray = (T*)malloc(sizeof(T)*(this->n >> 4) * this->d);
+	this->tarray = (T*)malloc(sizeof(T)*(this->n >> 4) * this->d);//Every 16
 	list = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
 	for(uint8_t m = 0; m < this->d; m++){
 		for(uint64_t i = 0; i < this->n; i++){
@@ -184,7 +161,7 @@ void PTA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 			if(STATS_EFF) this->pop_count+=16;
 		}
 		if(STATS_EFF) this->tuple_count+=16;
-		if((q.top().score) > threshold ){
+		if(q.size() >= k && ((q.top().score) > threshold) ){
 			//std::cout << "\nStopped at " << i << "= " << q.top().score << "," << threshold << std::endl;
 			break;
 		}
@@ -268,7 +245,7 @@ void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 		}
 
 		if(STATS_EFF) this->tuple_count+=16;
-		if((q.top().score) > threshold ){
+		if(q.size() >= k && ((q.top().score) > threshold) ){
 			//std::cout << "\nStopped at " << i << "= " << q.top().score << "," << threshold << std::endl;
 			break;
 		}

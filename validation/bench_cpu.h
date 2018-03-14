@@ -14,10 +14,25 @@
 #include "cpu_opt/TPAc.h"
 #include "cpu_opt/TPAr.h"
 #include "cpu_opt/PTA.h"
+#include "cpu_opt/PTAp.h"
 #include "cpu_opt/SLA.h"
+#include "cpu_opt/BTA.h"
 
-#define ITER 1
-#define IMP 1//0:Scalar 1:SIMD 2:Threads + SIMD
+#define ITER 10
+#define IMP 2//0:Scalar 1:SIMD 2:Threads + SIMD
+
+//[0,1,2,3][4,5,6,7][8,9,10,11][12,13,14,15]
+uint8_t qq[72] =
+	{
+		1,15,//2
+		1,5,9,13,//4
+		1,3,5,7,9,13,//6
+		1,3,5,7,9,11,13,15,//8
+		0,1,3,4,5,7,8,11,12,15,//10
+		0,1,3,4,5,7,9,10,11,12,13,14,//12
+		0,1,2,3,4,5,7,8,9,10,11,12,13,14,//14
+		0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15//16
+	};
 
 void bench_fa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
@@ -103,8 +118,29 @@ void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	tpar.init();
-	tpar.findTopK(k);
-	tpar.benchmark();
+	tpar.set_iter(ITER);
+	for(uint8_t i = 2; i <= f.items();i+=2){
+		//Warm up
+		if (IMP == 0){
+			tpar.findTopKscalar(k,i);
+		}else if(IMP == 1){
+			tpar.findTopKsimd(k,i);
+		}else if(IMP == 2){
+			tpar.findTopKthreads(k,i);
+		}
+		tpar.reset_clocks();
+		//Benchmark
+		for(uint8_t m = 0; m < ITER;m++){
+			if (IMP == 0){
+				tpar.findTopKscalar(k,i);
+			}else if(IMP == 1){
+				tpar.findTopKsimd(k,i);
+			}else if(IMP == 2){
+				tpar.findTopKthreads(k,i);
+			}
+		}
+		tpar.benchmark();
+	}
 }
 
 void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
@@ -189,6 +225,56 @@ void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	sla.init();
 	sla.findTopK(k,d);
 	sla.benchmark();
+}
+
+void bench_bta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	BTA<float,uint32_t> bta(f.rows(),f.items());
+	//f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" <<std::endl;
+	f.load(bta.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	bta.init();
+	bta.findTopKscalar(k,2);
+	bta.benchmark();
+}
+
+
+void bench_ptap(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	PTAp<float,uint32_t> ptap(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" <<std::endl;
+	f.load(ptap.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	ptap.init();
+	ptap.set_iter(ITER);
+	for(uint8_t i = 2; i <= f.items();i+=2){
+		//Warm up
+		if (IMP == 0){
+			ptap.findTopK(k,i);
+		}else if(IMP == 1){
+			ptap.findTopK(k,i);
+		}else if(IMP == 2){
+			ptap.findTopK(k,i);
+		}
+		ptap.reset_clocks();
+		//Benchmark
+		for(uint8_t m = 0; m < ITER;m++){
+			if (IMP == 0){
+				ptap.findTopK(k,i);
+			}else if(IMP == 1){
+				ptap.findTopK(k,i);
+			}else if(IMP == 2){
+				ptap.findTopK(k,i);
+			}
+		}
+		ptap.benchmark();
+	}
 }
 
 #endif

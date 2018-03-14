@@ -230,7 +230,7 @@ uint64_t SLA<T,Z>::partition_table(uint64_t first, uint64_t last, std::unordered
 	}
 	return first;
 }
-mak
+
 template<class T, class Z>
 void SLA<T,Z>::init(){
 	///////////////////////////////////////
