@@ -2,8 +2,8 @@
 
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
-START_N=$((1*1024*1024))
-END_N=$((1*1024*1024))
+START_N=$((16*1024*1024))
+END_N=$((16*1024*1024))
 START_D=16
 END_D=16
 
@@ -23,9 +23,6 @@ else
   make gpu_cc
 fi
 
-#make reorder_cc
-
-
 for (( n=$START_N; n<=$END_N; n*=2 ))
 do
 	for (( d=$START_D; d<=$END_D; d+=2 ))
@@ -38,11 +35,6 @@ do
     		echo "Creating file <"$fname">"
 			cd data/; python skydata.py $n $d $distr $script; cd ..
 			#cd data/; time python rand.py $n $d $distr; cd ..
-		fi
-		if [ ! -f data/$fname2 ]
-		then
-			echo "Reorder data <"$fname2">"
-			#./reorder_run -f=data/$fname -n=$n -d=$d
 		fi
 		
 		if [ $device -eq 0 ]

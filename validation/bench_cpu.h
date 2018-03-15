@@ -19,7 +19,7 @@
 #include "cpu_opt/BTA.h"
 
 #define ITER 10
-#define IMP 2//0:Scalar 1:SIMD 2:Threads + SIMD
+#define IMP 1//0:Scalar 1:SIMD 2:Threads + SIMD
 
 //[0,1,2,3][4,5,6,7][8,9,10,11][12,13,14,15]
 uint8_t qq[72] =
@@ -195,8 +195,6 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 			pta.findTopKscalar(k,i);
 		}else if(IMP == 1){
 			pta.findTopKsimd(k,i);
-		}else if(IMP == 2){
-			pta.findTopKthreads(k,i);
 		}
 		pta.reset_clocks();
 		//Benchmark
@@ -205,8 +203,6 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 				pta.findTopKscalar(k,i);
 			}else if(IMP == 1){
 				pta.findTopKsimd(k,i);
-			}else if(IMP == 2){
-				pta.findTopKthreads(k,i);
 			}
 		}
 		pta.benchmark();
@@ -230,17 +226,36 @@ void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 void bench_bta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	BTA<float,uint32_t> bta(f.rows(),f.items());
-	//f.set_transpose(true);
+	f.set_transpose(true);
 
 	std::cout << "Loading data from file !!!" <<std::endl;
 	f.load(bta.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	//bta.init();
+	//bta.findTopKthreads(k,2);
 	bta.init();
-	bta.findTopKscalar(k,2);
-	bta.benchmark();
+	//return;
+	bta.set_iter(ITER);
+	for(uint8_t i = 2; i <= f.items();i+=2){
+		//Warm up
+		if (IMP == 0){
+			bta.findTopKscalar(k,i);
+		}else if(IMP == 1){
+			bta.findTopKsimd(k,i);
+		}
+		bta.reset_clocks();
+		//Benchmark
+		for(uint8_t m = 0; m < ITER;m++){
+			if (IMP == 0){
+				bta.findTopKscalar(k,i);
+			}else if(IMP == 1){
+				bta.findTopKsimd(k,i);
+			}
+		}
+		bta.benchmark();
+	}
 }
-
 
 void bench_ptap(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);

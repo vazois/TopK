@@ -36,7 +36,6 @@ class PTA : public AA<T,Z>{
 		void init();
 		void findTopKscalar(uint64_t k,uint8_t qq);
 		void findTopKsimd(uint64_t k,uint8_t qq);
-		void findTopKthreads(uint64_t k,uint8_t qq);
 	private:
 		T *tarray;
 };
@@ -256,109 +255,6 @@ void PTA<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
-	this->threshold = threshold;
-}
-
-template<class T, class Z>
-void PTA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
-	std::cout << this->algo << " find topKthreads (" << (int)qq << "D) ...";
-	if(STATS_EFF) this->tuple_count = 0;
-	if(STATS_EFF) this->pop_count=0;
-
-	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q[THREADS];
-	this->t.start();
-	omp_set_num_threads(THREADS);
-	Z tuple_count[THREADS];
-	for(uint32_t m = 0; m < THREADS; m++) tuple_count[m] = 0;
-#pragma omp parallel
-{
-	uint32_t thread_id = omp_get_thread_num();
-	uint64_t start = ((uint64_t)thread_id)*(this->n)/THREADS;
-	uint64_t end = ((uint64_t)(thread_id+1))*(this->n)/THREADS;
-	uint64_t ii = ((uint64_t)thread_id)*(this->n >> 4)/THREADS;
-	float score[16] __attribute__((aligned(32)));
-	T tp_count = 0;
-	__builtin_prefetch(score,1,3);
-	for(uint64_t i = start; i < end; i+=(16)){
-		__m256 score00 = _mm256_setzero_ps();
-		__m256 score01 = _mm256_setzero_ps();
-		T threshold = 0;
-		for(uint8_t m = 0; m < qq; m++){
-			uint64_t offset00 = m * this->n + i;
-			uint64_t offset01 = m * this->n + i + 8;
-			__m256 load00 = _mm256_load_ps(&this->cdata[offset00]);
-			__m256 load01 = _mm256_load_ps(&this->cdata[offset01]);
-			score00 = _mm256_add_ps(score00,load00);
-			score01 = _mm256_add_ps(score01,load01);
-
-			uint64_t toffset0 = m * (this->n >> 4) + ii;
-			threshold += this->tarray[toffset0];
-		}
-		_mm256_store_ps(&score[0],score00);
-		_mm256_store_ps(&score[8],score01);
-		if(q[thread_id].size() < k){//insert if empty space in queue
-			q[thread_id].push(tuple_<T,Z>(i,score[0]));
-			q[thread_id].push(tuple_<T,Z>(i+1,score[1]));
-			q[thread_id].push(tuple_<T,Z>(i+2,score[2]));
-			q[thread_id].push(tuple_<T,Z>(i+3,score[3]));
-			q[thread_id].push(tuple_<T,Z>(i+4,score[4]));
-			q[thread_id].push(tuple_<T,Z>(i+5,score[5]));
-			q[thread_id].push(tuple_<T,Z>(i+6,score[6]));
-			q[thread_id].push(tuple_<T,Z>(i+7,score[7]));
-			q[thread_id].push(tuple_<T,Z>(i+8,score[8]));
-			q[thread_id].push(tuple_<T,Z>(i+9,score[9]));
-			q[thread_id].push(tuple_<T,Z>(i+10,score[10]));
-			q[thread_id].push(tuple_<T,Z>(i+11,score[11]));
-			q[thread_id].push(tuple_<T,Z>(i+12,score[12]));
-			q[thread_id].push(tuple_<T,Z>(i+13,score[13]));
-			q[thread_id].push(tuple_<T,Z>(i+14,score[14]));
-			q[thread_id].push(tuple_<T,Z>(i+15,score[15]));
-		}else{//delete smallest element if current score is bigger
-			if(q[thread_id].top().score < score[0]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i,score[0])); }
-			if(q[thread_id].top().score < score[1]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+1,score[1])); }
-			if(q[thread_id].top().score < score[2]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+2,score[2])); }
-			if(q[thread_id].top().score < score[3]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+3,score[3])); }
-			if(q[thread_id].top().score < score[4]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+4,score[4])); }
-			if(q[thread_id].top().score < score[5]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+5,score[5])); }
-			if(q[thread_id].top().score < score[6]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+6,score[6])); }
-			if(q[thread_id].top().score < score[7]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+7,score[7])); }
-			if(q[thread_id].top().score < score[8]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+8,score[8])); }
-			if(q[thread_id].top().score < score[9]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+9,score[9])); }
-			if(q[thread_id].top().score < score[10]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+10,score[10])); }
-			if(q[thread_id].top().score < score[11]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+11,score[11])); }
-			if(q[thread_id].top().score < score[12]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+12,score[12])); }
-			if(q[thread_id].top().score < score[13]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+13,score[13])); }
-			if(q[thread_id].top().score < score[14]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+14,score[14])); }
-			if(q[thread_id].top().score < score[15]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+15,score[15])); }
-		}
-		if(STATS_EFF) tp_count+=16;
-		if((q[thread_id].top().score) > threshold ){
-			//std::cout << "\nStopped at " << i << "= " << q.top().score << "," << threshold << std::endl;
-			break;
-		}
-	}
-	if(STATS_EFF) tuple_count[thread_id]=tp_count;
-}
-	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> _q;
-	for(uint32_t m = 0 ; m < THREADS; m++){
-		while(!q[m].empty()){
-			if(_q.size() < k) _q.push(q[m].top());
-			else if( _q.top().score < q[m].top().score ){
-				_q.pop();
-				_q.push(q[m].top());
-			}
-			q[m].pop();
-		}
-	}
-	this->tt_processing += this->t.lap();
-
-	if(STATS_EFF){
-		for(uint32_t m = 1; m < THREADS; m++) tuple_count[0] += tuple_count[m];
-		this->tuple_count = tuple_count[0];
-	}
-	T threshold = _q.top().score;
-	std::cout << std::fixed << std::setprecision(4);
-	std::cout << " threshold=[" << threshold <<"] (" << q[0].size() << ")" << std::endl;
 	this->threshold = threshold;
 }
 
