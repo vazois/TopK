@@ -34,6 +34,7 @@ class TA : public AA<T,Z>{
 
 		void init();
 		void findTopK(uint64_t k,uint8_t qq);
+		void findTopKthreads(uint64_t k,uint8_t qq);
 
 		std::vector<std::vector<pred<T,Z>>> lists;
 		pred<T,Z> **alists;
@@ -109,6 +110,50 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq){
 	}
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
+}
+
+template<class T,class Z>
+void TA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
+	std::cout << this->algo << " find topKsimd (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+	if(this->res.size() > 0) this->res.clear();
+
+	uint32_t threads = THREADS;
+	uint32_t threads_shf = log2((float)threads);
+//	for(uint8_t m = 0; m <threads; m++){
+//		uint32_t gid = m % qq;//GROUP
+//		uint32_t lid = m / qq;//LOCAL
+//		uint32_t tig = (gid+1)*((THREADS-1)/qq + 1);
+//		tig = tig > THREADS ? tig - THREADS : tig - (gid)*(THREADS/qq);
+//		printf("(%d,%d,%d,%d)\n",m, gid,lid,tig);
+//	}
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q[threads];
+	omp_set_num_threads(threads);
+	this->t.start();
+#pragma omp_parallel
+{
+	uint32_t thread_id = omp_get_thread_num();
+	uint32_t gid = thread_id % qq;//attribute list assignment
+	uint32_t lid = thread_id / qq;//tuple range assignment
+	uint32_t tig = (gid+1)*((THREADS-1)/qq + 1);
+	tig = tig > THREADS ? tig - THREADS : tig - (gid)*(THREADS/qq);
+	for(uint64_t i = 0; i < this->n; i++){
+		Z id = this->lists[gid][i].tid;
+		//if( (id % threads)  == lid ){
+		if((((uint64_t) id * (uint64_t) threads) >> threads_shf) == lid){
+
+
+
+		}
+	}
+	this->tt_processing += this->t.lap();
+}
+
+	T threshold = 1313;
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << " threshold=[" << threshold <<"] (" << 0 << ")" << std::endl;
 	this->threshold = threshold;
 }
 

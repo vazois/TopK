@@ -34,47 +34,6 @@ uint8_t qq[72] =
 		0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15//16
 	};
 
-void bench_fa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,false,n,d);
-	FA<float,uint32_t> fa(f.rows(),f.items());
-
-	std::cout << "Loading data from file !!!" << std::endl;
-	f.load(fa.get_cdata());
-
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	fa.init(); fa.findTopK(k);
-	fa.benchmark();
-}
-
-void bench_msa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,false,n,d);
-	MSA<float,uint32_t> msa(f.rows(),f.items());
-	f.set_transpose(true);
-
-	std::cout << "Loading data from file !!!" << std::endl;
-	f.load(msa.get_cdata());
-
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	msa.init();
-	for(uint8_t m = 0; m < ITER;m++) msa.findTopK(k);
-	msa.benchmark();
-}
-
-void bench_lsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,false,n,d);
-	LSA<float,uint32_t> lsa(f.rows(),f.items());
-	f.set_transpose(true);
-
-	std::cout << "Loading data from file !!!" << std::endl;
-	f.load(lsa.get_cdata());
-
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	lsa.init();
-	//for(uint8_t m = 0; m < ITER;m++) lsa.findTopK(k);
-	for(uint8_t m = 0; m < ITER;m++) lsa.findTopKscalar(k);
-	lsa.benchmark();
-}
-
 void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	TA<float,uint32_t> ta(f.rows(),f.items());
@@ -92,7 +51,7 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 		}else if(IMP == 1){
 			ta.findTopK(k,i);
 		}else if(IMP == 2){
-			ta.findTopK(k,i);
+			ta.findTopKthreads(k,i);
 		}
 		ta.reset_clocks();
 		//Benchmark
@@ -102,7 +61,7 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 			}else if(IMP == 1){
 				ta.findTopK(k,i);
 			}else if(IMP == 2){
-				ta.findTopK(k,i);
+				ta.findTopKthreads(k,i);
 			}
 		}
 		ta.benchmark();
@@ -209,20 +168,6 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	}
 }
 
-void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,false,n,d);
-	SLA<float,uint32_t> sla(f.rows(),f.items());
-	f.set_transpose(true);
-
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(sla.get_cdata());
-
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	sla.init();
-	sla.findTopK(k,d);
-	sla.benchmark();
-}
-
 void bench_bta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	BTA<float,uint32_t> bta(f.rows(),f.items());
@@ -243,6 +188,8 @@ void bench_bta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 			bta.findTopKscalar(k,i);
 		}else if(IMP == 1){
 			bta.findTopKsimd(k,i);
+		}else if(IMP == 2){
+			bta.findTopKthreads(k,i);
 		}
 		bta.reset_clocks();
 		//Benchmark
@@ -251,45 +198,67 @@ void bench_bta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 				bta.findTopKscalar(k,i);
 			}else if(IMP == 1){
 				bta.findTopKsimd(k,i);
+			}else if(IMP == 2){
+				bta.findTopKthreads(k,i);
 			}
 		}
 		bta.benchmark();
 	}
 }
 
-void bench_ptap(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+void bench_fa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	PTAp<float,uint32_t> ptap(f.rows(),f.items());
+	FA<float,uint32_t> fa(f.rows(),f.items());
+
+	std::cout << "Loading data from file !!!" << std::endl;
+	f.load(fa.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	fa.init(); fa.findTopK(k);
+	fa.benchmark();
+}
+
+void bench_msa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	MSA<float,uint32_t> msa(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" << std::endl;
+	f.load(msa.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	msa.init();
+	for(uint8_t m = 0; m < ITER;m++) msa.findTopK(k);
+	msa.benchmark();
+}
+
+void bench_lsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	LSA<float,uint32_t> lsa(f.rows(),f.items());
+	f.set_transpose(true);
+
+	std::cout << "Loading data from file !!!" << std::endl;
+	f.load(lsa.get_cdata());
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	lsa.init();
+	//for(uint8_t m = 0; m < ITER;m++) lsa.findTopK(k);
+	for(uint8_t m = 0; m < ITER;m++) lsa.findTopKscalar(k);
+	lsa.benchmark();
+}
+
+void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	SLA<float,uint32_t> sla(f.rows(),f.items());
 	f.set_transpose(true);
 
 	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(ptap.get_cdata());
+	f.load(sla.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	ptap.init();
-	ptap.set_iter(ITER);
-	for(uint8_t i = 2; i <= f.items();i+=2){
-		//Warm up
-		if (IMP == 0){
-			ptap.findTopK(k,i);
-		}else if(IMP == 1){
-			ptap.findTopK(k,i);
-		}else if(IMP == 2){
-			ptap.findTopK(k,i);
-		}
-		ptap.reset_clocks();
-		//Benchmark
-		for(uint8_t m = 0; m < ITER;m++){
-			if (IMP == 0){
-				ptap.findTopK(k,i);
-			}else if(IMP == 1){
-				ptap.findTopK(k,i);
-			}else if(IMP == 2){
-				ptap.findTopK(k,i);
-			}
-		}
-		ptap.benchmark();
-	}
+	sla.init();
+	sla.findTopK(k,d);
+	sla.benchmark();
 }
 
 #endif
