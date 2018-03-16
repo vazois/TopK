@@ -228,10 +228,7 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
 			T *tarray = parts[i].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[m];
 
-			if(q.top().score >= threshold){
-				//b = parts[i].block_num;
-				break;
-			}
+			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 	}
 	this->tt_processing += this->t.lap();
@@ -314,7 +311,7 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[m];
-			if(q.top().score >= threshold) break;
+			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 	}
 	this->tt_processing += this->t.lap();

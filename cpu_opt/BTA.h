@@ -230,11 +230,7 @@ void BTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[m];
-
-			if(q.top().score >= threshold){
-				//b = parts[i].block_num;
-				break;
-			}
+			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 	}
 	this->tt_processing += this->t.lap();
@@ -316,7 +312,7 @@ void BTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[m];
-			if(q.top().score >= threshold) break;
+			if(q.size() >= k && q.top().score >= threshold) break;
 		}
 	}
 	this->tt_processing += this->t.lap();
@@ -406,7 +402,7 @@ void BTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[m];
-			if(q[thread_id].top().score >= threshold) break;
+			if(q[thread_id].size() >= k && q[thread_id].top().score >= threshold) break;
 //			for(uint32_t p = 0; p <= thread_id; p++){
 //				if(q[p].top().score >= threshold){
 //					b=parts[i].block_num;

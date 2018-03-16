@@ -58,7 +58,7 @@ int main(int argc, char **argv){
 	//bench_sla(ap.getString("-f"),n,d,K);
 	//bench_ptap(ap.getString("-f"),n,d,K);
 	//test_dt();
-	//bench_bta(ap.getString("-f"),n,d,K);
+	bench_bta(ap.getString("-f"),n,d,K);
 
 	return 0;
 }

@@ -19,7 +19,7 @@ def read_file(fname):
     print "TopK -",fname,str(n),str(d)
     
     data = [[0 for i in range(d)] for j in range(n)]
-    print "Loading Lines!!!"
+    print "Loading Tuples!!!"
     fp = open(fname,'r')
     lines = fp.readlines()
     i = 0
@@ -66,8 +66,54 @@ def partitioned_data_2D(db):
     print "1:",len(data1)
     return [[len(data0),d,data0],[len(data1),d,data1]]
 
-#Full Aggregation
-def FA(db,qq,k):
+def partitioned_data(db):
+    n = db[0]
+    d = db[1]
+    data = db[2]
+    
+    part_num = 2**(d-1)
+    data_parts=[]
+    for p in range(part_num):
+        data_parts.append(list())
+  
+    if d==2:
+        for i in range(n):
+            if data[i][1] >= data[i][0]:
+                data_parts[0].append(data[i])
+            else:
+                data_parts[1].append(data[i])
+    elif d == 3:
+        for i in range(n):
+            if data[i][2] >= data[i][1] and data[i][1] >= data[i][0]:
+                data_parts[0].append(data[i])
+            elif data[i][2] >= data[i][1] and data[i][1] < data[i][0]:
+                data_parts[1].append(data[i])
+            elif data[i][2] < data[i][1] and data[i][1] >= data[i][0]:
+                data_parts[2].append(data[i])
+            else:
+                data_parts[3].append(data[i])          
+    elif d == 4:
+        for i in range(n):
+            if data[i][3] >= data[i][2] and data[i][2] >= data[i][1] and data[i][1] >= data[i][0]:
+                data_parts[0].append(data[i])
+            elif data[i][3] >= data[i][2] and data[i][2] >= data[i][1] and data[i][1] < data[i][0]:
+                data_parts[1].append(data[i])
+            elif data[i][3] >= data[i][2] and data[i][2] < data[i][1] and data[i][1] >= data[i][0]:
+                data_parts[2].append(data[i])
+            elif data[i][3] >= data[i][2] and data[i][2] < data[i][1] and data[i][1] < data[i][0]:
+                data_parts[3].append(data[i])
+            elif data[i][3] < data[i][2] and data[i][2] >= data[i][1] and data[i][1] >= data[i][0]:
+                data_parts[4].append(data[i])
+            elif data[i][3] < data[i][2] and data[i][2] >= data[i][1] and data[i][1] < data[i][0]:
+                data_parts[5].append(data[i])
+            elif data[i][3] < data[i][2] and data[i][2] < data[i][1] and data[i][1] >= data[i][0]:
+                data_parts[6].append(data[i])
+            else:
+                data_parts[7].append(data[i])
+
+    return [[len(data_parts[p]),d,data_parts[p]] for p in range(part_num) ]
+
+def FA(db,qq,k):#Full Aggregation
     n = db[0]
     d = db[1]
     data = db[2]
@@ -82,8 +128,7 @@ def FA(db,qq,k):
     #print "Threshold: ",min(nl)
     return [min(nl),n,nl]
 
-#Threshold aggregation#
-def TA(db,qq,k):
+def TA(db,qq,k):#Threshold aggregation#
     n = db[0]
     d = db[1]
     data = db[2]
@@ -113,7 +158,7 @@ def TA(db,qq,k):
                 tset.add(t.id)
                 
         
-        if((qqs[0][1]) >=  threshold):
+        if((qqs[0][1]) >=  threshold and len(qqs) >= k):
             stop = True
             break
     
@@ -121,9 +166,7 @@ def TA(db,qq,k):
 #     print "Objects fetched: ", objects_fetched
     return [qqs[0],objects_fetched,qqs]
 
-def PTA(db,qq,k):
-    parts=partitioned_data_2D(db)
-
+def PTA_2D(parts,qq,k):#Partitioned Aggregation#
 #     nl0=FA(parts[0],qq,k)
 #     nl1=FA(parts[1],qq,k)
 #     nl=nlargest(k,nl0[2]+nl1[2])
@@ -143,7 +186,30 @@ def PTA(db,qq,k):
     qqs = info0[2]+info1[2]
     qqs = sorted(qqs, key=lambda qq: qq[1],reverse=False)
     return [qqs[k],info0[1]+info1[1],tt]
+
+def PTA(db,qq,k):
+    parts = partitioned_data(db)
+    
+    objects_fetched=0
+    qqs=[]
+    tt = 0
+    #print len(parts[0]),len(parts[1])
+    #return
+    for part in parts:
+        if part[0] > 0:
+            db_part = create_lists(part)
         
+            start= time.time()
+            info=TA(db_part,qq,k)
+            tt+=time.time() - start
+        
+            objects_fetched+=info[1]
+            qqs = qqs + info[2]
+    
+    qqs = sorted(qqs, key=lambda qq: qq[1],reverse=True)
+    
+    return [qqs[k],objects_fetched,tt]
+
 if __name__ == "__main__":
     if len(sys.argv) <2:
         print "Execute:",sys.argv[0],"<file>"
@@ -162,6 +228,10 @@ if __name__ == "__main__":
     info=TA(db0,2,k)
     tt = time.time() - tt 
     print "<TA>: [ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", tt ," ]"
+    
+#     print "Find TopK PTA_2D!!!"
+#     info=PTA_2D(partitioned_data_2D(db),2,k)
+#     print "<PTA_2D>: [ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]"
     
     print "Find TopK PTA!!!"
     info=PTA(db,2,k)
