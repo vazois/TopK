@@ -52,13 +52,13 @@ int main(int argc, char **argv){
 //	test_dt();
 
 	bench_ta(ap.getString("-f"),n,d,K);
-	bench_tpac(ap.getString("-f"),n,d,K);
+	//bench_tpac(ap.getString("-f"),n,d,K);
 	//bench_tpar(ap.getString("-f"),n,d,K);
 	//bench_pta(ap.getString("-f"),n,d,K);
 	//bench_sla(ap.getString("-f"),n,d,K);
 	//bench_ptap(ap.getString("-f"),n,d,K);
 	//test_dt();
-	bench_bta(ap.getString("-f"),n,d,K);
+	//bench_bta(ap.getString("-f"),n,d,K);
 
 	return 0;
 }
