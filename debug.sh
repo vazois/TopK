@@ -4,7 +4,7 @@
 
 START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
-START_D=8
+START_D=2
 END_D=8
 
 distr=a
@@ -25,7 +25,7 @@ fi
 
 for (( n=$START_N; n<=$END_N; n*=2 ))
 do
-	for (( d=$START_D; d<=$END_D; d+=2 ))
+	for (( d=$START_D; d<=$END_D; d+=1 ))
 	do
 		fname='d_'$n'_'$d'_'$distr
 		fname2='d_'$n'_'$d'_'$distr'_o'

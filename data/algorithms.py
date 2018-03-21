@@ -3,11 +3,12 @@ from heapq import nlargest
 from itertools import combinations
 
 from partition_data import tuple
-from partition_data import bin_tree
+from partition_data import random_partitioned_data
 from partition_data import bin_tree_partitioned_data
 from partition_data import bin_tree_partitioned_data2
-from partition_data import slope_tree_partitioned_data
-from partition_data import spherical_partitioned_data
+from partition_data import angle_partitioned_data
+from partition_data import angle_partitioned_data2
+from partition_data import angle_partitioned_data3
 
 def create_lists(db):
     n = db[0]
@@ -66,25 +67,47 @@ def TA(db,qq,k):#Threshold aggregation#
                     score+=data[t.id][a]
                            
                 if len(qqs) < k:
-                    qqs.append((t.id,score))
-                elif qqs[0][1] < score:
-                    qqs[0] = (t.id,score)
-                qqs = sorted(qqs, key=lambda qq: qq[1])
-                tset.add(t.id)
+                    qqs.append(tuple(t.id,score))
+                elif qqs[0].score < score:
+                    qqs[0] = tuple(t.id,score)
+                qqs = sorted(qqs, key=lambda qq: qq.score, reverse = False)
+
+#                 if len(qqs) < k:
+#                     qqs.append(tuple(t.id,score))
+#                 elif qqs[0].score > score:
+#                     qqs[0] = tuple(t.id,score)
+#                 qqs = sorted(qqs, key=lambda qq: qq.score, reverse = True)                
+#                 
+#                 tset.add(t.id)
                 
         
-        if((qqs[0][1]) >=  threshold and len(qqs) >= k):
+        if((qqs[0].score) >=  threshold and len(qqs) >= k):
             stop = True
             break
+
+#         if((qqs[0].score) <=  threshold and len(qqs) >= k):
+#             stop = True
+#             break
     
 #     print "Threshold: ",qqs[0][1]
 #     print "Objects fetched: ", objects_fetched
     return [qqs[0],objects_fetched,qqs]
 
-def BTA(db,q,k):
-    parts = bin_tree_partitioned_data2(db)
-    #parts = spherical_partitioned_data(db,16)
-    #parts = slope_tree_partitioned_data(db)
+def BTA(db,q,k,part_type):
+    parts=[]
+    if part_type==0:
+        print "Random Partitioned!!!"
+        parts = random_partitioned_data(db,16)
+    elif part_type==1:
+        print "Bin Tree Partitioned!!!"
+        parts = bin_tree_partitioned_data(db)
+    elif part_type==2:
+        print "Angle Tree Partitioned!!!"
+        parts = angle_partitioned_data(db,16)
+    elif part_type==3:
+        print "Angle Tree Partitioned 2!!!"
+        parts = angle_partitioned_data2(db,32)
+    #parts = angle_partitioned_data3(db,4)
     
     db_parts=[]
     for part in parts:
@@ -93,7 +116,8 @@ def BTA(db,q,k):
          
     for qq in q:
         cmb = [m for m in combinations([i for i in range(db[1])], qq)]
-        print "("+str(qq)+"D)"
+#         print "("+str(qq)+"D)"
+        avg_objects_fetched = 0
         for c in cmb:
             objects_fetched=0
             qqs=[]
@@ -105,12 +129,14 @@ def BTA(db,q,k):
                     start= time.time()
                     info=TA(db_part,c,k)
                     tt+=time.time() - start
-                    print "[ "+str(i)+" ] Fetched: ", info[1]
+                    #print "[ "+str(i)+" ] Fetched: ", info[1],"out of", db_part[0],"["+str(float(info[1])/db_part[0])+"]"
                     objects_fetched+=info[1]
                     qqs = qqs + info[2]
                 i+=1
         
-            qqs = sorted(qqs, key=lambda qq: qq[1],reverse=True)
+            qqs = sorted(qqs, key=lambda qq: qq.score,reverse=True)
+            avg_objects_fetched+=objects_fetched
             info=[qqs[k],objects_fetched,tt]
-            print "<BTA>: [ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]"
-    
+            print "<BTA>: ("+str(qq)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]"
+        print "<BTA>: AVG ("+str(qq)+"D)", int(round(float(avg_objects_fetched)/len(cmb)))
+        
