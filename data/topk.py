@@ -29,7 +29,7 @@ if __name__ == "__main__":
 #     for q in qq:
 #         info=FA(db,q,k)
 #         print "<FA>: ("+str(q)+"D) [ threshold =",info[0],"] , [ accesses =",info[1],"]"
-    
+#     
 #     db0=create_lists(db)
 #     for q in qq:
 #         cmb = [m for m in combinations([i for i in range(db[1])], q)]
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     
     #info=BTA(db,qq,k,0)
     #info=BTA(db,qq,k,1)
-    info=BTA(db,qq,k,2)
-    #info=BTA(db,qq,k,3)
+    #info=BTA(db,qq,k,2)
+    info=BTA(db,qq,k,3)
 
     

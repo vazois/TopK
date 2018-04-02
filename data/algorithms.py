@@ -48,7 +48,6 @@ def TA(db,qq,k):#Threshold aggregation#
     data = db[2]
     lists = db[3]
 
-    
     objects_fetched = 0
     stop = False
     tset = set()
@@ -71,26 +70,13 @@ def TA(db,qq,k):#Threshold aggregation#
                 elif qqs[0].score < score:
                     qqs[0] = tuple(t.id,score)
                 qqs = sorted(qqs, key=lambda qq: qq.score, reverse = False)
-
-#                 if len(qqs) < k:
-#                     qqs.append(tuple(t.id,score))
-#                 elif qqs[0].score > score:
-#                     qqs[0] = tuple(t.id,score)
-#                 qqs = sorted(qqs, key=lambda qq: qq.score, reverse = True)                
-#                 
-#                 tset.add(t.id)
                 
+                tset.add(t.id)
         
         if((qqs[0].score) >=  threshold and len(qqs) >= k):
             stop = True
             break
-
-#         if((qqs[0].score) <=  threshold and len(qqs) >= k):
-#             stop = True
-#             break
-    
-#     print "Threshold: ",qqs[0][1]
-#     print "Objects fetched: ", objects_fetched
+        
     return [qqs[0],objects_fetched,qqs]
 
 def BTA(db,q,k,part_type):
@@ -106,7 +92,7 @@ def BTA(db,q,k,part_type):
         parts = angle_partitioned_data(db,16)
     elif part_type==3:
         print "Angle Tree Partitioned 2!!!"
-        parts = angle_partitioned_data2(db,32)
+        parts = angle_partitioned_data2(db,16)
     #parts = angle_partitioned_data3(db,4)
     
     db_parts=[]
@@ -116,7 +102,6 @@ def BTA(db,q,k,part_type):
          
     for qq in q:
         cmb = [m for m in combinations([i for i in range(db[1])], qq)]
-#         print "("+str(qq)+"D)"
         avg_objects_fetched = 0
         for c in cmb:
             objects_fetched=0
@@ -135,8 +120,9 @@ def BTA(db,q,k,part_type):
                 i+=1
         
             qqs = sorted(qqs, key=lambda qq: qq.score,reverse=True)
+            
             avg_objects_fetched+=objects_fetched
-            info=[qqs[k],objects_fetched,tt]
+            info=[qqs[k-1],objects_fetched,tt]
             print "<BTA>: ("+str(qq)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]"
         print "<BTA>: AVG ("+str(qq)+"D)", int(round(float(avg_objects_fetched)/len(cmb)))
         

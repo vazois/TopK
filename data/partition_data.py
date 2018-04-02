@@ -32,7 +32,8 @@ class angle_part:
         self.part_num = (self.splits);
         
     def assign_to_part(self,stuple):
-#         tuple = [(1 - a) for a in stuple]
+        tuple = [(a-1) for a in stuple]
+        #tuple = stuple
         nom = math.fabs(sum([tuple[j] for j in range(self.d-1)]))
         denom = math.sqrt(self.d-1) * math.sqrt(sum([tuple[j]*tuple[j] for j in range(self.d)]))
         angle = math.degrees(math.asin(nom/denom))
