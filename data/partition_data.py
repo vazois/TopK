@@ -1,6 +1,9 @@
 from itertools import combinations
 from itertools import permutations
 
+from numpy import median
+import numpy as np
+
 import math
 
 class tuple:
@@ -29,21 +32,41 @@ class angle_part:
         self.splits = splits
         self.split = 90.0/self.splits
         self.bins = [(i+1)*self.split for i in range(self.splits)]
-        self.part_num = (self.splits);
+        self.part_num = (self.splits**(self.d-1))
+        self.shf = int(math.log(self.splits,2))
         
     def assign_to_part(self,stuple):
-        tuple = [(a-1) for a in stuple]
+        tuple = [(a-2) for a in stuple]
         #tuple = stuple
-        nom = math.fabs(sum([tuple[j] for j in range(self.d-1)]))
-        denom = math.sqrt(self.d-1) * math.sqrt(sum([tuple[j]*tuple[j] for j in range(self.d)]))
-        angle = math.degrees(math.asin(nom/denom))
+#         nom = math.fabs(sum([tuple[j] for j in range(self.d-1)]))
+#         denom = math.sqrt(self.d-1) * math.sqrt(sum([tuple[j]*tuple[j] for j in range(self.d)]))
+#         angle = math.degrees(math.asin(nom/denom))
+#         
+#         for id in range(len(self.bins)):
+#             if angle <= self.bins[id]:
+#                 return id
+#         
+#         return self.part_num-1
+        polar = [ ]
+        sum = 0
+        #print tuple,stuple
+        for i in range(self.d-1,0,-1):
+            sum+=tuple[i]*tuple[i]
+            tanf= math.sqrt(float(sum))/tuple[i-1]
+            polar.append(math.fabs(math.degrees(math.atan(tanf))))
         
-        #print nom,denom,angle
-        
-        for id in range(len(self.bins)):
-            if angle <= self.bins[id]:
-                return id
-        return self.part_num-1
+        id = 0
+        for i in range(len(polar)):
+            b = -1
+            for bin in self.bins:
+                if polar[i] <= bin:
+                    break
+                b+=1
+            id = id | (b << (i*self.shf))
+        #print id,self.part_num
+        #print polar, stuple, self.bins
+        return id
+     
     def __repr__(self):
         return repr((self.d,self.splits,self.split,self.bins,self.part_num))
 
@@ -51,70 +74,55 @@ class angle_part2:
     def __init__(self,d,splits):
         self.d = d
         self.splits = splits
-        self.split = (math.pi/2)/self.splits
-        self.bins = [(i+1)*self.split for i in range(self.splits)]
-        self.part_num = (self.splits)**(self.d-1)
-        
-        if self.splits == 2:
-            self.shf = 1
-        elif self.splits == 4:
-            self.shf = 2
-        elif self.splits == 8:
-            self.shf = 3
-        elif self.splits == 16:
-            self.shf = 4
-        elif self.splits == 32:
-            self.shf = 5
-        elif self.splits == 64:
-            self.shf = 6
+        self.bins = []
+        self.part_num = (self.splits**(self.d-1))
+        self.shf = int(math.log(self.splits,2))
             
-    def hyperspherical_(self,tuple):
-        stuple = [0 for j in range(self.d-1)]
-        nom=0
-        for j in range(self.d-1,1,-1):
-            xn = tuple[j]
-            xn_1 = tuple[j-1]
-            nom+=xn*xn
-            stuple[j-1] = math.sqrt(nom)/xn_1
-        return stuple
+    def polar_(self,tuple):
+        polar = [ ]
+        sum = 0
+        #print tuple,stuple
+        for i in range(self.d-1,0,-1):
+            sum+=tuple[i]*tuple[i]
+            tanf= math.sqrt(float(sum))/tuple[i-1]
+            polar.append(math.fabs(math.degrees(math.atan(tanf))))
+        
+        return polar
     
+    def find_splits(self,pdata):
+        split = float(len(pdata[0]))/self.splits
+        for j in range(len(pdata)):
+            k = int(split)
+            c = pdata[j]
+            bb = []
+            for i in range(self.splits-1):
+                idx = np.argpartition(c,k)
+                v = c[idx[k-1]]
+                bb.append(v)
+                k+=int(split)
+            self.bins.append(bb)
+        #self.part_num = len(self.bins)*(len(self.bins[0])+1)
+#         for b in self.bins:
+#             print b
+        
     def assign_to_part(self,tuple):
+        x=0
         id = 0
-        grid = []
-        for i in range(len(tuple)):
-            j = 0
-            for j in range(len(self.bins)):
-                if tuple[i] <= self.bins[j]:
-                    id = (id | ( j<<self.shf ) )
+        polar = self.polar_(tuple)
+        for i in range(len(polar)):
+            b = 0
+            for j in range(len(self.bins[i])):
+                if polar[i] <= self.bins[i][j]:
                     break
+                b+=1
+            b = self.splits-1 if b == self.splits else b
+            id = id | (b << (i*self.shf))
+            #print polar,b,id
         return id
         
     def __repr__(self):
         return repr((self.d,self.splits,self.split,self.bins,self.part_num))
-
-class slope_tree:
-    def __init__(self,d,slopes):
-        self.d = d
-        self.slopes = sorted(slopes,reverse=False)
-        self.slope_num = len(slopes)
-        self.cmb = [m for m in combinations([i for i in range(self.d)], 2)]
-        self.part_num = (self.slope_num+1)*(self.d)
     
-    def assign_to_part(self,tuple):
-        id = 0
-        for i in range(self.d-1,0,-1):
-            j = 0
-            for s in self.slopes:
-                if  tuple[i] >= s*tuple[i-1]:
-                    break
-                j+=1
-            id = (self.slope_num+1)*i + j
-
-        return id
-            
-    def __repr__(self):
-        return repr((self.d,self.slopes,self.slope_num))
-
 def read_file(fname):
     info = fname.split("_")
     print info
@@ -210,63 +218,35 @@ def angle_partitioned_data(db,splits):
         id = ap.assign_to_part(data[i])
         data_parts[id].append(data[i])
     
-    print "partitions:",len(data_parts)
+    #print "partitions:",len(data_parts)
     return [[len(data_parts[p]),d,data_parts[p]] for p in range(part_num) ]
 
 def angle_partitioned_data2(db,splits):
     n = db[0]
     d = db[1]
     data = db[2]
-
-    all_parts = [db[2]]
-    for dd in range(d,1,-1):
-        #print dd
-        new_parts=[]
-        for aps in all_parts:
-            ap = angle_part(dd,splits)
-            part_num = ap.part_num
-            data_parts=[]
-            
-            for p in range(part_num):
-                data_parts.append(list())
-            
-            for p in aps:
-                id = ap.assign_to_part(p)
-                data_parts[id].append(p)
-            
-            for part in data_parts:
-                new_parts.append(part)
-        all_parts=new_parts
-        
-    print "partitions:",len(all_parts)
-    return [[len(p),d,p] for p in all_parts]
-
-def angle_partitioned_data3(db,splits):
-    n = db[0]
-    d = db[1]
-    data = db[2]
     
-    ap = angle_part2(d,4)
-#     print data[0]
-#     print ap.hyperspherical_(data[0])
-#     print ap.assign_to_part(ap.hyperspherical_(data[0]))
-#     print "bins:",ap.bins
-    print "part_num:",ap.part_num
+    #print "Angle Partitioning 2!!!"
     
+    ap = angle_part2(d,splits)
+    pdata = [[] for i in range(d-1)]
+    for tuple in data:
+        polar = ap.polar_(tuple)
+        for i in range(len(polar)):
+            pdata[i].append(polar[i])
+    
+    ap.find_splits(pdata)
     part_num = ap.part_num
     data_parts=[]
     for p in range(part_num):
         data_parts.append(list())
-    
+        
     for i in range(n):
-        id = ap.assign_to_part(ap.hyperspherical_(data[i]))
+        id = ap.assign_to_part(data[i])
+        #print id,len(data_parts)
         data_parts[id].append(data[i])
     
-    for dp in data_parts:
-        print "len:",len(dp)
+#     for i in range(len(data_parts)):
+#         print i,len(data_parts[i])
     
     return [[len(data_parts[p]),d,data_parts[p]] for p in range(part_num) ]
-    
-        
-        
-    

@@ -8,7 +8,6 @@ from partition_data import bin_tree_partitioned_data
 from partition_data import bin_tree_partitioned_data2
 from partition_data import angle_partitioned_data
 from partition_data import angle_partitioned_data2
-from partition_data import angle_partitioned_data3
 
 def create_lists(db):
     n = db[0]
@@ -89,21 +88,27 @@ def BTA(db,q,k,part_type):
         parts = bin_tree_partitioned_data(db)
     elif part_type==2:
         print "Angle Tree Partitioned!!!"
-        parts = angle_partitioned_data(db,16)
+        parts = angle_partitioned_data(db,2)
     elif part_type==3:
         print "Angle Tree Partitioned 2!!!"
-        parts = angle_partitioned_data2(db,16)
+        parts = angle_partitioned_data2(db,2)
     #parts = angle_partitioned_data3(db,4)
     
+    part_count = 0
     db_parts=[]
     for part in parts:
          db_part = create_lists(part)
          db_parts.append(db_part)
-         
+         if db_part[0] > 0:
+             part_count+=1
+    
+    
     for qq in q:
         cmb = [m for m in combinations([i for i in range(db[1])], qq)]
         avg_objects_fetched = 0
+        min_objects_fetched = db[0]
         for c in cmb:
+            #part_count = 0
             objects_fetched=0
             qqs=[]
             tt = 0
@@ -117,12 +122,15 @@ def BTA(db,q,k,part_type):
                     #print "[ "+str(i)+" ] Fetched: ", info[1],"out of", db_part[0],"["+str(float(info[1])/db_part[0])+"]"
                     objects_fetched+=info[1]
                     qqs = qqs + info[2]
+                    #part_count+=1
                 i+=1
         
             qqs = sorted(qqs, key=lambda qq: qq.score,reverse=True)
             
             avg_objects_fetched+=objects_fetched
+            min_objects_fetched = min(min_objects_fetched,objects_fetched)
             info=[qqs[k-1],objects_fetched,tt]
-            print "<BTA>: ("+str(qq)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]"
-        print "<BTA>: AVG ("+str(qq)+"D)", int(round(float(avg_objects_fetched)/len(cmb)))
+            #print "<BTA>: ("+str(qq)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]", "pcount =", part_count
+        print "<BTA>: AVG ("+str(qq)+"D)", int(round(float(avg_objects_fetched)/len(cmb))),
+        print "<BTA>: MIN ("+str(qq)+"D)", min_objects_fetched,"pcount =", part_count
         

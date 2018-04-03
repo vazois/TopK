@@ -2,59 +2,56 @@
 #define BTA_H
 
 /*
-* Blocked Threshold Aggregation
+* Vectorized Threshold Aggregation
 */
 
-//Note: Split data into random partitions, Apply PTA to each one//
-#define BBLOCK_SIZE 1024
-#define BBLOCK_SHF 2
-
-#define BPARTITIONS (1)
+#define VBLOCK_SIZE 1024
+#define VPARTITIONS (1)
 
 template<class T, class Z>
-struct bta_pair{
+struct vta_pair{
 	Z id;
 	T score;
 };
 
 template<class Z>
-struct bta_pos{
+struct vta_pos{
 	Z id;
 	Z pos;
 };
 
 template<class T, class Z>
-struct bta_block{
+struct vta_block{
 	Z offset;
 	Z tuple_num;
 	T tarray[NUM_DIMS] __attribute__((aligned(32)));
-	T tuples[BBLOCK_SIZE * NUM_DIMS] __attribute__((aligned(32)));
+	T tuples[VBLOCK_SIZE * NUM_DIMS] __attribute__((aligned(32)));
 };
 
 template<class T, class Z>
-struct bta_partition{
+struct vta_partition{
 	Z offset;
 	Z size;
 	Z block_num;
-	bta_block<T,Z> *blocks;
+	vta_block<T,Z> *blocks;
 };
 
 
 template<class T,class Z>
-static bool cmp_bta_pos(const bta_pos<Z> &a, const bta_pos<Z> &b){ return a.pos < b.pos; };
+static bool cmp_vta_pos(const vta_pos<Z> &a, const vta_pos<Z> &b){ return a.pos < b.pos; };
 
 template<class T,class Z>
-static bool cmp_bta_pair(const bta_pair<T,Z> &a, const bta_pair<T,Z> &b){ return a.score > b.score; };
+static bool cmp_vta_pair(const vta_pair<T,Z> &a, const vta_pair<T,Z> &b){ return a.score > b.score; };
 
 template<class T,class Z>
-class BTA : public AA<T,Z>{
+class VTA : public AA<T,Z>{
 	public:
-		BTA(uint64_t n,uint64_t d) : AA<T,Z>(n,d)
+		VTA(uint64_t n,uint64_t d) : AA<T,Z>(n,d)
 		{
-			this->algo = "BTA";
+			this->algo = "VTA";
 		}
 
-		~BTA(){
+		~VTA(){
 
 		}
 		void init();
@@ -63,23 +60,23 @@ class BTA : public AA<T,Z>{
 		void findTopKthreads(uint64_t k,uint8_t qq);
 
 	private:
-		bta_partition<T,Z> parts[BPARTITIONS];
+		vta_partition<T,Z> parts[VPARTITIONS];
 };
 
 template<class T, class Z>
-void BTA<T,Z>::init(){
+void VTA<T,Z>::init(){
 	this->t.start();
 
 	//Allocate partition & blocks //
 	uint64_t part_offset = 0;
-	for(uint64_t i = 0; i < BPARTITIONS; i++){
-		uint64_t first = ((i*this->n)/BPARTITIONS);
-		uint64_t last = (((i+1)*this->n)/BPARTITIONS) - 1;
+	for(uint64_t i = 0; i < VPARTITIONS; i++){
+		uint64_t first = ((i*this->n)/VPARTITIONS);
+		uint64_t last = (((i+1)*this->n)/VPARTITIONS) - 1;
 		parts[i].offset = part_offset;
 		parts[i].size = last - first + 1;
-		parts[i].block_num = ((parts[i].size - 1) / BBLOCK_SIZE) + 1;
+		parts[i].block_num = ((parts[i].size - 1) / VBLOCK_SIZE) + 1;
 		//parts[i].blocks = (bta_block<T,Z>*)malloc(sizeof(bta_block<T,Z>)*parts[i].block_num);
-		parts[i].blocks = static_cast<bta_block<T,Z>*>(aligned_alloc(32,sizeof(bta_block<T,Z>)*parts[i].block_num));
+		parts[i].blocks = static_cast<vta_block<T,Z>*>(aligned_alloc(32,sizeof(vta_block<T,Z>)*parts[i].block_num));
 
 		uint64_t block_offset = 0;
 		for(uint64_t j = 0; j <parts[i].block_num; j++){
@@ -94,18 +91,18 @@ void BTA<T,Z>::init(){
 		//std::cout << "i: " << i << "=" << first  << "," << last << std::endl;
 		part_offset += last - first + 1;
 	}
-	std::cout << part_offset << " ? " << this->n << std::endl;
+	//std::cout << part_offset << " ? " << this->n << std::endl;
 	//////////////////////////////////////////////////////////
 
 	//Initialize Partitions and Blocks//
-	uint64_t max_part_size = (((this->n - 1)/BPARTITIONS) + 1);
-	bta_pair<T,Z> **lists = (bta_pair<T,Z>**)malloc(sizeof(bta_pair<T,Z>*)*this->d);
-	for(uint8_t m = 0; m < this->d; m++){ lists[m] = (bta_pair<T,Z>*)malloc(sizeof(bta_pair<T,Z>)*max_part_size); }
-	bta_pos<Z> *order = (bta_pos<Z>*)malloc(sizeof(bta_pos<Z>)*max_part_size);
+	uint64_t max_part_size = (((this->n - 1)/VPARTITIONS) + 1);
+	vta_pair<T,Z> **lists = (vta_pair<T,Z>**)malloc(sizeof(vta_pair<T,Z>*)*this->d);
+	for(uint8_t m = 0; m < this->d; m++){ lists[m] = (vta_pair<T,Z>*)malloc(sizeof(vta_pair<T,Z>)*max_part_size); }
+	vta_pos<Z> *order = (vta_pos<Z>*)malloc(sizeof(vta_pos<Z>)*max_part_size);
 	uint64_t poffset = 0;
 	omp_set_num_threads(THREADS);
 
-	for(uint64_t i = 0; i < BPARTITIONS; i++){
+	for(uint64_t i = 0; i < VPARTITIONS; i++){
 		//Initialize structure to determine relative order inside partition//
 		for(uint64_t j = 0; j < parts[i].size; j++){
 			order[j].id = j;
@@ -118,7 +115,7 @@ void BTA<T,Z>::init(){
 				lists[m][j].id = j;
 				lists[m][j].score = this->cdata[m*this->n + (poffset + j)];
 			}
-			__gnu_parallel::sort(lists[m],(lists[m]) + parts[i].size,cmp_bta_pair<T,Z>);
+			__gnu_parallel::sort(lists[m],(lists[m]) + parts[i].size,cmp_vta_pair<T,Z>);
 
 			//Find minimum position appearance
 			for(uint64_t j = 0; j < parts[i].size; j++){
@@ -126,7 +123,7 @@ void BTA<T,Z>::init(){
 				order[id].pos = std::min(order[id].pos,(Z)j);//Minimum appearance position
 			}
 		}
-		__gnu_parallel::sort(&order[0],(&order[0]) + parts[i].size,cmp_bta_pos<T,Z>);
+		__gnu_parallel::sort(&order[0],(&order[0]) + parts[i].size,cmp_vta_pos<T,Z>);
 
 //		if( i == -1 ){
 //			for(uint64_t j = 0; j < 32; j++){
@@ -158,7 +155,7 @@ void BTA<T,Z>::init(){
 				Z id = order[j+jj].id;//Get next tuple in order
 
 				for(uint8_t m = 0; m < this->d; m++){
-					parts[i].blocks[bnum].tuples[m*BBLOCK_SIZE + jj] = this->cdata[m*this->n + (poffset + id)];
+					parts[i].blocks[bnum].tuples[m*VBLOCK_SIZE + jj] = this->cdata[m*this->n + (poffset + id)];
 //					if(jj >= BLOCK_SIZE){
 //						std::cout << "<< " <<jj << ": " <<parts[i].blocks[bnum].tuple_num  << std::endl;
 //						break;
@@ -186,7 +183,7 @@ void BTA<T,Z>::init(){
 }
 
 template<class T, class Z>
-void BTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
+void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
 	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -195,7 +192,7 @@ void BTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
 
-	for(uint64_t i = 0; i < BPARTITIONS; i++){
+	for(uint64_t i = 0; i < VPARTITIONS; i++){
 		for(uint64_t b = 0; b < parts[i].block_num; b++){
 			Z tuple_num = parts[i].blocks[b].tuple_num;
 			T *tuples = parts[i].blocks[b].tuples;
@@ -203,7 +200,7 @@ void BTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
 			for(uint64_t t = 0; t < tuple_num; t+=8){
 				T score00 = 0; T score01 = 0; T score02 = 0; T score03 = 0; T score04 = 0; T score05 = 0; T score06 = 0; T score07 = 0;
 				for(uint8_t m = 0; m < qq; m++){
-					uint32_t offset = m*BBLOCK_SIZE + t;
+					uint32_t offset = m*VBLOCK_SIZE + t;
 					score00+=tuples[offset];
 					score01+=tuples[offset+1];
 					score02+=tuples[offset+2];
@@ -243,7 +240,7 @@ void BTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
 }
 
 template<class T, class Z>
-void BTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
+void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
 	std::cout << this->algo << " find topKsimd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -253,7 +250,7 @@ void BTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
 	float score[16] __attribute__((aligned(32)));
 	__builtin_prefetch(score,1,3);
 	this->t.start();
-	for(uint64_t i = 0; i < BPARTITIONS; i++){
+	for(uint64_t i = 0; i < VPARTITIONS; i++){
 		for(uint64_t b = 0; b < parts[i].block_num; b++){
 			Z tuple_num = parts[i].blocks[b].tuple_num;
 			T *tuples = parts[i].blocks[b].tuples;
@@ -262,7 +259,7 @@ void BTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){
-					uint64_t offset = m*BBLOCK_SIZE + t;
+					uint64_t offset = m*VBLOCK_SIZE + t;
 					__m256 load00 = _mm256_load_ps(&tuples[offset]);
 					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
 					score00 = _mm256_add_ps(score00,load00);
@@ -325,7 +322,7 @@ void BTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
 }
 
 template<class T, class Z>
-void BTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
+void VTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
 	std::cout << this->algo << " find topKsimd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -340,7 +337,7 @@ void BTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
 	float score[16] __attribute__((aligned(32)));
 	__builtin_prefetch(score,1,3);
 	uint32_t thread_id = omp_get_thread_num();
-	for(uint64_t i = 0; i < BPARTITIONS; i++){
+	for(uint64_t i = 0; i < VPARTITIONS; i++){
 //		uint32_t start = (thread_id*parts[i].block_num/threads);
 //		uint32_t end = ((thread_id+1)*parts[i].block_num/threads);
 		for(uint64_t b = thread_id; b < parts[i].block_num; b+=threads){
@@ -352,7 +349,7 @@ void BTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){
-					uint64_t offset = m*BBLOCK_SIZE + t;
+					uint64_t offset = m*VBLOCK_SIZE + t;
 					__m256 load00 = _mm256_load_ps(&tuples[offset]);
 					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
 					score00 = _mm256_add_ps(score00,load00);

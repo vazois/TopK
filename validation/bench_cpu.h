@@ -16,7 +16,7 @@
 #include "cpu_opt/PTA.h"
 #include "cpu_opt/PTAp.h"
 #include "cpu_opt/SLA.h"
-#include "cpu_opt/BTA.h"
+#include "cpu_opt/VTA.h"
 
 #define ITER 10
 #define IMP 1//0:Scalar 1:SIMD 2:Threads + SIMD
@@ -168,41 +168,41 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	}
 }
 
-void bench_bta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	BTA<float,uint32_t> bta(f.rows(),f.items());
+	VTA<float,uint32_t> vta(f.rows(),f.items());
 	f.set_transpose(true);
 
 	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(bta.get_cdata());
+	f.load(vta.get_cdata());
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	//bta.init();
 	//bta.findTopKthreads(k,2);
-	bta.init();
+	vta.init();
 	//return;
-	bta.set_iter(ITER);
+	vta.set_iter(ITER);
 	for(uint8_t i = 2; i <= f.items();i+=2){
 		//Warm up
 		if (IMP == 0){
-			bta.findTopKscalar(k,i);
+			vta.findTopKscalar(k,i);
 		}else if(IMP == 1){
-			bta.findTopKsimd(k,i);
+			vta.findTopKsimd(k,i);
 		}else if(IMP == 2){
-			bta.findTopKthreads(k,i);
+			vta.findTopKthreads(k,i);
 		}
-		bta.reset_clocks();
+		vta.reset_clocks();
 		//Benchmark
 		for(uint8_t m = 0; m < ITER;m++){
 			if (IMP == 0){
-				bta.findTopKscalar(k,i);
+				vta.findTopKscalar(k,i);
 			}else if(IMP == 1){
-				bta.findTopKsimd(k,i);
+				vta.findTopKsimd(k,i);
 			}else if(IMP == 2){
-				bta.findTopKthreads(k,i);
+				vta.findTopKthreads(k,i);
 			}
 		}
-		bta.benchmark();
+		vta.benchmark();
 	}
 }
 
