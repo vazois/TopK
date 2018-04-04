@@ -1,11 +1,11 @@
 #ifndef PTA_H
 #define PTA_H
-
 /*
 * Partitioned Threshold Aggregation
 */
 
-//Note: Split data into random partitions, Apply PTA to each one//
+#include "../cpu/AA.h"
+
 #define PBLOCK_SIZE 1024
 #define PBLOCK_SHF 2
 #define PPARTITIONS (1)

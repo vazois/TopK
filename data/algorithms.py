@@ -82,7 +82,7 @@ def BTA(db,q,k,part_type):
     parts=[]
     if part_type==0:
         print "Random Partitioned!!!"
-        parts = random_partitioned_data(db,16)
+        parts = random_partitioned_data(db,32)
     elif part_type==1:
         print "Bin Tree Partitioned!!!"
         parts = bin_tree_partitioned_data(db)
@@ -132,5 +132,5 @@ def BTA(db,q,k,part_type):
             info=[qqs[k-1],objects_fetched,tt]
             #print "<BTA>: ("+str(qq)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]", "pcount =", part_count
         print "<BTA>: AVG ("+str(qq)+"D)", int(round(float(avg_objects_fetched)/len(cmb))),
-        print "<BTA>: MIN ("+str(qq)+"D)", min_objects_fetched,"pcount =", part_count
+        print "<BTA>: MIN ("+str(qq)+"D)", min_objects_fetched,"pcount =", part_count, "part_num =",len(parts)
         

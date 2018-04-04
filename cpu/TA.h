@@ -132,7 +132,7 @@ void TA<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q[threads];
 	omp_set_num_threads(threads);
 	this->t.start();
-#pragma omp_parallel
+#pragma omp parallel
 {
 	uint32_t thread_id = omp_get_thread_num();
 	uint32_t gid = thread_id % qq;//attribute list assignment

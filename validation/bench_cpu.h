@@ -1,22 +1,22 @@
 #ifndef BENCH_CPU_H
 #define BENCH_CPU_H
 
-#include "time/Time.h"
-#include "tools/ArgParser.h"
-#include "input/File.h"
+#include "../time/Time.h"
+#include "../tools/ArgParser.h"
+#include "../input/File.h"
 
-#include "cpu/AA.h"
-#include "cpu/FA.h"
-#include "cpu/TA.h"
+#include "../cpu/AA.h"
+#include "../cpu/FA.h"
+#include "../cpu/TA.h"
 
-#include "cpu_opt/MSA.h"
-#include "cpu_opt/LSA.h"
-#include "cpu_opt/TPAc.h"
-#include "cpu_opt/TPAr.h"
-#include "cpu_opt/PTA.h"
-#include "cpu_opt/PTAp.h"
-#include "cpu_opt/SLA.h"
-#include "cpu_opt/VTA.h"
+#include "../cpu_opt/MSA.h"
+#include "../cpu_opt/LSA.h"
+#include "../cpu_opt/TPAc.h"
+#include "../cpu_opt/TPAr.h"
+#include "../cpu_opt/PTA.h"
+#include "../cpu_opt/SLA.h"
+#include "../cpu_opt/VTA.h"
+#include "../cpu_opt/PVTA.h"
 
 #define ITER 10
 #define IMP 1//0:Scalar 1:SIMD 2:Threads + SIMD

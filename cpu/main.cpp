@@ -5,8 +5,8 @@
 #include <tmmintrin.h>
 #include <immintrin.h>
 
-#include "validation/bench_cpu.h"
-#include "test/Tests.h"
+#include "../validation/bench_cpu.h"
+#include "../test/Tests.h"
 
 #define RUN_PAR false
 #define K 100

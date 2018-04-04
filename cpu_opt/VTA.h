@@ -5,6 +5,8 @@
 * Vectorized Threshold Aggregation
 */
 
+#include "../cpu/AA.h"
+
 #define VBLOCK_SIZE 1024
 #define VPARTITIONS (1)
 
@@ -124,28 +126,6 @@ void VTA<T,Z>::init(){
 			}
 		}
 		__gnu_parallel::sort(&order[0],(&order[0]) + parts[i].size,cmp_vta_pos<T,Z>);
-
-//		if( i == -1 ){
-//			for(uint64_t j = 0; j < 32; j++){
-//				std::cout << std::dec << std::setfill('0') << std::setw(4);
-//				std::cout << order[j].id << " ";
-//
-//				if((j+1) % this->d == 0) std::cout << std::endl;
-//			}
-//
-//			std::cout << "<<<<" << i << ">>>>" <<std::endl;
-//			for(uint64_t j = 0; j < parts[i].size; j++){
-//				for(uint8_t m = 0; m < this->d; m++){
-//					//Create lists for partition//
-//					std::cout << "[";
-//					std::cout << std::dec << std::setfill('0') << std::setw(3);
-//					std::cout << lists[m][j].id << ",";
-//					std::cout << std::fixed << std::setprecision(2);
-//					std::cout << lists[m][j].score << "]";
-//				}
-//				std::cout << std::endl;
-//			}
-//		}
 
 		//Split partition into blocks//
 		uint64_t bnum = 0;
