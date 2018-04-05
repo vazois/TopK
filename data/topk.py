@@ -40,13 +40,13 @@ if __name__ == "__main__":
             info=TA(db0,c,k)
             tt = time.time() - tt 
             avg_objects_fetched+=info[1]
-            #print "<TA>: ("+str(q)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", tt ," ]"
+            print "<TA>: ("+str(q)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", tt ," ]"
         print "<TA>: AVG("+str(q)+"D)",int(round(float(avg_objects_fetched)/len(cmb)))
     db0=[]
     
-    info=BTA(db,qq,k,0)
+#     info=BTA(db,qq,k,0)
     #info=BTA(db,qq,k,1)
-    info=BTA(db,qq,k,2)
+#     info=BTA(db,qq,k,2)
     info=BTA(db,qq,k,3)
 
     

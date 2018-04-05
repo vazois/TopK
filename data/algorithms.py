@@ -78,6 +78,47 @@ def TA(db,qq,k):#Threshold aggregation#
         
     return [qqs[0],objects_fetched,qqs]
 
+def TA2(db,qq,k):#Threshold aggregation#
+    n = db[0]
+    d = db[1]
+    data = db[2]
+    lists = db[3]
+
+    objects_fetched = 0
+    stop = False
+    tset = set()
+    qqs = []
+    for i in range(n):
+        threshold = 0
+        #for a in qq:
+        for j in range(d):
+            #t = lists[a][i]
+            t = lists[j][i]
+            threshold+=t.score
+            #if t.id not in tset:
+            if t.id not in tset and (j in qq):
+                objects_fetched+=1
+                score = 0
+                #for m in range(qq):
+                #   score+=data[t.id][m]
+                for a in qq:
+                    score+=data[t.id][a]
+                           
+                if len(qqs) < k:
+                    qqs.append(tuple(t.id,score))
+                elif qqs[0].score < score:
+                    qqs[0] = tuple(t.id,score)
+                qqs = sorted(qqs, key=lambda qq: qq.score, reverse = False)
+                
+                tset.add(t.id)
+        
+        if((qqs[0].score) >=  threshold and len(qqs) >= k):
+            stop = True
+            break
+        
+    return [qqs[0],objects_fetched,qqs]
+
+
 def BTA(db,q,k,part_type):
     parts=[]
     if part_type==0:
@@ -101,7 +142,6 @@ def BTA(db,q,k,part_type):
          db_parts.append(db_part)
          if db_part[0] > 0:
              part_count+=1
-    
     
     for qq in q:
         cmb = [m for m in combinations([i for i in range(db[1])], qq)]
@@ -130,7 +170,7 @@ def BTA(db,q,k,part_type):
             avg_objects_fetched+=objects_fetched
             min_objects_fetched = min(min_objects_fetched,objects_fetched)
             info=[qqs[k-1],objects_fetched,tt]
-            #print "<BTA>: ("+str(qq)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]", "pcount =", part_count
+            print "<BTA>: ("+str(qq)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]", "pcount =", part_count
         print "<BTA>: AVG ("+str(qq)+"D)", int(round(float(avg_objects_fetched)/len(cmb))),
         print "<BTA>: MIN ("+str(qq)+"D)", min_objects_fetched,"pcount =", part_count, "part_num =",len(parts)
         

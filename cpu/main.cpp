@@ -51,14 +51,14 @@ int main(int argc, char **argv){
 //	std::cout << "ee: " <<v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
 //	test_dt();
 
-	bench_ta(ap.getString("-f"),n,d,K);
-	bench_tpac(ap.getString("-f"),n,d,K);
+	//bench_ta(ap.getString("-f"),n,d,K);
+	//bench_tpac(ap.getString("-f"),n,d,K);
 	//bench_tpar(ap.getString("-f"),n,d,K);
 	//bench_pta(ap.getString("-f"),n,d,K);
 	//bench_sla(ap.getString("-f"),n,d,K);
 	//bench_ptap(ap.getString("-f"),n,d,K);
 	//test_dt();
-	bench_vta(ap.getString("-f"),n,d,K);
+	//bench_vta(ap.getString("-f"),n,d,K);
 
 	return 0;
 }

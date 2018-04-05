@@ -182,7 +182,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	vta.init();
 	//return;
 	vta.set_iter(ITER);
-	for(uint8_t i = 2; i <= f.items();i+=2){
+	for(uint8_t i = f.items(); i <= f.items();i+=2){
 		//Warm up
 		if (IMP == 0){
 			vta.findTopKscalar(k,i);
