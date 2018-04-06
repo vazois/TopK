@@ -6,12 +6,13 @@
 
 #include "../cpu/AA.h"
 #include <math.h>
+#include <map>
 
 #define PBLOCK_SIZE 1024
 #define PBLOCK_SHF 2
 #define PPARTITIONS (1)
 
-#define PSLITS 4
+#define PSLITS 2
 #define PI 3.1415926535
 #define PI_2 (180.0f/PI)
 
@@ -158,6 +159,9 @@ void PTA<T,Z>::polar(){
 		mm[pid]+=1;
 	}
 	std::cout << "mm_size: " << mm.size() << std::endl;
+	for(typename std::map<Z,Z>::iterator it = mm.begin(); it != mm.end(); ++it){
+		std::cout << "g(" << it->first << "):" << std::setfill('0') << std::setw(8) << it->second << std::endl;
+	}
 
 	free(pp);
 	free(pdata);
