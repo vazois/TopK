@@ -2,8 +2,8 @@
 
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
-START_N=$((32*1024*1024))
-END_N=$((32*1024*1024))
+START_N=$((1*1024*1024))
+END_N=$((1*1024*1024))
 START_D=4
 END_D=4
 

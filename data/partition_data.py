@@ -80,18 +80,19 @@ class angle_part2:
             
     def polar_(self,stuple):
         tuple = [(a-1) for a in stuple]
-        polar = [ ]
+        polar = [0]*(self.d-1)
         sum = 0
         #print tuple,stuple
-#         for i in range(self.d-1,0,-1):
-#             sum+=tuple[i]*tuple[i]
-#             tanf= math.sqrt(float(sum))/tuple[i-1]
-#             polar.append(math.fabs(math.degrees(math.atan(tanf))))
+        for i in range(self.d-1,0,-1):
+            sum+=tuple[i]*tuple[i]
+            tanf= math.sqrt(float(sum))/tuple[i-1]
+            #polar.append(math.fabs(math.degrees(math.atan(tanf))))
+            polar[i-1]=(math.fabs(math.degrees(math.atan(tanf))))
         
-        for i in range(0,self.d-1):
-            sum+=tuple[i+1]*tuple[i+1]
-            tanf= math.sqrt(float(sum))/tuple[i]
-            polar.append(math.fabs(math.degrees(math.atan(tanf))))
+#         for i in range(0,self.d-1):
+#             sum+=tuple[i+1]*tuple[i+1]
+#             tanf= math.sqrt(float(sum))/tuple[i]
+#             polar.append(math.fabs(math.degrees(math.atan(tanf))))
         
         return polar
     
@@ -236,8 +237,13 @@ def angle_partitioned_data2(db,splits):
     
     ap = angle_part2(d,splits)
     pdata = [[] for i in range(d-1)]
+    m = 0
     for tuple in data:
         polar = ap.polar_(tuple)
+        if m < 16:
+            print polar
+            m+=1
+        
         for i in range(len(polar)):
             pdata[i].append(polar[i])
     

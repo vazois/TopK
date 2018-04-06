@@ -39,7 +39,7 @@ void PVTA<T,Z>::polar(T *&pdata){
 		f = _mm256_sqrt_ps(sum);
 #ifdef GNU
 		_mm256_store_ps(&score[m*this->n],f);
-#elif
+#else
 		f = _mm256_atan2_ps(f,next);
 		_mm256_store_ps(&score[m*this->n],f);
 #endif
