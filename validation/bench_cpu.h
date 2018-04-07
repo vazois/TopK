@@ -20,6 +20,7 @@
 
 #define ITER 10
 #define IMP 1//0:Scalar 1:SIMD 2:Threads + SIMD
+#define Q 1
 
 //[0,1,2,3][4,5,6,7][8,9,10,11][12,13,14,15]
 uint8_t qq[72] =
@@ -44,7 +45,9 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	ta.init();
 	ta.set_iter(ITER);
-	for(uint8_t i = 2; i <= f.items();i+=2){
+	uint8_t q = f.items();
+	if (Q == 0) q = 2;
+	for(uint8_t i = q; i <= f.items();i+=2){
 		//Warm up
 		if (IMP == 0){
 			ta.findTopK(k,i);
@@ -78,7 +81,9 @@ void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	tpar.init();
 	tpar.set_iter(ITER);
-	for(uint8_t i = 2; i <= f.items();i+=2){
+	uint8_t q = f.items();
+	if (Q == 0) q = 2;
+	for(uint8_t i = q; i <= f.items();i+=2){
 		//Warm up
 		if (IMP == 0){
 			tpar.findTopKscalar(k,i);
@@ -113,7 +118,9 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	tpac.init();
 	tpac.set_iter(ITER);
-	for(uint8_t i = 2; i <= f.items();i+=2){
+	uint8_t q = f.items();
+	if (Q == 0) q = 2;
+	for(uint8_t i = q; i <= f.items();i+=2){
 		//Warm up
 		if (IMP == 0){
 			tpac.findTopKscalar(k,i);
@@ -148,7 +155,9 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	pta.init();
 	pta.set_iter(ITER);
-	for(uint8_t i = 2; i <= f.items();i+=2){
+	uint8_t q = f.items();
+	if (Q == 0) q = 2;
+	for(uint8_t i = q; i <= f.items();i+=2){
 		//Warm up
 		if (IMP == 0){
 			pta.findTopKscalar(k,i);
@@ -182,7 +191,9 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	vta.init();
 	//return;
 	vta.set_iter(ITER);
-	for(uint8_t i = f.items(); i <= f.items();i+=2){
+	uint8_t q = f.items();
+	if (Q == 0) q = 2;
+	for(uint8_t i = q; i <= f.items();i+=2){
 		//Warm up
 		if (IMP == 0){
 			vta.findTopKscalar(k,i);

@@ -241,7 +241,7 @@ def angle_partitioned_data2(db,splits):
     for tuple in data:
         polar = ap.polar_(tuple)
         if m < 16:
-            print polar
+            print m,":",polar
             m+=1
         
         for i in range(len(polar)):
