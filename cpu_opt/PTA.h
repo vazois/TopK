@@ -199,6 +199,8 @@ void PTA<T,Z>::create_partitions(){
 		uint64_t b = 0;
 		for(uint64_t j = 0; j < this->parts[i].size;j+=PBLOCK_SIZE){
 			Z upper = (j + PBLOCK_SIZE <=  this->parts[i].size) ? PBLOCK_SIZE : this->parts[i].size - j + 1;
+			this->parts[i].blocks[b].tuple_num = upper;
+			this->parts[i].blocks[b].offset = j;
 			for(uint64_t l = 0; l < upper; l++){
 				Z lid = pos[j+l].id;
 				Z gid = ppos[(gindex + lid)].id;
@@ -212,6 +214,7 @@ void PTA<T,Z>::create_partitions(){
 			for(uint32_t m = 0; m < this->d; m++){ this->parts[i].blocks[b].tarray[m] = lists[m][p].score; }
 			b++;
 		}
+		this->parts[i].offset = gindex;
 		gindex+=this->parts[i].size;
 	}
 
