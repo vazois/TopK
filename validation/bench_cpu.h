@@ -16,10 +16,10 @@
 #include "../cpu_opt/PTA.h"
 #include "../cpu_opt/SLA.h"
 
-#define ITER 10
-#define IMP 0//0:Scalar 1:SIMD 2:Threads + SIMD
-#define Q 1//0:Multiple Queries 1: Single Queries
-#define QD 1
+//#define ITER 1
+//#define IMP 1//0:Scalar 1:SIMD 2:Threads + SIMD
+//#define QM 1//0:Multiple Queries 1: Single Queries
+//#define QD 1
 
 //[0,1,2,3][4,5,6,7][8,9,10,11][12,13,14,15]
 uint8_t qq[72] =
@@ -34,18 +34,25 @@ uint8_t qq[72] =
 		0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15//16
 	};
 
+const std::string distributions[3] ={"correlated","independent","anticorrelated"};
+
 void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	TA<float,uint32_t> ta(f.rows(),f.items());
 
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(ta.get_cdata());
+	if (LD == 0){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(ta.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(ta.get_cdata(),DISTR);
+	}
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	ta.init();
 	ta.set_iter(ITER);
 	uint8_t q = f.items();
-	if (Q == 0) q = 2;
+	if (QM == 0) q = 2;
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
 		ta.findTopK(k,i);
@@ -62,14 +69,19 @@ void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	TPAr<float,uint32_t> tpar(f.rows(),f.items());
 
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(tpar.get_cdata());
+	if (LD == 0){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(tpar.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(tpar.get_cdata(),DISTR);
+	}
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	tpar.init();
 	tpar.set_iter(ITER);
 	uint8_t q = f.items();
-	if (Q == 0) q = 2;
+	if (QM == 0) q = 2;
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
 		if (IMP == 0){
@@ -99,14 +111,19 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	TPAc<float,uint32_t> tpac(f.rows(),f.items());
 	f.set_transpose(true);
 
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(tpac.get_cdata());
+	if (LD == 0){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(tpac.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(tpac.get_cdata(),DISTR);
+	}
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	tpac.init();
 	tpac.set_iter(ITER);
 	uint8_t q = f.items();
-	if (Q == 0) q = 2;
+	if (QM == 0) q = 2;
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
 		if (IMP == 0){
@@ -136,20 +153,27 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	PTA<float,uint32_t> pta(f.rows(),f.items());
 	f.set_transpose(true);
 
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(pta.get_cdata());
+	if (LD == 0){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(pta.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(pta.get_cdata(),DISTR);
+	}
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	pta.init();
 	pta.set_iter(ITER);
 	uint8_t q = f.items();
-	if (Q == 0) q = 2;
+	if (QM == 0) q = 2;
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
 		if (IMP == 0){
 			pta.findTopKscalar(k,i);
 		}else if(IMP == 1){
 			pta.findTopKsimd(k,i);
+		}else if(IMP == 2){
+			pta.findTopKthreads(k,i);
 		}
 		pta.reset_clocks();
 		//Benchmark
@@ -158,6 +182,8 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 				pta.findTopKscalar(k,i);
 			}else if(IMP == 1){
 				pta.findTopKsimd(k,i);
+			}else if(IMP == 2){
+				pta.findTopKthreads(k,i);
 			}
 		}
 		pta.benchmark();
@@ -169,8 +195,13 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	VTA<float,uint32_t> vta(f.rows(),f.items());
 	f.set_transpose(true);
 
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(vta.get_cdata());
+	if (LD == 0){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(vta.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(vta.get_cdata(),DISTR);
+	}
 
 	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
 	//bta.init();
@@ -179,7 +210,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	//return;
 	vta.set_iter(ITER);
 	uint8_t q = f.items();
-	if (Q == 0) q = 2;
+	if (QM == 0) q = 2;
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
 		if (IMP == 0){

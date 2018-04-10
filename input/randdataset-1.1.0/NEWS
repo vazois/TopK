@@ -1,0 +1,5 @@
+Version 1.1.0 (2008-03-04)
+--------------------------
+
+* chg: Include SEED as "sSEED" in the table name.
+* chg: Include ChangeLog, COPYING, INSTALL, README and NEWS in the distro.

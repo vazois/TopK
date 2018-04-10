@@ -8,7 +8,7 @@
 #include <cstring>
 
 #include "../time/Time.h"
-
+#include "randdataset-1.1.0/src/randdataset.h"
 
 template<class T>
 class File{
@@ -47,6 +47,8 @@ class File{
 
 		void load();
 		void load(T *&data);
+		void gen(T *&data, uint8_t type);
+
 		void store(std::string fname, T *data);
 		uint64_t items(){return this->d;}
 		uint64_t rows(){return this->n;}
@@ -318,6 +320,27 @@ void File<T>::load(T *& data){
 		this->read_scanf_t();
 	}
 	//t.lap("Read elapsed time (ms)!!!");
+}
+
+template<class T>
+void File<T>::gen(T *&data, uint8_t type){
+	if(data == NULL){
+		data = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
+	}
+	this->data=data;
+
+	if(type < 0 || type > 2){
+		std::cout << "Type should be 0(correlated),1(independent),2(anticorrelated)!!!";
+		exit(1);
+	}
+
+	if( type == 0 ){
+		generate_corr_inmem(this->data,this->n,this->d,this->transpose);
+	}else if ( type == 1 ){
+		generate_indep_inmem(this->data,this->n,this->d,this->transpose);
+	}else if ( type == 2 ){
+		generate_anti_inmem(this->data,this->n,this->d,this->transpose);
+	}
 }
 
 template<class T>

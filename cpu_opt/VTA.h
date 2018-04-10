@@ -8,7 +8,7 @@
 #include "../cpu/AA.h"
 
 #define VBLOCK_SIZE 1024
-#define VPARTITIONS (1)
+#define VPARTITIONS (IMP == 2 ? THREADS : 1)
 
 template<class T, class Z>
 struct vta_pair{
@@ -308,7 +308,8 @@ void VTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
 
-	uint32_t threads = THREADS;
+	Z tt_count[THREADS];
+	uint32_t threads = THREADS < VPARTITIONS ? THREADS : VPARTITIONS;
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q[threads];
 	omp_set_num_threads(threads);
 	this->t.start();
@@ -317,11 +318,9 @@ void VTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
 	float score[16] __attribute__((aligned(32)));
 	__builtin_prefetch(score,1,3);
 	uint32_t thread_id = omp_get_thread_num();
-	for(uint64_t i = 0; i < VPARTITIONS; i++){
-//		uint32_t start = (thread_id*parts[i].block_num/threads);
-//		uint32_t end = ((thread_id+1)*parts[i].block_num/threads);
-		for(uint64_t b = thread_id; b < parts[i].block_num; b+=threads){
-		//for(uint64_t b = start; b < end; b++){
+	Z tuple_count = 0;
+	for(uint64_t i = thread_id; i < VPARTITIONS; i+=threads){
+		for(uint64_t b = 0; b < parts[i].block_num; b++){
 			Z tuple_num = parts[i].blocks[b].tuple_num;
 			T *tuples = parts[i].blocks[b].tuples;
 			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
@@ -373,21 +372,16 @@ void VTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
 					if(q[thread_id].top().score < score[15]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(id+15,score[15])); }
 					//if(STATS_EFF) this->pop_count+=16;
 				}
-				//if(STATS_EFF) this->tuple_count+=16;
+				if(STATS_EFF) tuple_count+=16;
 			}
 
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[m];
 			if(q[thread_id].size() >= k && q[thread_id].top().score >= threshold) break;
-//			for(uint32_t p = 0; p <= thread_id; p++){
-//				if(q[p].top().score >= threshold){
-//					b=parts[i].block_num;
-//					break;
-//				}
-//			}
 		}
 	}
+	if(STATS_EFF) tt_count[thread_id] = tuple_count;
 }
 
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> _q;
@@ -404,6 +398,7 @@ void VTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
 	}
 	this->tt_processing += this->t.lap();
 
+	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
 	T threshold = _q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << _q.size() << ")" << std::endl;

@@ -179,12 +179,14 @@ void AA<T,Z>::benchmark(){
 	std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
 	std::cout << "tt_ranking: " << this->tt_ranking/this->iter << std::endl;
 
-	std::cout << "pred_count: " << this->pred_count << std::endl;
-	std::cout << "tuple_count: " << this->tuple_count << std::endl;
-	std::cout << "pop_count: " << this->pop_count << std::endl;
-	std::cout << "stop_pos: " << this->stop_pos << std::endl;
-	std::cout << "Base Table Footprint (MB): " << ((float)this->bt_bytes)/(1024*1024) << std::endl;
-	std::cout << "Auxiliary Structures Footprint (MB): " << ((float)this->ax_bytes)/(1024*1024) << std::endl;
+	if(STATS_EFF){
+		std::cout << "pred_count: " << this->pred_count << std::endl;
+		std::cout << "tuple_count: " << this->tuple_count << std::endl;
+		std::cout << "pop_count: " << this->pop_count << std::endl;
+		std::cout << "stop_pos: " << this->stop_pos << std::endl;
+		std::cout << "Base Table Footprint (MB): " << ((float)this->bt_bytes)/(1024*1024) << std::endl;
+		std::cout << "Auxiliary Structures Footprint (MB): " << ((float)this->ax_bytes)/(1024*1024) << std::endl;
+	}
 }
 
 template<class T, class Z>

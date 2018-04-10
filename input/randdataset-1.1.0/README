@@ -1,0 +1,22 @@
+This is a random dataset generator for SKYLINE operator evaluation.
+
+It is based on the work by the authors of [Borzsonyi2001],
+modified by Hannes Eder <Hannes@HannesEder.net>.
+
+Thanks to Donald Kossmann for providing the source code	of the 
+original implementation.
+
+It is available through pgfoundry.org, at:
+
+http://pgfoundry.org/projects/randdataset/
+
+There is also in implementation as PostgreSQL module available, 
+which can be found at the same website and can be test-driven at:
+
+http://skyline.dbai.tuwien.ac.at/
+
+REFERENCES:
+	[Borzsonyi2001] B"orzs"onyi, S.; Kossmann, D. & Stocker, K.: 
+	The Skyline Operator, ICDE 2001, 421--432
+
+--Hannes Eder

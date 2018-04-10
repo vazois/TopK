@@ -1,0 +1,8 @@
+2008-03-04  Hannes Eder  <Hannes@HannesEder.net>
+
+	* configure.ac: Version 1.1.0.
+	Upgraded automake to 1.10.1.
+
+	* src/randdataset.c: Include SEED as "sSEED" in the table name.
+
+	* ChangeLog, COPYING, INSTALL, README and NEWS: Added.
