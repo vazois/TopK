@@ -2,10 +2,10 @@
 
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
-START_N=$((1*1024*1024))
-END_N=$((1*1024*1024))
-START_D=4
-END_D=4
+START_N=$((256*1024*1024))
+END_N=$((256*1024*1024))
+START_D=2
+END_D=2
 
 distr=i
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
@@ -20,12 +20,12 @@ if [ $device -eq 0 ]
 then
 	make cpu_cc IDIM=$END_D
 else
-  make gpu_cc
+	make gpu_cc
 fi
 
-for (( n=$START_N; n<=$END_N; n*=2 ))
+for (( n=$END_N; n<=$END_N; n*=2 ))
 do
-	for (( d=$START_D; d<=$END_D; d+=1 ))
+	for (( d=$START_D; d<=$END_D; d+=2 ))
 	do
 		fname='d_'$n'_'$d'_'$distr
 		fname2='d_'$n'_'$d'_'$distr'_o'

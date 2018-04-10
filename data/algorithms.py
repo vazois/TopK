@@ -159,7 +159,7 @@ def BTA(db,q,k,part_type):
                     start= time.time()
                     info=TA(db_part,c,k)
                     tt+=time.time() - start
-                    #print "[ "+str(i)+" ] Fetched: ", info[1],"out of", db_part[0],"["+str(float(info[1])/db_part[0])+"]"
+                    print "[ "+str(i)+" ] Fetched: ", info[1],"out of", db_part[0],"["+str(float(info[1])/db_part[0])+"]"
                     objects_fetched+=info[1]
                     qqs = qqs + info[2]
                     #part_count+=1
@@ -170,7 +170,7 @@ def BTA(db,q,k,part_type):
             avg_objects_fetched+=objects_fetched
             min_objects_fetched = min(min_objects_fetched,objects_fetched)
             info=[qqs[k-1],objects_fetched,tt]
-            print "<BTA>: ("+str(qq)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]", "pcount =", part_count
+            print "<BTA>: ("+str(qq)+"D)",c,"[ threshold =(",info[0].id,",{0:.4f}".format(info[0].score),")] , [ accesses =",info[1],"] , [ tt = ", info[2] ," ]", "pcount =", part_count
         print "<BTA>: AVG ("+str(qq)+"D)", int(round(float(avg_objects_fetched)/len(cmb))),
         print "<BTA>: MIN ("+str(qq)+"D)", min_objects_fetched,"pcount =", part_count, "part_num =",len(parts)
         

@@ -6,7 +6,6 @@
 #include <immintrin.h>
 
 #include "../validation/bench_cpu.h"
-#include "../test/Tests.h"
 
 #define RUN_PAR false
 #define K 100
@@ -58,7 +57,7 @@ int main(int argc, char **argv){
 	//bench_sla(ap.getString("-f"),n,d,K);
 	//bench_ptap(ap.getString("-f"),n,d,K);
 	//test_dt();
-	//bench_vta(ap.getString("-f"),n,d,K);
+	bench_vta(ap.getString("-f"),n,d,K);
 
 	return 0;
 }

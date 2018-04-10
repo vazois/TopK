@@ -109,8 +109,8 @@ class angle_part2:
                 k+=int(split)
             self.bins.append(bb)
         #self.part_num = len(self.bins)*(len(self.bins[0])+1)
-#         for b in self.bins:
-#             print b
+        for b in self.bins:
+            print b
         
     def assign_to_part(self,tuple):
         x=0
@@ -240,9 +240,6 @@ def angle_partitioned_data2(db,splits):
     m = 0
     for tuple in data:
         polar = ap.polar_(tuple)
-        if m < 16:
-            print m,":",polar
-            m+=1
         
         for i in range(len(polar)):
             pdata[i].append(polar[i])
@@ -256,6 +253,8 @@ def angle_partitioned_data2(db,splits):
         
     for i in range(n):
         id = ap.assign_to_part(data[i])
+        if( i  < 16 ):
+            print ["{0:.4f}".format(a) for a in data[i]],["{0:.4f}".format(a) for a in ap.polar_(data[i])], '%02d' % id
         #print id,len(data_parts)
         data_parts[id].append(data[i])
     

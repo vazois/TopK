@@ -24,12 +24,12 @@ if __name__ == "__main__":
 #     parts = angle_partitioned_data2(db,4)
 #     exit(1)
 
-    qq=[q for q in range(2,db[1]+1,1) ]
-    #qq=[db[1]]
+    #qq=[q for q in range(2,db[1]+1,1) ]
+    qq=[db[1]]
     print "<<<",db[0],qq,">>>"
 #     for q in qq:
 #         info=FA(db,q,k)
-#         print "<FA>: ("+str(q)+"D) [ threshold =",info[0],"] , [ accesses =",info[1],"]"
+#         print "<FA>: ("+str(q)+"D) [ threshold =",info[0].id,",{0:.4f}".format(info[0].score),"] , [ accesses =",info[1],"]"
      
 #     db0=create_lists(db)
 #     for q in qq:
@@ -40,7 +40,7 @@ if __name__ == "__main__":
 #             info=TA(db0,c,k)
 #             tt = time.time() - tt 
 #             avg_objects_fetched+=info[1]
-#             print "<TA>: ("+str(q)+"D)",c,"[ threshold =",info[0],"] , [ accesses =",info[1],"] , [ tt = ", tt ," ]"
+#             print "<TA>: ("+str(q)+"D)",c,"[ threshold =",info[0].id,",{0:.4f}".format(info[0].score),"] , [ accesses =",info[1],"] , [ tt = ", tt ," ]"
 #         print "<TA>: AVG("+str(q)+"D)",int(round(float(avg_objects_fetched)/len(cmb)))
 #     db0=[]
     

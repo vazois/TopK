@@ -5,6 +5,7 @@
  * Skyline Layered Aggregation
  */
 
+#include <unordered_map>
 #include "../skyline/hybrid/hybrid.h"
 #include "../cpu/AA.h"
 
