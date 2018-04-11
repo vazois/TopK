@@ -323,17 +323,36 @@ generate_indep(int count, int dim)
 }
 
 void generate_indep_inmem(float *data, uint64_t n, uint64_t d, bool transpose){
+
+	float progress = 0.0;
+	uint64_t step = 1024;
+	uint64_t ii = 0;
+
 	if(!transpose){
 		for(uint64_t i = 0; i < n;i++){
 			for(uint64_t m = 0; m < d;m++){
-				data[i*n + m] = random_equal(0, 1);
+				data[i*d + m] = random_equal(0, 1);
 			}
+
+			if((ii & (step - 1)) == 0){
+				std::cout << "Progress: [" << int(progress * 100.0) << "] %\r";
+				std::cout.flush();
+				progress += ((float)step)/n; // for demonstration only
+			}
+			ii++;
 		}
 	}else{
 		for(uint64_t i = 0; i < n;i++){
 			for(uint64_t m = 0; m < d;m++){
 				data[m*n + i] = random_equal(0, 1);
 			}
+
+			if((ii & (step - 1)) == 0){
+				std::cout << "Progress: [" << int(progress * 100.0) << "] %\r";
+				std::cout.flush();
+				progress += ((float)step)/n; // for demonstration only
+			}
+			ii++;
 		}
 	}
 }
@@ -381,6 +400,9 @@ generate_corr(int count, int dim)
 void generate_corr_inmem(float *data, uint64_t n, uint64_t d, bool transpose){
 	double *x = (double *) malloc(sizeof(double) * d);
 	uint64_t count = 0;
+	float progress = 0.0;
+	uint64_t step = 1024;
+	uint64_t ii = 0;
 
 	while (count < n)
 	{
@@ -402,7 +424,7 @@ void generate_corr_inmem(float *data, uint64_t n, uint64_t d, bool transpose){
 
 		if(!transpose){
 			for (uint64_t m = 0; m < d; m++){
-				data[count*n + m] = x[m];
+				data[count*d + m] = x[m];
 			}
 		}else{
 			for (uint64_t m = 0; m < d; m++){
@@ -410,6 +432,13 @@ void generate_corr_inmem(float *data, uint64_t n, uint64_t d, bool transpose){
 			}
 		}
 		count++;
+
+		if((ii & (step - 1)) == 0){
+			std::cout << "Progress: [" << int(progress * 100.0) << "] %\r";
+			std::cout.flush();
+			progress += ((float)step)/n; // for demonstration only
+		}
+		ii++;
 	}
 	free(x);
 }
@@ -452,6 +481,9 @@ generate_anti(int count, int dim)
 void generate_anti_inmem(float *data,uint64_t n, uint64_t d, bool transpose){
 	double *x = (double *) malloc(sizeof(double) * d);
 	uint64_t count = 0;
+	float progress = 0.0;
+	uint64_t step = 1024;
+	uint64_t ii = 0;
 
 	while (count < n)
 	{
@@ -473,7 +505,7 @@ void generate_anti_inmem(float *data,uint64_t n, uint64_t d, bool transpose){
 
 		if(!transpose){
 			for (uint64_t m = 0; m < d; m++){
-				data[count*n + m] = x[m];
+				data[count*d + m] = x[m];
 			}
 		}else{
 			for (uint64_t m = 0; m < d; m++){
@@ -481,6 +513,14 @@ void generate_anti_inmem(float *data,uint64_t n, uint64_t d, bool transpose){
 			}
 		}
 		count++;
+
+
+		if((ii & (step - 1)) == 0){
+			std::cout << "Progress: [" << int(progress * 100.0) << "] %\r";
+			std::cout.flush();
+			progress += ((float)step)/n; // for demonstration only
+		}
+		ii++;
 	}
 }
 

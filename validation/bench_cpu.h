@@ -38,7 +38,7 @@ const std::string distributions[3] ={"correlated","independent","anticorrelated"
 
 void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	TA<float,uint32_t> ta(f.rows(),f.items());
+	TA<float,uint64_t> ta(f.rows(),f.items());
 
 	if (LD == 0){
 		std::cout << "Loading data from file !!!" <<std::endl;
@@ -67,7 +67,7 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	TPAr<float,uint32_t> tpar(f.rows(),f.items());
+	TPAr<float,uint64_t> tpar(f.rows(),f.items());
 
 	if (LD == 0){
 		std::cout << "Loading data from file !!!" <<std::endl;
@@ -108,7 +108,7 @@ void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	TPAc<float,uint32_t> tpac(f.rows(),f.items());
+	TPAc<float,uint64_t> tpac(f.rows(),f.items());
 	f.set_transpose(true);
 
 	if (LD == 0){
@@ -150,7 +150,7 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	PTA<float,uint32_t> pta(f.rows(),f.items());
+	PTA<float,uint64_t> pta(f.rows(),f.items());
 	f.set_transpose(true);
 
 	if (LD == 0){
@@ -192,7 +192,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	VTA<float,uint32_t> vta(f.rows(),f.items());
+	VTA<float,uint64_t> vta(f.rows(),f.items());
 	f.set_transpose(true);
 
 	if (LD == 0){
@@ -237,7 +237,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 void bench_msa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	MSA<float,uint32_t> msa(f.rows(),f.items());
+	MSA<float,uint64_t> msa(f.rows(),f.items());
 	f.set_transpose(true);
 
 	std::cout << "Loading data from file !!!" << std::endl;
@@ -251,7 +251,7 @@ void bench_msa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 
 void bench_lsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
-	LSA<float,uint32_t> lsa(f.rows(),f.items());
+	LSA<float,uint64_t> lsa(f.rows(),f.items());
 	f.set_transpose(true);
 
 	std::cout << "Loading data from file !!!" << std::endl;

@@ -15,10 +15,10 @@ IMP=1
 #ITER Testing iterations
 ITER=1
 #LD 0:load from file, 1: generate in memory
-LD=0
+LD=1
 
 #distr c:correlated i:independent a:anticorrelated
-distr=a
+distr=i
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
 #CPU:0,GPU:1
 device=$1

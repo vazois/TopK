@@ -2,6 +2,7 @@
 #define RANDDATASET_H
 
 #include <inttypes.h>
+#include <iostream>
 
 static double sqr(double a);
 
