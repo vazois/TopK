@@ -34,7 +34,7 @@ void TPAc<T,Z>::init(){
 
 template<class T, class Z>
 void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
-	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -110,7 +110,7 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 
 template<class T, class Z>
 void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
-	std::cout << this->algo << " find topKsimd (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -177,7 +177,7 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 
 template<class T, class Z>
 void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
-	std::cout << this->algo << " find topKthreads (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " threads (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();

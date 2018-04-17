@@ -263,7 +263,7 @@ void PTA<T,Z>::init(){
 
 template<class T, class Z>
 void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
-	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -320,14 +320,19 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
 
 	while(q.size() > 100){ q.pop(); }
 	T threshold = q.top().score;
+	while(!q.empty()){
+		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
+		this->res.push_back(q.top());
+		q.pop();
+	}
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
 
 template<class T, class Z>
 void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
-	std::cout << this->algo << " find topKsimd (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -340,6 +345,7 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
 		Z poffset = this->parts[p].offset;
 		//uint32_t count = 0;
 		for(uint64_t b = 0; b < this->parts[p].block_num; b++){
+			__builtin_prefetch(score,1,3);
 			Z id = this->parts[p].offset + poffset;
 			T *tuples = this->parts[p].blocks[b].tuples;
 			//std::cout << b <<"< tuple_num: " << this->parts[p].blocks[b].tuple_num << std::endl;
@@ -405,14 +411,19 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
 
 	while(q.size() > 100){ q.pop(); }
 	T threshold = q.top().score;
+	while(!q.empty()){
+		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
+		this->res.push_back(q.top());
+		q.pop();
+	}
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
 
 template<class T, class Z>
 void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
-	std::cout << this->algo << " find topKthreads (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " threads (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -435,6 +446,7 @@ void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
 			Z id = this->parts[p].offset + poffset;
 			T *tuples = this->parts[p].blocks[b].tuples;
 			//std::cout << b <<"< tuple_num: " << this->parts[p].blocks[b].tuple_num << std::endl;
+
 			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=16){
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
@@ -511,8 +523,13 @@ void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
 
 	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
 	T threshold = _q.top().score;
+	while(!_q.empty()){
+		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
+		this->res.push_back(_q.top());
+		_q.pop();
+	}
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << " threshold=[" << threshold <<"] (" << _q.size() << ")" << std::endl;
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
 

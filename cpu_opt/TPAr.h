@@ -36,7 +36,7 @@ void TPAr<T,Z>::init(){
 
 template<class T, class Z>
 void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
-	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -87,6 +87,7 @@ void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 		}
 	}
 	this->tt_ranking = this->t.lap();
+	this->tt_processing += this->tt_ranking;
 
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
@@ -96,7 +97,7 @@ void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 
 template<class T, class Z>
 void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
-	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -186,6 +187,7 @@ void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 		}
 	}
 	this->tt_ranking = this->t.lap();
+	this->tt_processing += this->tt_ranking;
 
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
@@ -195,7 +197,7 @@ void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq){
 
 template<class T, class Z>
 void TPAr<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
-	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " threads (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -292,6 +294,7 @@ void TPAr<T,Z>::findTopKthreads(uint64_t k,uint8_t qq){
 		}
 	}
 	this->tt_ranking = this->t.lap();
+	this->tt_processing += this->tt_ranking;
 
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);

@@ -8,7 +8,7 @@
 #include "../validation/bench_cpu.h"
 
 #define RUN_PAR false
-#define K 100
+//#define K 100
 
 int main(int argc, char **argv){
 	ArgParser ap;
@@ -50,12 +50,24 @@ int main(int argc, char **argv){
 //	std::cout << "ee: " <<v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
 //	test_dt();
 
-	bench_ta(ap.getString("-f"),n,d,K);
-	//bench_tpac(ap.getString("-f"),n,d,K);
-	//bench_tpar(ap.getString("-f"),n,d,K);
-	//bench_pta(ap.getString("-f"),n,d,K);
+	if (TA_B == 1){
+		bench_ta(ap.getString("-f"),n,d,K);
+	}
+	//bench_lara(ap.getString("-f"),n,d,K);
+	if (TPAc_B == 1){
+		bench_tpac(ap.getString("-f"),n,d,K);
+	}
+	if (TPAr_B == 1){
+		bench_tpar(ap.getString("-f"),n,d,K);
+	}
+	if (VTA_B == 1){
+		bench_vta(ap.getString("-f"),n,d,K);
+	}
+	if (PTA_B == 1){
+		bench_pta(ap.getString("-f"),n,d,K);
+	}
+
 	//bench_sla(ap.getString("-f"),n,d,K);
-	//bench_ptap(ap.getString("-f"),n,d,K);
 	//test_dt();
 	//bench_vta(ap.getString("-f"),n,d,K);
 

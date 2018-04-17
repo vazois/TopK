@@ -164,7 +164,7 @@ void VTA<T,Z>::init(){
 
 template<class T, class Z>
 void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
-	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -214,6 +214,11 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
 
 	while(q.size() > 100){ q.pop(); }
 	T threshold = q.top().score;
+	while(!q.empty()){
+		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
+		this->res.push_back(q.top());
+		q.pop();
+	}
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
 	this->threshold = threshold;
@@ -221,7 +226,7 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq){
 
 template<class T, class Z>
 void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
-	std::cout << this->algo << " find topKsimd (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -296,6 +301,11 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
 
 	while(q.size() > 100){ q.pop(); }
 	T threshold = q.top().score;
+	while(!q.empty()){
+		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
+		this->res.push_back(q.top());
+		q.pop();
+	}
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
 	this->threshold = threshold;
@@ -303,7 +313,7 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq){
 
 template<class T, class Z>
 void VTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq){
-	std::cout << this->algo << " find topKsimd (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " threads (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();

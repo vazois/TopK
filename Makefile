@@ -28,11 +28,27 @@ LD=0
 #DISTR c:correlated i:independent a:anticorrelated
 DISTR=1
 
+#TA Benchmark
+TA_B=0
+#TPAc Benchmark
+TPAc_B=0
+#TPAr Benchmark
+TPAr_B=0
+#VTA Benchmark
+VTA_B=0
+#PTA Benchmark
+PTA_B=0
+
+#Top-K
+K=16
+
+BENCH= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B)
+
 #CPU CONFIGURATION
 CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp input/randdataset-1.1.0/src/randdataset.c
 CC_FLAGS=-std=c++11
 CC_EXE=cpu_run
-CC_OPT_FLAGS_GNU= -O3 -march=native -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -msse -msse2 -msse3 -msse4.1 -mbmi2 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64 -fopenmp
+CC_OPT_FLAGS_GNU= -O3 -march=native $(BENCH) -DK=$(K) -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -msse -msse2 -msse3 -msse4.1 -mbmi2 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64 -fopenmp
 CC_OPT_FLAGS_INTEL= -O3 -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -fomit-frame-pointer -mavx -fopenmp
 
 #GPU CONFIGURATION

@@ -15,6 +15,7 @@
 #include "../cpu_opt/VTA.h"
 #include "../cpu_opt/PTA.h"
 #include "../cpu_opt/SLA.h"
+#include "../cpu_opt/LARA.h"
 
 //#define ITER 1
 //#define IMP 1//0:Scalar 1:SIMD 2:Threads + SIMD
@@ -56,12 +57,43 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
 		ta.findTopK(k,i);
+		//ta.findTopKscalar(k,i);
 		ta.reset_clocks();
 		//Benchmark
 		for(uint8_t m = 0; m < ITER;m++){
 			ta.findTopK(k,i);
+			//ta.findTopKscalar(k,i);
 		}
 		ta.benchmark();
+	}
+}
+
+void bench_lara(std::string fname,uint64_t n, uint64_t d, uint64_t k){
+	File<float> f(fname,false,n,d);
+	LARA<float,uint64_t> lara(f.rows(),f.items());
+
+	if (LD == 0){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(lara.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(lara.get_cdata(),DISTR);
+	}
+
+	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
+	lara.init();
+	lara.set_iter(ITER);
+	uint8_t q = f.items();
+	if (QM == 0) q = 2;
+	for(uint8_t i = q; i <= f.items();i+=QD){
+		//Warm up
+		lara.findTopK(k,i);
+		lara.reset_clocks();
+		//Benchmark
+		for(uint8_t m = 0; m < ITER;m++){
+			lara.findTopK(k,i);
+		}
+		lara.benchmark();
 	}
 }
 

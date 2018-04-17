@@ -2,8 +2,8 @@
 
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
-START_N=$((1*1024*1024))
-END_N=$((1*1024*1024))
+START_N=$((256*1024*1024))
+END_N=$((256*1024*1024))
 DIMS=8
 
 #QM 0:Multiple dimension queries, 1:Single dimension Queries
@@ -13,9 +13,23 @@ QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads
 IMP=1
 #ITER Testing iterations
-ITER=1
+ITER=10
 #LD 0:load from file, 1: generate in memory
 LD=1
+
+#TA Benchmark
+TA_B=0
+#TPAc Benchmark
+TPAc_B=0
+#TPAr Benchmark
+TPAr_B=0
+#VTA Benchmark
+VTA_B=0
+#PTA Benchmark
+PTA_B=1
+
+#Top-K
+K=64
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -42,7 +56,7 @@ fi
 
 if [ $device -eq 0 ]
 then
-	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR
+	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B K=$K
 else
 	make gpu_cc
 fi
