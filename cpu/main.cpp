@@ -44,27 +44,21 @@ int main(int argc, char **argv){
 		nl = ap.getInt("-nl");
 	}
 
-//	float v[4] = {0.3,0.2,0.7,0.5};
-//	std::cout << "00: "<<v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
-//	simd4sort(v);
-//	std::cout << "ee: " <<v[0] << "," << v[1] << "," << v[2] << "," << v[3] << std::endl;
-//	test_dt();
-
 	if (TA_B == 1){
-		bench_ta(ap.getString("-f"),n,d,K);
+		bench_ta(ap.getString("-f"),n,d,KK);
 	}
 	//bench_lara(ap.getString("-f"),n,d,K);
 	if (TPAc_B == 1){
-		bench_tpac(ap.getString("-f"),n,d,K);
+		bench_tpac(ap.getString("-f"),n,d,KK);
 	}
 	if (TPAr_B == 1){
-		bench_tpar(ap.getString("-f"),n,d,K);
+		bench_tpar(ap.getString("-f"),n,d,KK);
 	}
 	if (VTA_B == 1){
-		bench_vta(ap.getString("-f"),n,d,K);
+		bench_vta(ap.getString("-f"),n,d,KK);
 	}
 	if (PTA_B == 1){
-		bench_pta(ap.getString("-f"),n,d,K);
+		bench_pta(ap.getString("-f"),n,d,KK);
 	}
 
 	//bench_sla(ap.getString("-f"),n,d,K);

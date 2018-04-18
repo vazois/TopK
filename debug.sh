@@ -29,7 +29,7 @@ VTA_B=0
 PTA_B=1
 
 #Top-K
-K=64
+KK=128
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -56,7 +56,7 @@ fi
 
 if [ $device -eq 0 ]
 then
-	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B K=$K
+	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B KK=$KK
 else
 	make gpu_cc
 fi

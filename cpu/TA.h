@@ -31,7 +31,7 @@ class TA : public AA<T,Z>{
 		}
 
 		void init();
-		void findTopK(uint64_t k,uint8_t qq);
+		void findTopK(uint64_t k,uint8_t qq, T *weights);
 		void findTopKscalar(uint64_t k,uint8_t qq);
 
 		pred<T,Z> **alists;
@@ -59,7 +59,7 @@ void TA<T,Z>::init(){
 }
 
 template<class T,class Z>
-void TA<T,Z>::findTopK(uint64_t k,uint8_t qq){
+void TA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights){
 	std::cout << this->algo << " find top-" << k << " (" << (int)qq << "D) ...";
 	std::unordered_set<Z> eset;
 	if(this->res.size() > 0) this->res.clear();
@@ -71,13 +71,14 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq){
 	this->t.start();
 	for(uint64_t i = 0; i < this->n;i++){
 		T threshold=0;
-		for(uint32_t m =0;m<qq;m++){
+		for(uint8_t m = this->d - qq; m < this->d; m++){
 			pred<T,Z> p = this->alists[m][i];
-			threshold+=p.attr;
+			T weight = weights[m];
+			threshold+=p.attr*weight;
 
 			if(eset.find(p.tid) == eset.end()){
 				T score00 = 0;
-				for(uint8_t m = 0; m < qq; m++){ score00+=this->cdata[p.tid * this->d + m]; }
+				for(uint8_t m = this->d - qq; m < this->d; m++){ score00+=this->cdata[p.tid * this->d + m] * weight; }
 
 				if(STATS_EFF) this->pred_count+=this->d;
 				if(STATS_EFF) this->tuple_count+=1;
@@ -126,7 +127,7 @@ void TA<T,Z>::findTopKscalar(uint64_t k,uint8_t qq){
 
 		Z pnum = 0;
 		for(uint64_t j = 0; j < TA_BLOCK; j++){
-			for(uint32_t m =0;m<qq;m++){
+			for(uint8_t m = this->d - qq; m < this->d; m++){
 				pred<T,Z> p = this->alists[m][i+j];
 				if(eset.find(p.tid) == eset.end()){
 					eset.insert(p.tid);

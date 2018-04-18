@@ -35,6 +35,9 @@ uint8_t qq[72] =
 		0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15//16
 	};
 
+//float weights[8] = { 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8 };
+float weights[8] = { 1,1,1,1,1,1,1,1 };
+
 const std::string distributions[3] ={"correlated","independent","anticorrelated"};
 
 void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
@@ -56,12 +59,12 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	if (QM == 0) q = 2;
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
-		ta.findTopK(k,i);
+		ta.findTopK(k,i,weights);
 		//ta.findTopKscalar(k,i);
 		ta.reset_clocks();
 		//Benchmark
 		for(uint8_t m = 0; m < ITER;m++){
-			ta.findTopK(k,i);
+			ta.findTopK(k,i,weights);
 			//ta.findTopKscalar(k,i);
 		}
 		ta.benchmark();
@@ -117,21 +120,21 @@ void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
 		if (IMP == 0){
-			tpar.findTopKscalar(k,i);
+			tpar.findTopKscalar(k,i,weights);
 		}else if(IMP == 1){
-			tpar.findTopKsimd(k,i);
+			tpar.findTopKsimd(k,i,weights);
 		}else if(IMP == 2){
-			tpar.findTopKthreads(k,i);
+			tpar.findTopKthreads(k,i,weights);
 		}
 		tpar.reset_clocks();
 		//Benchmark
 		for(uint8_t m = 0; m < ITER;m++){
 			if (IMP == 0){
-				tpar.findTopKscalar(k,i);
+				tpar.findTopKscalar(k,i,weights);
 			}else if(IMP == 1){
-				tpar.findTopKsimd(k,i);
+				tpar.findTopKsimd(k,i,weights);
 			}else if(IMP == 2){
-				tpar.findTopKthreads(k,i);
+				tpar.findTopKthreads(k,i,weights);
 			}
 		}
 		tpar.benchmark();
@@ -159,21 +162,21 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
 		if (IMP == 0){
-			tpac.findTopKscalar(k,i);
+			tpac.findTopKscalar(k,i,weights);
 		}else if(IMP == 1){
-			tpac.findTopKsimd(k,i);
+			tpac.findTopKsimd(k,i,weights);
 		}else if(IMP == 2){
-			tpac.findTopKthreads(k,i);
+			tpac.findTopKthreads(k,i,weights);
 		}
 		tpac.reset_clocks();
 		//Benchmark
 		for(uint8_t m = 0; m < ITER;m++){
 			if (IMP == 0){
-				tpac.findTopKscalar(k,i);
+				tpac.findTopKscalar(k,i,weights);
 			}else if(IMP == 1){
-				tpac.findTopKsimd(k,i);
+				tpac.findTopKsimd(k,i,weights);
 			}else if(IMP == 2){
-				tpac.findTopKthreads(k,i);
+				tpac.findTopKthreads(k,i,weights);
 			}
 		}
 		tpac.benchmark();
@@ -201,21 +204,21 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
 		if (IMP == 0){
-			pta.findTopKscalar(k,i);
+			pta.findTopKscalar(k,i,weights);
 		}else if(IMP == 1){
-			pta.findTopKsimd(k,i);
+			pta.findTopKsimd(k,i,weights);
 		}else if(IMP == 2){
-			pta.findTopKthreads(k,i);
+			pta.findTopKthreads(k,i,weights);
 		}
 		pta.reset_clocks();
 		//Benchmark
 		for(uint8_t m = 0; m < ITER;m++){
 			if (IMP == 0){
-				pta.findTopKscalar(k,i);
+				pta.findTopKscalar(k,i,weights);
 			}else if(IMP == 1){
-				pta.findTopKsimd(k,i);
+				pta.findTopKsimd(k,i,weights);
 			}else if(IMP == 2){
-				pta.findTopKthreads(k,i);
+				pta.findTopKthreads(k,i,weights);
 			}
 		}
 		pta.benchmark();
@@ -246,21 +249,21 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	for(uint8_t i = q; i <= f.items();i+=QD){
 		//Warm up
 		if (IMP == 0){
-			vta.findTopKscalar(k,i);
+			vta.findTopKscalar(k,i,weights);
 		}else if(IMP == 1){
-			vta.findTopKsimd(k,i);
+			vta.findTopKsimd(k,i,weights);
 		}else if(IMP == 2){
-			vta.findTopKthreads(k,i);
+			vta.findTopKthreads(k,i,weights);
 		}
 		vta.reset_clocks();
 		//Benchmark
 		for(uint8_t m = 0; m < ITER;m++){
 			if (IMP == 0){
-				vta.findTopKscalar(k,i);
+				vta.findTopKscalar(k,i,weights);
 			}else if(IMP == 1){
-				vta.findTopKsimd(k,i);
+				vta.findTopKsimd(k,i,weights);
 			}else if(IMP == 2){
-				vta.findTopKthreads(k,i);
+				vta.findTopKthreads(k,i,weights);
 			}
 		}
 		vta.benchmark();

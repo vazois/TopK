@@ -2,6 +2,12 @@
 #define AA_H
 
 #include "../common/common.h"
+#include <boost/heap/priority_queue.hpp>
+#include <boost/heap/binomial_heap.hpp>
+
+#define QATTR 0
+#define FIRST(d,qq) ( (QATTR == 0) ? 0 : d - qq)
+#define LAST(d,qq) ( (QATTR == 0) ? qq : d)
 
 /*
  * Predicate structure
@@ -39,6 +45,13 @@ class PQComparison{
 		bool operator() (const tuple_<T,Z>& lhs, const tuple_<T,Z>& rhs) const{
 			return (lhs.score>rhs.score);
 		}
+};
+
+template<class T,class Z>
+struct MaxCMP{
+	bool operator() (const tuple_<T,Z>& lhs, const tuple_<T,Z>& rhs) const{
+		return (lhs.score>rhs.score);
+	}
 };
 
 /*
