@@ -2,34 +2,35 @@
 
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
-START_N=$((256*1024*1024))
-END_N=$((256*1024*1024))
+START_N=$((1*1024*1024))
+END_N=$((1*1024*1024))
 DIMS=8
 
 #QM 0:Multiple dimension queries, 1:Single dimension Queries
 QM=0
 #QD Dimension interval for testing
 QD=1
-#IMP 0:Scalar, 1:SIMD, 2:Threads
+#IMP 0:Scalar, 1:SIMD, 2:Threads, 3: All
 IMP=1
 #ITER Testing iterations
 ITER=10
 #LD 0:load from file, 1: generate in memory
-LD=1
+LD=0
 
 #TA Benchmark
 TA_B=0
 #TPAc Benchmark
-TPAc_B=0
+TPAc_B=1
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benchmark
-VTA_B=0
+VTA_B=1
 #PTA Benchmark
-PTA_B=1
+PTA_B=0
 
-#Top-K
-KK=128
+#Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
+KKS=128
+KKE=128
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -56,7 +57,7 @@ fi
 
 if [ $device -eq 0 ]
 then
-	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B KK=$KK
+	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B KKS=$KKS KKE=$KKE
 else
 	make gpu_cc
 fi

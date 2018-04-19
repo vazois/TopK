@@ -327,6 +327,7 @@ void generate_indep_inmem(float *data, uint64_t n, uint64_t d, bool transpose){
 	float progress = 0.0;
 	uint64_t step = 1024;
 	uint64_t ii = 0;
+	srand(time(NULL));
 
 	if(!transpose){
 		for(uint64_t i = 0; i < n;i++){
@@ -403,6 +404,7 @@ void generate_corr_inmem(float *data, uint64_t n, uint64_t d, bool transpose){
 	float progress = 0.0;
 	uint64_t step = 1024;
 	uint64_t ii = 0;
+	srand(time(NULL));
 
 	while (count < n)
 	{
@@ -484,6 +486,7 @@ void generate_anti_inmem(float *data,uint64_t n, uint64_t d, bool transpose){
 	float progress = 0.0;
 	uint64_t step = 1024;
 	uint64_t ii = 0;
+	srand(time(NULL));
 
 	while (count < n)
 	{

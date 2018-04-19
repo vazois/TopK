@@ -7,8 +7,10 @@
 
 #include "../validation/bench_cpu.h"
 
-#define RUN_PAR false
-//#define K 100
+template<class T>
+void test_assembly(T *data){
+
+}
 
 int main(int argc, char **argv){
 	ArgParser ap;
@@ -44,22 +46,11 @@ int main(int argc, char **argv){
 		nl = ap.getInt("-nl");
 	}
 
-	if (TA_B == 1){
-		bench_ta(ap.getString("-f"),n,d,KK);
-	}
-	//bench_lara(ap.getString("-f"),n,d,K);
-	if (TPAc_B == 1){
-		bench_tpac(ap.getString("-f"),n,d,KK);
-	}
-	if (TPAr_B == 1){
-		bench_tpar(ap.getString("-f"),n,d,KK);
-	}
-	if (VTA_B == 1){
-		bench_vta(ap.getString("-f"),n,d,KK);
-	}
-	if (PTA_B == 1){
-		bench_pta(ap.getString("-f"),n,d,KK);
-	}
+	if (TA_B == 1){ bench_ta(ap.getString("-f"),n,d,KKS,KKE); }
+	if (TPAr_B == 1){ bench_tpar(ap.getString("-f"),n,d,KKS,KKE); }
+	if (TPAc_B == 1){ bench_tpac(ap.getString("-f"),n,d,KKS,KKE);	}
+	if (VTA_B == 1){ bench_vta(ap.getString("-f"),n,d,KKS,KKE); }
+	if (PTA_B == 1){ bench_pta(ap.getString("-f"),n,d,KKS,KKE); }
 
 	//bench_sla(ap.getString("-f"),n,d,K);
 	//test_dt();

@@ -16,9 +16,9 @@ class  TPAr : public AA<T,Z>{
 		}
 
 		void init();
-		void findTopKscalar(uint64_t k,uint8_t qq, T *weights);
-		void findTopKsimd(uint64_t k,uint8_t qq, T *weights);
-		void findTopKthreads(uint64_t k,uint8_t qq, T *weights);
+		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 
 	private:
 		T *scores;
@@ -33,7 +33,7 @@ void TPAr<T,Z>::init(){
 }
 
 template<class T, class Z>
-void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights){
+void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -45,8 +45,8 @@ void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights){
 	for(uint64_t i = 0; i < this->n; i+=8){
 		T score00 = 0; T score01 = 0; T score02 = 0; T score03 = 0;
 		T score04 = 0; T score05 = 0; T score06 = 0; T score07 = 0;
-		for(uint8_t m = this->d - qq; m < this->d; m++){
-			T weight = weights[m];
+		for(uint8_t m = 0; m < qq; m++){
+			T weight = weights[attr[m]];
 			uint64_t offset0 = i * this->d;
 			uint64_t offset1 = (i+1) * this->d;
 			uint64_t offset2 = (i+2) * this->d;
@@ -55,14 +55,14 @@ void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights){
 			uint64_t offset5 = (i+5) * this->d;
 			uint64_t offset6 = (i+6) * this->d;
 			uint64_t offset7 = (i+7) * this->d;
-			score00 += this->cdata[offset0 + m]*weight;
-			score01 += this->cdata[offset1 + m]*weight;
-			score02 += this->cdata[offset2 + m]*weight;
-			score03 += this->cdata[offset3 + m]*weight;
-			score04 += this->cdata[offset4 + m]*weight;
-			score05 += this->cdata[offset5 + m]*weight;
-			score06 += this->cdata[offset6 + m]*weight;
-			score07 += this->cdata[offset7 + m]*weight;
+			score00 += this->cdata[offset0 + attr[m]]*weight;
+			score01 += this->cdata[offset1 + attr[m]]*weight;
+			score02 += this->cdata[offset2 + attr[m]]*weight;
+			score03 += this->cdata[offset3 + attr[m]]*weight;
+			score04 += this->cdata[offset4 + attr[m]]*weight;
+			score05 += this->cdata[offset5 + attr[m]]*weight;
+			score06 += this->cdata[offset6 + attr[m]]*weight;
+			score07 += this->cdata[offset7 + attr[m]]*weight;
 		}
 
 		if(q.size() < k){
@@ -101,14 +101,13 @@ void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights){
 }
 
 template<class T, class Z>
-void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights){
+void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
 
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
-	//boost::heap::priority_queue<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
 	float score[16] __attribute__((aligned(32)));
 	this->t.start();
 	__builtin_prefetch(score,1,3);
@@ -118,7 +117,7 @@ void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights){
 		__m256 score00 = _mm256_setzero_ps();
 		__m256 score01 = _mm256_setzero_ps();
 
-		for(uint8_t m = this->d - qq; m < this->d; m++){
+		for(uint8_t m = 0; m < qq; m++){
 			uint64_t offset0 = i * this->d;
 			uint64_t offset1 = (i+1) * this->d;
 			uint64_t offset2 = (i+2) * this->d;
@@ -136,27 +135,27 @@ void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights){
 			uint64_t offset14 = (i+14) * this->d;
 			uint64_t offset15 = (i+15) * this->d;
 
-			T weight = weights[m];
+			T weight = weights[attr[m]];
 			__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 			__m256 load00 = _mm256_set_ps(
-					this->cdata[offset0 + m],
-					this->cdata[offset1 + m],
-					this->cdata[offset2 + m],
-					this->cdata[offset3 + m],
-					this->cdata[offset4 + m],
-					this->cdata[offset5 + m],
-					this->cdata[offset6 + m],
-					this->cdata[offset7 + m]);
+					this->cdata[offset0 + attr[m]],
+					this->cdata[offset1 + attr[m]],
+					this->cdata[offset2 + attr[m]],
+					this->cdata[offset3 + attr[m]],
+					this->cdata[offset4 + attr[m]],
+					this->cdata[offset5 + attr[m]],
+					this->cdata[offset6 + attr[m]],
+					this->cdata[offset7 + attr[m]]);
 
 			__m256 load01 = _mm256_set_ps(
-					this->cdata[offset8 + m],
-					this->cdata[offset9 + m],
-					this->cdata[offset10 + m],
-					this->cdata[offset11 + m],
-					this->cdata[offset12 + m],
-					this->cdata[offset13 + m],
-					this->cdata[offset14 + m],
-					this->cdata[offset15 + m]);
+					this->cdata[offset8 + attr[m]],
+					this->cdata[offset9 + attr[m]],
+					this->cdata[offset10 + attr[m]],
+					this->cdata[offset11 + attr[m]],
+					this->cdata[offset12 + attr[m]],
+					this->cdata[offset13 + attr[m]],
+					this->cdata[offset14 + attr[m]],
+					this->cdata[offset15 + attr[m]]);
 
 			load00 = _mm256_mul_ps(load00,_weight);
 			load01 = _mm256_mul_ps(load01,_weight);
@@ -217,7 +216,7 @@ void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights){
 }
 
 template<class T, class Z>
-void TPAr<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights){
+void TPAr<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	std::cout << this->algo << " find top-" << k << " threads (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -225,7 +224,6 @@ void TPAr<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights){
 
 	omp_set_num_threads(THREADS);
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q[THREADS];
-	//boost::heap::priority_queue<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q[THREADS];
 	this->t.start();
 #pragma omp parallel
 {
@@ -240,7 +238,7 @@ void TPAr<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights){
 		__m256 score00 = _mm256_setzero_ps();
 		__m256 score01 = _mm256_setzero_ps();
 
-		for(uint8_t m = this->d - qq; m < this->d; m++){
+		for(uint8_t m = 0; m < qq; m++){
 			uint64_t offset0 = i * this->d;
 			uint64_t offset1 = (i+1) * this->d;
 			uint64_t offset2 = (i+2) * this->d;
@@ -258,27 +256,27 @@ void TPAr<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights){
 			uint64_t offset14 = (i+14) * this->d;
 			uint64_t offset15 = (i+15) * this->d;
 
-			T weight = weights[m];
+			T weight = weights[attr[m]];
 			__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 			__m256 load00 = _mm256_set_ps(
-					this->cdata[offset0 + m],
-					this->cdata[offset1 + m],
-					this->cdata[offset2 + m],
-					this->cdata[offset3 + m],
-					this->cdata[offset4 + m],
-					this->cdata[offset5 + m],
-					this->cdata[offset6 + m],
-					this->cdata[offset7 + m]);
+					this->cdata[offset0 + attr[m]],
+					this->cdata[offset1 + attr[m]],
+					this->cdata[offset2 + attr[m]],
+					this->cdata[offset3 + attr[m]],
+					this->cdata[offset4 + attr[m]],
+					this->cdata[offset5 + attr[m]],
+					this->cdata[offset6 + attr[m]],
+					this->cdata[offset7 + attr[m]]);
 
 			__m256 load01 = _mm256_set_ps(
-					this->cdata[offset8 + m],
-					this->cdata[offset9 + m],
-					this->cdata[offset10 + m],
-					this->cdata[offset11 + m],
-					this->cdata[offset12 + m],
-					this->cdata[offset13 + m],
-					this->cdata[offset14 + m],
-					this->cdata[offset15 + m]);
+					this->cdata[offset8 + attr[m]],
+					this->cdata[offset9 + attr[m]],
+					this->cdata[offset10 + attr[m]],
+					this->cdata[offset11 + attr[m]],
+					this->cdata[offset12 + attr[m]],
+					this->cdata[offset13 + attr[m]],
+					this->cdata[offset14 + attr[m]],
+					this->cdata[offset15 + attr[m]]);
 
 			load00 = _mm256_mul_ps(load00,_weight);
 			load01 = _mm256_mul_ps(load01,_weight);

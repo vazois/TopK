@@ -16,9 +16,9 @@ class  TPAc : public AA<T,Z>{
 		}
 
 		void init();
-		void findTopKscalar(uint64_t k,uint8_t qq, T *weights);
-		void findTopKsimd(uint64_t k,uint8_t qq, T *weights);
-		void findTopKthreads(uint64_t k,uint8_t qq, T *weights);
+		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 	private:
 		T *scores;
 };
@@ -33,14 +33,13 @@ void TPAc<T,Z>::init(){
 }
 
 template<class T, class Z>
-void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights){
+void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
 
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
-	//boost::heap::priority_queue<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
 	this->t.start();
 	for(uint64_t i = 0; i < this->n; i+=8){
 		T score00 = 0;
@@ -52,17 +51,17 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights){
 		T score06 = 0;
 		T score07 = 0;
 
-		uint64_t offset0 = (this->d - qq) * this->n + i;
-		uint64_t offset1 = (this->d - qq) * this->n + i + 1;
-		uint64_t offset2 = (this->d - qq) * this->n + i + 2;
-		uint64_t offset3 = (this->d - qq) * this->n + i + 3;
-		uint64_t offset4 = (this->d - qq) * this->n + i + 4;
-		uint64_t offset5 = (this->d - qq) * this->n + i + 5;
-		uint64_t offset6 = (this->d - qq) * this->n + i + 6;
-		uint64_t offset7 = (this->d - qq) * this->n + i + 7;
+		uint64_t offset0 = attr[0] * this->n + i;
+		uint64_t offset1 = attr[0] * this->n + i + 1;
+		uint64_t offset2 = attr[0] * this->n + i + 2;
+		uint64_t offset3 = attr[0] * this->n + i + 3;
+		uint64_t offset4 = attr[0] * this->n + i + 4;
+		uint64_t offset5 = attr[0] * this->n + i + 5;
+		uint64_t offset6 = attr[0] * this->n + i + 6;
+		uint64_t offset7 = attr[0] * this->n + i + 7;
 
-		for(uint8_t m = this->d - qq; m < this->d; m++){
-			T weight = weights[m];
+		for(uint8_t m = 0; m < qq; m++){
+			T weight = weights[attr[m]];
 			score00+= this->cdata[offset0]*weight;
 			score01+= this->cdata[offset1]*weight;
 			score02+= this->cdata[offset2]*weight;
@@ -117,25 +116,23 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights){
 }
 
 template<class T, class Z>
-void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights){
+void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
 
-	//std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
-	//boost::heap::priority_queue<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
-	boost::heap::binomial_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	float score[16] __attribute__((aligned(32)));
 	this->t.start();
 	__builtin_prefetch(score,1,3);
 	for(uint64_t i = 0; i < this->n; i+=16){
 		__m256 score00 = _mm256_setzero_ps();
 		__m256 score01 = _mm256_setzero_ps();
-		for(uint8_t m = this->d - qq; m < this->d; m++){
-			uint64_t offset00 = m * this->n + i;
-			uint64_t offset01 = m * this->n + i + 8;
-			T weight = weights[m];
+		for(uint8_t m = 0; m < qq; m++){
+			uint64_t offset00 = attr[m] * this->n + i;
+			uint64_t offset01 = attr[m] * this->n + i + 8;
+			T weight = weights[attr[m]];
 			__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 			__m256 load00 = _mm256_load_ps(&this->cdata[offset00]);
 			__m256 load01 = _mm256_load_ps(&this->cdata[offset01]);
@@ -198,7 +195,7 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights){
 }
 
 template<class T, class Z>
-void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights){
+void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	std::cout << this->algo << " find top-" << k << " threads (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -219,10 +216,10 @@ void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights){
 	for(uint64_t i = start; i < end; i+=16){
 		__m256 score00 = _mm256_setzero_ps();
 		__m256 score01 = _mm256_setzero_ps();
-		for(uint8_t m = this->d - qq; m < this->d; m++){
-			uint64_t offset00 = m * this->n + i;
-			uint64_t offset01 = m * this->n + i + 8;
-			T weight = weights[m];
+		for(uint8_t m = 0; m < qq; m++){
+			uint64_t offset00 = attr[m] * this->n + i;
+			uint64_t offset01 = attr[m] * this->n + i + 8;
+			T weight = weights[attr[m]];
 			__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 			__m256 load00 = _mm256_load_ps(&this->cdata[offset00]);
 			__m256 load01 = _mm256_load_ps(&this->cdata[offset01]);

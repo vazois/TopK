@@ -3,6 +3,8 @@
 
 #include <inttypes.h>
 #include <iostream>
+#include <ctime>
+
 
 static double sqr(double a);
 
