@@ -7,10 +7,6 @@
 
 #include "../validation/bench_cpu.h"
 
-template<class T>
-void test_assembly(T *data){
-
-}
 
 int main(int argc, char **argv){
 	ArgParser ap;

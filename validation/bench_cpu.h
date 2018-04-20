@@ -38,12 +38,12 @@ uint8_t qq[72] =
 float weights[8] = { 1,1,1,1,1,1,1,1 };
 
 uint8_t attr[7][8] = {
-		{0,1,7,7,7,7,7,7},//2
-		{0,1,2,0,0,0,0,0},//3
-		{0,1,2,3,0,0,0,0},//4
-		{0,1,2,3,4,0,0,0},//5
-		{0,1,2,3,4,5,0,0},//6
-		{0,1,2,3,4,5,6,0},//7
+		{6,7,0,0,0,0,0,0},//2
+		{5,6,7,0,0,0,0,0},//3
+		{4,5,6,7,0,0,0,0},//4
+		{3,4,5,6,7,0,0,0},//5
+		{2,3,4,5,6,7,0,0},//6
+		{1,2,3,4,5,6,7,0},//7
 		{0,1,2,3,4,5,6,7},//8
 };
 
@@ -233,25 +233,21 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			//Warm up
 			if (IMP == 0){
-				pta.findTopKscalar(k,i,weights);
+				pta.findTopKscalar(k,i,weights,attr[i-q]);
 			}else if(IMP == 1){
-				pta.findTopKsimd(k,i,weights);
+				pta.findTopKsimd(k,i,weights,attr[i-q]);
 			}else if(IMP == 2){
-				pta.findTopKthreads2(k,i,weights);
+				pta.findTopKthreads(k,i,weights,attr[i-q]);
 			}
-//			pta.reset_clocks();
+			pta.reset_clocks();
 			//Benchmark
 			for(uint8_t m = 0; m < ITER;m++){
 				if (IMP == 0){
-					pta.findTopKscalar(k,i,weights);
+					pta.findTopKscalar(k,i,weights,attr[i-q]);
 				}else if(IMP == 1){
-					pta.findTopKsimd(k,i,weights);
+					pta.findTopKsimd(k,i,weights,attr[i-q]);
 				}else if(IMP == 2){
-					pta.findTopKthreads2(k,i,weights);
-				}else if(IMP == 3){
-					//pta.findTopKscalar(k,i,weights);
-					pta.findTopKsimd(k,i,weights);
-					pta.findTopKthreads2(k,i,weights);
+					pta.findTopKthreads(k,i,weights,attr[i-q]);
 				}
 			}
 			pta.benchmark();

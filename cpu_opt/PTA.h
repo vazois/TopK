@@ -102,10 +102,9 @@ class PTA : public AA<T,Z>{
 		}
 
 		void init();
-		void findTopKscalar(uint64_t k,uint8_t qq, T *weights);
-		void findTopKsimd(uint64_t k,uint8_t qq, T *weights);
-		void findTopKthreads(uint64_t k,uint8_t qq, T *weights);
-		void findTopKthreads2(uint64_t k,uint8_t qq, T *weights);
+		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 
 	private:
 		pta_partition<T,Z> parts[PPARTITIONS];
@@ -298,14 +297,12 @@ void PTA<T,Z>::init(){
 }
 
 template<class T, class Z>
-void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights){
+void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
 
-	uint8_t first = FIRST(this->d,qq);
-	uint8_t last = LAST(this->d,qq);
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	this->t.start();
 	for(uint64_t p = 0; p < PPARTITIONS; p++){
@@ -321,9 +318,9 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights){
 				T score02 = 0; T score03 = 0;
 				T score04 = 0; T score05 = 0;
 				T score06 = 0; T score07 = 0;
-				for(uint8_t m = first; m < last; m++){
-					T weight = weights[m];
-					uint32_t offset = m*VBLOCK_SIZE + t;
+				for(uint8_t m = 0; m < qq; m++){
+					T weight = weights[attr[m]];
+					uint32_t offset = attr[m]*VBLOCK_SIZE + t;
 					score00+=tuples[offset]*weight;
 					score01+=tuples[offset+1]*weight;
 					score02+=tuples[offset+2]*weight;
@@ -336,21 +333,28 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights){
 				if(q.size() < k){
 					q.push(tuple_<T,Z>(id,score00));
 					q.push(tuple_<T,Z>(id+1,score01));
-					q.push(tuple_<T,Z>(id+2,score02)); q.push(tuple_<T,Z>(id+3,score03));
-					q.push(tuple_<T,Z>(id+4,score04)); q.push(tuple_<T,Z>(id+5,score05)); q.push(tuple_<T,Z>(id+6,score06)); q.push(tuple_<T,Z>(id+7,score07));
+					q.push(tuple_<T,Z>(id+2,score02));
+					q.push(tuple_<T,Z>(id+3,score03));
+					q.push(tuple_<T,Z>(id+4,score04));
+					q.push(tuple_<T,Z>(id+5,score05));
+					q.push(tuple_<T,Z>(id+6,score06));
+					q.push(tuple_<T,Z>(id+7,score07));
 				}else{
 					if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(id,score00)); }
 					if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(id+1,score01)); }
-					if(q.top().score < score02){ q.pop(); q.push(tuple_<T,Z>(id+2,score02)); } if(q.top().score < score03){ q.pop(); q.push(tuple_<T,Z>(id+3,score03)); }
-					if(q.top().score < score04){ q.pop(); q.push(tuple_<T,Z>(id+4,score04)); } if(q.top().score < score05){ q.pop(); q.push(tuple_<T,Z>(id+5,score05)); }
-					if(q.top().score < score06){ q.pop(); q.push(tuple_<T,Z>(id+6,score06)); } if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(id+7,score07)); }
+					if(q.top().score < score02){ q.pop(); q.push(tuple_<T,Z>(id+2,score02)); }
+					if(q.top().score < score03){ q.pop(); q.push(tuple_<T,Z>(id+3,score03)); }
+					if(q.top().score < score04){ q.pop(); q.push(tuple_<T,Z>(id+4,score04)); }
+					if(q.top().score < score05){ q.pop(); q.push(tuple_<T,Z>(id+5,score05)); }
+					if(q.top().score < score06){ q.pop(); q.push(tuple_<T,Z>(id+6,score06)); }
+					if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(id+7,score07)); }
 				}
 				if(STATS_EFF) this->tuple_count+=8;
 			}
 
 			T threshold = 0;
 			T *tarray = this->parts[p].blocks[b].tarray;
-			for(uint8_t m = first; m < last; m++) threshold+=tarray[m]*weights[m];
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
 			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 		//std::cout << "p: " <<p << " = " << count << std::endl;
@@ -360,7 +364,6 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights){
 	while(q.size() > k){ q.pop(); }
 	T threshold = q.top().score;
 	while(!q.empty()){
-		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
 		this->res.push_back(q.top());
 		q.pop();
 	}
@@ -370,16 +373,13 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights){
 }
 
 template<class T, class Z>
-void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights){
+void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
 
-	uint8_t first = FIRST(this->d,qq);
-	uint8_t last = LAST(this->d,qq);
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
-
 	float score[16] __attribute__((aligned(32)));
 	this->t.start();
 	for(uint64_t p = 0; p < PPARTITIONS; p++){
@@ -394,9 +394,9 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights){
 			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=16){
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
-				for(uint8_t m = first; m < last; m++){
-					T weight = weights[m];
-					uint32_t offset = m*VBLOCK_SIZE + t;
+				for(uint8_t m = 0; m < qq; m++){
+					T weight = weights[attr[m]];
+					uint32_t offset = attr[m]*VBLOCK_SIZE + t;
 					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 					__m256 load00 = _mm256_load_ps(&tuples[offset]);
 					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
@@ -407,48 +407,19 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights){
 				}
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
-				if(q.size() < k){
-					q.push(tuple_<T,Z>(id,score[0]));
-					q.push(tuple_<T,Z>(id+1,score[1]));
-					q.push(tuple_<T,Z>(id+2,score[2]));
-					q.push(tuple_<T,Z>(id+3,score[3]));
-					q.push(tuple_<T,Z>(id+4,score[4]));
-					q.push(tuple_<T,Z>(id+5,score[5]));
-					q.push(tuple_<T,Z>(id+6,score[6]));
-					q.push(tuple_<T,Z>(id+7,score[7]));
-					q.push(tuple_<T,Z>(id+8,score[8]));
-					q.push(tuple_<T,Z>(id+9,score[9]));
-					q.push(tuple_<T,Z>(id+10,score[10]));
-					q.push(tuple_<T,Z>(id+11,score[11]));
-					q.push(tuple_<T,Z>(id+12,score[12]));
-					q.push(tuple_<T,Z>(id+13,score[13]));
-					q.push(tuple_<T,Z>(id+14,score[14]));
-					q.push(tuple_<T,Z>(id+15,score[15]));
-				}else{
-					if(q.top().score < score[0]){ q.pop(); q.push(tuple_<T,Z>(id,score[0])); }
-					if(q.top().score < score[1]){ q.pop(); q.push(tuple_<T,Z>(id+1,score[1])); }
-					if(q.top().score < score[2]){ q.pop(); q.push(tuple_<T,Z>(id+2,score[2])); }
-					if(q.top().score < score[3]){ q.pop(); q.push(tuple_<T,Z>(id+3,score[3])); }
-					if(q.top().score < score[4]){ q.pop(); q.push(tuple_<T,Z>(id+4,score[4])); }
-					if(q.top().score < score[5]){ q.pop(); q.push(tuple_<T,Z>(id+5,score[5])); }
-					if(q.top().score < score[6]){ q.pop(); q.push(tuple_<T,Z>(id+6,score[6])); }
-					if(q.top().score < score[7]){ q.pop(); q.push(tuple_<T,Z>(id+7,score[7])); }
-
-					if(q.top().score < score[8]){  q.pop(); q.push(tuple_<T,Z>(id+8,score[8])); }
-					if(q.top().score < score[9]){  q.pop(); q.push(tuple_<T,Z>(id+9,score[9])); }
-					if(q.top().score < score[10]){ q.pop(); q.push(tuple_<T,Z>(id+10,score[10])); }
-					if(q.top().score < score[11]){ q.pop(); q.push(tuple_<T,Z>(id+11,score[11])); }
-					if(q.top().score < score[12]){ q.pop(); q.push(tuple_<T,Z>(id+12,score[12])); }
-					if(q.top().score < score[13]){ q.pop(); q.push(tuple_<T,Z>(id+13,score[13])); }
-					if(q.top().score < score[14]){ q.pop(); q.push(tuple_<T,Z>(id+14,score[14])); }
-					if(q.top().score < score[15]){ q.pop(); q.push(tuple_<T,Z>(id+15,score[15])); }
+				for(uint8_t l = 0; l < 16; l++){
+					if(q.size() < k){
+						q.push(tuple_<T,Z>(id,score[l]));
+					}else if(q.top().score < score[l]){
+						q.pop(); q.push(tuple_<T,Z>(id,score[l]));
+					}
 				}
 				if(STATS_EFF) this->tuple_count+=16;
 			}
 
 			T threshold = 0;
 			T *tarray = this->parts[p].blocks[b].tarray;
-			for(uint8_t m = first; m < last; m++) threshold+=tarray[m]*weights[m];
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
 			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 		//std::cout << "p: " <<p << " = " << count << std::endl;
@@ -468,7 +439,7 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights){
 }
 
 template<class T, class Z>
-void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights){
+void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	uint32_t threads = THREADS < PPARTITIONS ? THREADS : PPARTITIONS;
 	Z tt_count[threads];
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> _q[threads];
@@ -497,14 +468,13 @@ void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights){
 		for(uint64_t b = 0; b < this->parts[p].block_num; b++){
 			Z id = this->parts[p].offset + poffset;
 			T *tuples = this->parts[p].blocks[b].tuples;
-			//std::cout << b <<"< tuple_num: " << this->parts[p].blocks[b].tuple_num << std::endl;
 
 			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=16){
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
-				for(uint8_t m = this->d - qq; m < this->d; m++){
-					T weight = weights[m];
-					uint32_t offset = m*VBLOCK_SIZE + t;
+				for(uint8_t m = 0; m < qq; m++){
+					T weight = weights[attr[m]];
+					uint32_t offset = attr[m]*VBLOCK_SIZE + t;
 					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 					__m256 load00 = _mm256_load_ps(&tuples[offset]);
 					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
@@ -516,170 +486,19 @@ void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights){
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
 
-				if(_q[tid].size() < k){
-					_q[tid].push(tuple_<T,Z>(id,score[0]));
-					_q[tid].push(tuple_<T,Z>(id+1,score[1]));
-					_q[tid].push(tuple_<T,Z>(id+2,score[2]));
-					_q[tid].push(tuple_<T,Z>(id+3,score[3]));
-					_q[tid].push(tuple_<T,Z>(id+4,score[4]));
-					_q[tid].push(tuple_<T,Z>(id+5,score[5]));
-					_q[tid].push(tuple_<T,Z>(id+6,score[6]));
-					_q[tid].push(tuple_<T,Z>(id+7,score[7]));
-					_q[tid].push(tuple_<T,Z>(id+8,score[8]));
-					_q[tid].push(tuple_<T,Z>(id+9,score[9]));
-					_q[tid].push(tuple_<T,Z>(id+10,score[10]));
-					_q[tid].push(tuple_<T,Z>(id+11,score[11]));
-					_q[tid].push(tuple_<T,Z>(id+12,score[12]));
-					_q[tid].push(tuple_<T,Z>(id+13,score[13]));
-					_q[tid].push(tuple_<T,Z>(id+14,score[14]));
-					_q[tid].push(tuple_<T,Z>(id+15,score[15]));
-				}else{
-					if(_q[tid].top().score < score[0]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id,score[0])); }
-					if(_q[tid].top().score < score[1]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+1,score[1])); }
-					if(_q[tid].top().score < score[2]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+2,score[2])); }
-					if(_q[tid].top().score < score[3]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+3,score[3])); }
-					if(_q[tid].top().score < score[4]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+4,score[4])); }
-					if(_q[tid].top().score < score[5]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+5,score[5])); }
-					if(_q[tid].top().score < score[6]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+6,score[6])); }
-					if(_q[tid].top().score < score[7]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+7,score[7])); }
-
-					if(_q[tid].top().score < score[8]){  _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+8,score[8])); }
-					if(_q[tid].top().score < score[9]){  _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+9,score[9])); }
-					if(_q[tid].top().score < score[10]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+10,score[10])); }
-					if(_q[tid].top().score < score[11]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+11,score[11])); }
-					if(_q[tid].top().score < score[12]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+12,score[12])); }
-					if(_q[tid].top().score < score[13]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+13,score[13])); }
-					if(_q[tid].top().score < score[14]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+14,score[14])); }
-					if(_q[tid].top().score < score[15]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+15,score[15])); }
+				for(uint8_t l = 0; l < 16; l++){
+					if(_q[tid].size() < k){
+						_q[tid].push(tuple_<T,Z>(id,score[l]));
+					}else if(_q[tid].top().score < score[l]){
+						_q[tid].pop(); _q[tid].push(tuple_<T,Z>(id,score[l]));
+					}
 				}
 				if(STATS_EFF) tuple_count+=16;
 			}
 
 			T threshold = 0;
 			T *tarray = this->parts[p].blocks[b].tarray;
-			for(uint8_t m = this->d - qq; m < this->d; m++) threshold+=tarray[m]*weights[m];
-			if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ break; }
-		}
-		//std::cout << "p: " <<p << " = " << count << std::endl;
-	}
-	if(STATS_EFF) tt_count[tid] = tuple_count;
-}
-	this->tt_processing += this->t.lap();
-	for(uint32_t m = 0; m < threads; m++){
-		while(!_q[m].empty()){
-			if(q.size() < k){
-				q.push(_q[m].top());
-			}else if(q.top().score < _q[m].top().score){
-				q.pop();
-				q.push(_q[m].top());
-			}
-			_q[m].pop();
-		}
-	}
-
-	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
-	T threshold = q.top().score;
-	while(!q.empty()){
-		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
-		this->res.push_back(q.top());
-		q.pop();
-	}
-	std::cout << std::fixed << std::setprecision(4);
-	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
-	this->threshold = threshold;
-}
-
-template<class T, class Z>
-void PTA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights){
-	uint32_t threads = THREADS < PPARTITIONS ? THREADS : PPARTITIONS;
-	Z tt_count[threads];
-	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> _q[threads];
-	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
-	//boost::heap::fibonacci_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> _q[threads];
-	//boost::heap::fibonacci_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
-	omp_set_num_threads(threads);
-
-	uint8_t first = FIRST(this->d,qq);
-	uint8_t last = LAST(this->d,qq);
-	std::cout << this->algo << " find top-" << k << " (2) threads x "<< threads <<" (" << (int)qq << "D) ...";
-	if(STATS_EFF) this->tuple_count = 0;
-	if(STATS_EFF) this->pop_count=0;
-	if(this->res.size() > 0) this->res.clear();
-
-	this->t.start();
-#pragma omp parallel
-{
-	float score[16] __attribute__((aligned(32)));
-	uint32_t tid = omp_get_thread_num();
-	Z tuple_count = 0;
-	__builtin_prefetch(score,1,3);
-	for(uint64_t p = tid; p < PPARTITIONS; p+=threads){
-		if(this->parts[p].size == 0) continue;
-		Z poffset = this->parts[p].offset;
-		for(uint64_t b = 0; b < this->parts[p].block_num; b++){
-			Z id = this->parts[p].offset + poffset;
-			T *tuples = this->parts[p].blocks[b].tuples;
-			//std::cout << b <<"< tuple_num: " << this->parts[p].blocks[b].tuple_num << std::endl;
-
-			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=16){
-				__m256 score00 = _mm256_setzero_ps();
-				__m256 score01 = _mm256_setzero_ps();
-				for(uint8_t m = this->d - qq; m < this->d; m++){
-					T weight = weights[m];
-					uint32_t offset = m*VBLOCK_SIZE + t;
-					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
-					__m256 load00 = _mm256_load_ps(&tuples[offset]);
-					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
-					load00 = _mm256_mul_ps(load00,_weight);
-					load01 = _mm256_mul_ps(load01,_weight);
-					score00 = _mm256_add_ps(score00,load00);
-					score01 = _mm256_add_ps(score01,load01);
-				}
-				_mm256_store_ps(&score[0],score00);
-				_mm256_store_ps(&score[8],score01);
-
-				if(_q[tid].size() < k){
-					_q[tid].push(tuple_<T,Z>(id,score[0]));
-					_q[tid].push(tuple_<T,Z>(id+1,score[1]));
-					_q[tid].push(tuple_<T,Z>(id+2,score[2]));
-					_q[tid].push(tuple_<T,Z>(id+3,score[3]));
-					_q[tid].push(tuple_<T,Z>(id+4,score[4]));
-					_q[tid].push(tuple_<T,Z>(id+5,score[5]));
-					_q[tid].push(tuple_<T,Z>(id+6,score[6]));
-					_q[tid].push(tuple_<T,Z>(id+7,score[7]));
-					_q[tid].push(tuple_<T,Z>(id+8,score[8]));
-					_q[tid].push(tuple_<T,Z>(id+9,score[9]));
-					_q[tid].push(tuple_<T,Z>(id+10,score[10]));
-					_q[tid].push(tuple_<T,Z>(id+11,score[11]));
-					_q[tid].push(tuple_<T,Z>(id+12,score[12]));
-					_q[tid].push(tuple_<T,Z>(id+13,score[13]));
-					_q[tid].push(tuple_<T,Z>(id+14,score[14]));
-					_q[tid].push(tuple_<T,Z>(id+15,score[15]));
-				}else{
-					if(_q[tid].top().score < score[0]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id,score[0])); }
-					if(_q[tid].top().score < score[1]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+1,score[1])); }
-					if(_q[tid].top().score < score[2]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+2,score[2])); }
-					if(_q[tid].top().score < score[3]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+3,score[3])); }
-					if(_q[tid].top().score < score[4]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+4,score[4])); }
-					if(_q[tid].top().score < score[5]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+5,score[5])); }
-					if(_q[tid].top().score < score[6]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+6,score[6])); }
-					if(_q[tid].top().score < score[7]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+7,score[7])); }
-
-					if(_q[tid].top().score < score[8]){  _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+8,score[8])); }
-					if(_q[tid].top().score < score[9]){  _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+9,score[9])); }
-					if(_q[tid].top().score < score[10]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+10,score[10])); }
-					if(_q[tid].top().score < score[11]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+11,score[11])); }
-					if(_q[tid].top().score < score[12]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+12,score[12])); }
-					if(_q[tid].top().score < score[13]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+13,score[13])); }
-					if(_q[tid].top().score < score[14]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+14,score[14])); }
-					if(_q[tid].top().score < score[15]){ _q[tid].pop(); _q[tid].push(tuple_<T,Z>(id+15,score[15])); }
-				}
-				if(STATS_EFF) tuple_count+=16;
-			}
-
-			T threshold = 0;
-			T *tarray = this->parts[p].blocks[b].tarray;
-			for(uint8_t m = this->d - qq; m < this->d; m++) threshold+=tarray[m]*weights[m];
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
 			if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ break; }
 		}
 		//std::cout << "p: " <<p << " = " << count << std::endl;
@@ -697,8 +516,6 @@ void PTA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights){
 			_q[m].pop();
 		}
 	}
-	uint32_t count = 0;
-
 	this->tt_processing += this->t.lap();
 
 	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
@@ -712,6 +529,5 @@ void PTA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights){
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
-
 
 #endif
