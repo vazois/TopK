@@ -39,8 +39,8 @@
  * @note After instantiating, a Hybrid skyline solver still requires a call to
  * Init() to copy data locally.
  */
-Hybrid::Hybrid( uint32_t threads, uint32_t n, uint32_t d,
-    const uint32_t accum, const uint32_t pq_size ) :
+Hybrid::Hybrid( uint64_t threads, uint64_t n, uint64_t d,
+    const uint64_t accum, const uint64_t pq_size ) :
     num_threads_( threads ), n_( n ), accum_( accum ), pq_size_( pq_size ) {
 
   omp_set_num_threads( threads );
@@ -67,7 +67,7 @@ Hybrid::~Hybrid() {
  */
 void Hybrid::Init( float** data ) {
   data_ = new EPTUPLE[n_];
-  for (uint32_t i = 0; i < n_; i++) {
+  for (uint64_t i = 0; i < n_; i++) {
     data_[i].pid = i;
     data_[i].partition = 0;
     memcpy( data_[i].elems, data[i], sizeof(float) * NUM_DIMS );
@@ -90,13 +90,13 @@ void Hybrid::Init( float** data ) {
  * Executes the Hybrid skyline solver to produce a skyline 
  * from the data that it has currently stored.
  */
-vector<uint32_t> Hybrid::Execute() {
+vector<uint64_t> Hybrid::Execute() {
 
   /* Overwrite local dataset with skyline. */
-  const uint32_t num_survive = skyline();
+  const uint64_t num_survive = skyline();
   
   /* Copy skyline into skyline_ result vector. */
-  for (uint32_t i = 0; i < num_survive; ++i) {
+  for (uint64_t i = 0; i < num_survive; ++i) {
     skyline_.push_back( data_[i].pid );
   }
 
@@ -117,12 +117,12 @@ vector<uint32_t> Hybrid::Execute() {
  * @post The data point me is internally marked as a side-effect if it is 
  * determined to be dominated.
  */
-void inline Hybrid::compare_to_peers( const uint32_t me, const uint32_t start ) {
+void inline Hybrid::compare_to_peers( const uint64_t me, const uint64_t start ) {
 
   /* First, iterate points in partitions below me's, assuming 
    * distinct value condition.
    */
-  uint32_t i, mylev = data_[me].getLevel();
+  uint64_t i, mylev = data_[me].getLevel();
   for (i = start; i < me; ++i) {
     if ( data_[i].isPruned() )
       continue;
@@ -168,20 +168,20 @@ void inline Hybrid::compare_to_peers( const uint32_t me, const uint32_t start ) 
 void inline Hybrid::compare_to_skyline_points( EPTUPLE &t ) {
 
   /* Iterate through all partitions. */
-  vector<pair<uint32_t, uint32_t> >::iterator it;
+  vector<pair<uint64_t, uint64_t> >::iterator it;
   for (it = part_map_.begin(); it != part_map_.end() - 1; ++it) {
 
     /* If tuple t cannot skip this partition, do work. */
     if ( !t.canskip_partition( it->first ) ) {
 
       /* Set boundaries [begin, end) of partition. */
-      const uint32_t begin = it->second;
-      const uint32_t end = (it + 1)->second;
+      const uint64_t begin = it->second;
+      const uint64_t end = (it + 1)->second;
 
       /* Compare to head/pivot of partition, constructing 
        * comparison bitmap. Return if it dominates t.
        */
-      const uint32_t bitmap = DT_bitmap_dvc( t, data_[begin] );
+      const uint64_t bitmap = DT_bitmap_dvc( t, data_[begin] );
       if ( bitmap == ALL_ONES && !EqualityTest( t, data_[begin] ) ) {
         t.markPruned();
         return;
@@ -193,7 +193,7 @@ void inline Hybrid::compare_to_skyline_points( EPTUPLE &t ) {
        * head/pivot of partition. Can skip if t has a clear
        * bit where point i has one set.
        */
-      for (uint32_t i = begin + 1; i < end; ++i) {
+      for (uint64_t i = begin + 1; i < end; ++i) {
         if ( !(~bitmap & data_[i].partition) || !data_[i].partition ) {
           if ( DominateLeft( data_[i], t ) ) {
             t.markPruned();
@@ -212,20 +212,20 @@ void inline Hybrid::compare_to_skyline_points( EPTUPLE &t ) {
  * @param start The first index of newly added skyline points.
  * @param end One past the last index of newly added skyline points.
  */
-void inline Hybrid::update_partition_map( const uint32_t start, const uint32_t end ) {
+void inline Hybrid::update_partition_map( const uint64_t start, const uint64_t end ) {
   /* Remove sentinel and recall id, start of last partition. */
   part_map_.pop_back();
-  uint32_t last_val = part_map_.at( part_map_.size() - 1 ).first;
-  uint32_t part_start = part_map_.at( part_map_.size() - 1 ).second;
+  uint64_t last_val = part_map_.at( part_map_.size() - 1 ).first;
+  uint64_t part_start = part_map_.at( part_map_.size() - 1 ).second;
 
   /* Iterate all new points to find partitions. */
-  for (uint32_t i = start; i < end; ++i) {
+  for (uint64_t i = start; i < end; ++i) {
 
     /* New partition if id doesn't match previous. */
     if ( data_[i].getPartition() != last_val ) {
       last_val = data_[i].getPartition();
       part_start = i;
-      part_map_.push_back( pair<uint32_t, uint32_t>( last_val, i ) );
+      part_map_.push_back( pair<uint64_t, uint64_t>( last_val, i ) );
     }
 
     /* Otherwise, use the first point in partition to further partition
@@ -234,13 +234,13 @@ void inline Hybrid::update_partition_map( const uint32_t start, const uint32_t e
      * partition_level, since it will no longer be used.
      */
     else {
-      const uint32_t bitcode = DT_bitmap_dvc( data_[i], data_[part_start] );
+      const uint64_t bitcode = DT_bitmap_dvc( data_[i], data_[part_start] );
       data_[i].partition = bitcode;
     }
   }
 
   /* Replace sentinel at end. */
-  part_map_.push_back( pair<uint32_t, uint32_t>( 0, end + 1 ) );
+  part_map_.push_back( pair<uint64_t, uint64_t>( 0, end + 1 ) );
 }
 
 /**
@@ -258,8 +258,8 @@ void inline Hybrid::update_partition_map( const uint32_t start, const uint32_t e
  * @see H Im et al. "Parallel skyline computation on multicore 
  * architectures." Information Systems: 36(4). 808--823. 2011.
  */
-uint32_t Hybrid::skyline() {
-  uint32_t i, head, start, stop; //cursors
+uint64_t Hybrid::skyline() {
+  uint64_t i, head, start, stop; //cursors
 
   // D[0...(head - 1)] = skyline tuples
   // D[start...stop - 1] = current working window
@@ -267,8 +267,8 @@ uint32_t Hybrid::skyline() {
   start = 0;
 
   /* Init partition map. Consists of pairs: ( bitmap, start index in D ). */
-  part_map_.push_back( pair<uint32_t, uint32_t>( data_[0].getPartition(), 0 ) ); //first part.
-  part_map_.push_back( pair<uint32_t, uint32_t>( data_[0].getPartition(), 1 ) ); //sentinel
+  part_map_.push_back( pair<uint64_t, uint64_t>( data_[0].getPartition(), 0 ) ); //first part.
+  part_map_.push_back( pair<uint64_t, uint64_t>( data_[0].getPartition(), 1 ) ); //sentinel
 
   // D[next] = tuple to be considered next
   while ( start < n_ ) {
@@ -308,7 +308,7 @@ uint32_t Hybrid::skyline() {
     /* Finally, sequentially compress the confirmed
      * skyline points again.
      */
-    const uint32_t head_old = head;
+    const uint64_t head_old = head;
     sort( data_ + start, data_ + stop );
     for (i = start; i < stop && !data_[i].isPruned(); ++i, ++head) {
       data_[head] = data_[i];
@@ -330,10 +330,10 @@ void inline Hybrid::partition() {
   float *data = new float[NUM_DIMS * n_];
 #pragma omp parallel num_threads(num_threads_)
   {
-    const uint32_t th_id = omp_get_thread_num();
+    const uint64_t th_id = omp_get_thread_num();
 #pragma omp for nowait
-    for (uint32_t i = 0; i < n_; i++) {
-      for (uint32_t j = 0; j < NUM_DIMS; j++) {
+    for (uint64_t i = 0; i < n_; i++) {
+      for (uint64_t j = 0; j < NUM_DIMS; j++) {
         data[j * n_ + i] = data_[i].elems[j];
       }
     }
@@ -344,7 +344,7 @@ void inline Hybrid::partition() {
    * anymore (nor need be).
    */
   PTUPLE median;
-  for (uint32_t i = 0; i < NUM_DIMS; i++) {
+  for (uint64_t i = 0; i < NUM_DIMS; i++) {
 #if defined(_OPENMP)
     std::__parallel::sort( data + i * n_, data + (i + 1) * n_ );
 #else
@@ -357,7 +357,7 @@ void inline Hybrid::partition() {
 
   /* Calc partition relative to median values. */
 #pragma omp parallel for
-  for (uint32_t i = 0; i < n_; i++) {
+  for (uint64_t i = 0; i < n_; i++) {
     data_[i].setPartition( DT_bitmap( data_[i], median ) );
   } // END PARALLEL FOR
   UPD_PROFILER( "03 partition" );

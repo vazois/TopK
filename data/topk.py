@@ -24,8 +24,8 @@ if __name__ == "__main__":
 #     parts = angle_partitioned_data2(db,4)
 #     exit(1)
 
-    #qq=[q for q in range(2,db[1]+1,1) ]
-    qq=[db[1]]
+    qq=[q for q in range(2,db[1]+1,1) ]
+    #qq=[db[1]]
     print "<<<",db[0],qq,">>>"
 #     for q in qq:
 #         info=FA(db,q,k)

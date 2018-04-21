@@ -25,7 +25,9 @@ class SLA : public AA<T,Z>{
 		};
 
 		void init();
-		void findTopK(uint64_t k, uint8_t qq);
+		void findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
 
 	private:
 		std::vector<std::vector<Z>> layers;
@@ -66,7 +68,7 @@ void SLA<T,Z>::build_layers(T **cdata){
 	{
 		SkylineI* skyline = new Hybrid( SLA_THREADS, (uint32_t)(last), (uint32_t)(this->d), SLA_ALPHA, SLA_QSIZE );
 		skyline->Init( cdata );
-		std::vector<uint32_t> layer = skyline->Execute();
+		std::vector<uint64_t> layer = skyline->Execute();
 		delete skyline;
 		std::cout << std::dec << std::setfill('0') << std::setw(10);
 		std::cout << last << " - ";
@@ -86,7 +88,7 @@ void SLA<T,Z>::build_layers(T **cdata){
 	}
 
 	if( last > 0 ){
-		std::vector<uint32_t> layer;
+		std::vector<uint64_t> layer;
 		for(uint64_t i = 0; i < last; i++) layer.push_back(offset[i]);
 		this->layers.push_back(layer);
 	}
@@ -252,50 +254,56 @@ void SLA<T,Z>::init(){
 	for(uint64_t i = 0; i < this->n; i++) free(cdata[i]);
 	free(cdata);
 
-	//////////////////////
-	//Reorder base table//
-	/////////////////////
-//	omp_set_num_threads(ITHREADS);
-//	T *rdata = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
-//	uint64_t jj = 0;
-//	for(uint32_t i = 0; i < this->layers.size();i++){
-//		for(uint32_t j = 0; j < this->layers[i].size();j++){
-//			Z id = this->layers[i][j];
-//			for(uint8_t m = 0; m < this->d; m++){ rdata[m*this->n + (jj+j)] = this->cdata[m*this->n + id]; }
-//		}
-//		jj+=this->layers[i].size();
-//	}
-//	free(this->cdata); this->cdata = rdata;
-//
+
 
 	this->tt_init = this->t.lap();
 }
 
 template<class T, class Z>
-void SLA<T,Z>::findTopK(uint64_t k, uint8_t qq){
-	std::cout << this->algo << " find topK (" << (int)qq << "D) ...";
+void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
+	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	this->t.start();
 
-	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
-	for(uint64_t i = 0; i < this->layers.size(); i++){
-		for(uint64_t j = 0; j < this->layers[i].size(); j++){
-			Z id = this->layers[i][j];
-			T score00 = 0;
 
-			for(uint8_t m = 0; m < this->d; m++){
-				score00+= this->cdata[m*this->n + id];
-			}
-
-			if(q.size() < k){//insert if empty space in queue
-				q.push(tuple_<T,Z>(id,score00));
-			}else if(q.top().score<score00){//delete smallest element if current score is bigger
-				q.pop();
-				q.push(tuple_<T,Z>(id,score00));
-			}
-		}
-	}
 	this->tt_processing=this->t.lap();
 
+	std::cout << "\nTODO: Implement scalar ...\n"; return;
+	T threshold = q.top().score;
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
+	this->threshold = threshold;
+}
+
+template<class T, class Z>
+void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
+	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
+	this->t.start();
+
+	this->tt_processing=this->t.lap();
+
+	std::cout << "\nTODO: Implement simd ...\n"; return;
+	T threshold = q.top().score;
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
+	this->threshold = threshold;
+}
+
+template<class T, class Z>
+void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
+	uint32_t threads = THREADS;
+	Z tt_count[threads];
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> _q[threads];
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
+	omp_set_num_threads(threads);
+
+	std::cout << this->algo << " find top-" << k << " threads x "<< threads <<" (" << (int)qq << "D) ...";
+	this->t.start();
+
+	this->tt_processing=this->t.lap();
+
+	std::cout << "\nTODO: Implement threads ...\n"; return;
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;

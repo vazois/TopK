@@ -47,6 +47,16 @@ uint8_t attr[7][8] = {
 		{0,1,2,3,4,5,6,7},//8
 };
 
+//uint8_t attr[7][8] = {
+//		{0,1,0,0,0,0,0,0},//2
+//		{0,1,2,0,0,0,0,0},//3
+//		{0,1,2,3,0,0,0,0},//4
+//		{0,1,2,3,4,0,0,0},//5
+//		{0,1,2,3,4,5,0,0},//6
+//		{0,1,2,3,4,5,6,0},//7
+//		{0,1,2,3,4,5,6,7},//8
+//};
+
 const std::string distributions[3] ={"correlated","independent","anticorrelated"};
 
 void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
@@ -255,6 +265,50 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 	}
 }
 
+void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t ks,uint64_t ke){
+	File<float> f(fname,false,n,d);
+	SLA<float,uint64_t> sla(f.rows(),f.items());
+	f.set_transpose(true);
+
+	if (LD == 0){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(sla.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(sla.get_cdata(),DISTR);
+	}
+
+	sla.init();
+	sla.set_iter(ITER);
+	uint8_t q = f.items();
+	if (QM == 0) q = 2;
+	for(uint64_t k = ks; k <= ke; k*=2){
+		std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
+		for(uint8_t i = q; i <= f.items();i+=QD){
+			//Warm up
+			if (IMP == 0){
+				sla.findTopKscalar(k,i,weights,attr[i-q]);
+			}else if(IMP == 1){
+				sla.findTopKsimd(k,i,weights,attr[i-q]);
+			}else if(IMP == 2){
+				sla.findTopKthreads(k,i,weights,attr[i-q]);
+			}
+			sla.reset_clocks();
+			//Benchmark
+			for(uint8_t m = 0; m < ITER;m++){
+				if (IMP == 0){
+					sla.findTopKscalar(k,i,weights,attr[i-q]);
+				}else if(IMP == 1){
+					sla.findTopKsimd(k,i,weights,attr[i-q]);
+				}else if(IMP == 2){
+					sla.findTopKthreads(k,i,weights,attr[i-q]);
+				}
+			}
+			sla.benchmark();
+		}
+	}
+}
+
 void bench_msa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,false,n,d);
 	MSA<float,uint64_t> msa(f.rows(),f.items());
@@ -284,18 +338,5 @@ void bench_lsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	lsa.benchmark();
 }
 
-void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t k){
-	File<float> f(fname,false,n,d);
-	SLA<float,uint32_t> sla(f.rows(),f.items());
-	f.set_transpose(true);
-
-	std::cout << "Loading data from file !!!" <<std::endl;
-	f.load(sla.get_cdata());
-
-	std::cout << "Benchmark <<<" << f.rows() << "," << f.items() << "," << k << ">>> " << std::endl;
-	sla.init();
-	sla.findTopK(k,d);
-	sla.benchmark();
-}
 
 #endif

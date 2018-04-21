@@ -442,6 +442,7 @@ void generate_corr_inmem(float *data, uint64_t n, uint64_t d, bool transpose){
 		}
 		ii++;
 	}
+	std::cout.flush();
 	free(x);
 }
 
@@ -517,7 +518,6 @@ void generate_anti_inmem(float *data,uint64_t n, uint64_t d, bool transpose){
 		}
 		count++;
 
-
 		if((ii & (step - 1)) == 0){
 			std::cout << "Progress: [" << int(progress * 100.0) << "] %\r";
 			std::cout.flush();
@@ -525,6 +525,8 @@ void generate_anti_inmem(float *data,uint64_t n, uint64_t d, bool transpose){
 		}
 		ii++;
 	}
+	std::cout.flush();
+	free(x);
 }
 
 /*

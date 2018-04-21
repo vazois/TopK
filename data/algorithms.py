@@ -118,7 +118,6 @@ def TA2(db,qq,k):#Threshold aggregation#
         
     return [qqs[0],objects_fetched,qqs]
 
-
 def BTA(db,q,k,part_type):
     parts=[]
     if part_type==0:
@@ -159,7 +158,7 @@ def BTA(db,q,k,part_type):
                     start= time.time()
                     info=TA(db_part,c,k)
                     tt+=time.time() - start
-                    print "[ "+str(i)+" ] Fetched: ", info[1],"out of", db_part[0],"["+str(float(info[1])/db_part[0])+"]"
+                    #print "[ "+str(i)+" ] Fetched: ", info[1],"out of", db_part[0],"["+str(float(info[1])/db_part[0])+"]"
                     objects_fetched+=info[1]
                     qqs = qqs + info[2]
                     #part_count+=1

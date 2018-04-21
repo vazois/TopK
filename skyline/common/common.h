@@ -36,7 +36,7 @@
 #define PIVOT_MANHATTAN 4     
 #define PIVOT_VOLUME 5     // BSkyTree.MaxDom
 
-static const uint32_t SHIFTS[] = { 1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1
+static const uint64_t SHIFTS[] = { 1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1
     << 5, 1 << 6, 1 << 7, 1 << 8, 1 << 9, 1 << 10, 1 << 11, 1 << 12, 1 << 13, 1
     << 14, 1 << 15, 1 << 16, 1 << 17, 1 << 18, 1 << 19, 1 << 20, 1 << 21, 1
     << 22, 1 << 23, 1 << 24, 1 << 25, 1 << 26, 1 << 27, 1 << 28, 1 << 29, 1
@@ -44,16 +44,16 @@ static const uint32_t SHIFTS[] = { 1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1
 
 typedef struct TUPLE {
   float elems[NUM_DIMS];
-  uint32_t pid;
+  uint64_t pid;
 //  TUPLE(const int id, float* data): pid(id) {
-//    for (uint32_t d = 0; d < NUM_DIMS; ++d) {
+//    for (uint64_t d = 0; d < NUM_DIMS; ++d) {
 //      elems[d] = data[d];
 //    }
 //  }
 
   void printTuple() {
     printf( "[" );
-    for (uint32_t i = 0; i < NUM_DIMS; ++i)
+    for (uint64_t i = 0; i < NUM_DIMS; ++i)
       printf( "%f ", elems[i] );
     printf( "]\n" );
   }
@@ -71,16 +71,16 @@ typedef struct STUPLE: TUPLE {
 } STUPLE;
 
 typedef struct TUPLE_S: TUPLE {
-  uint32_t partition; // bitset: 0 is <= pivot, 1 is > pivot
-  TUPLE_S(const TUPLE t, const uint32_t p):
+  uint64_t partition; // bitset: 0 is <= pivot, 1 is > pivot
+  TUPLE_S(const TUPLE t, const uint64_t p):
     TUPLE(t), partition(p) { }
 } TUPLE_S;
 
 // Partition-based Tuple
 typedef struct PTUPLE: STUPLE {
-  uint32_t partition; // bitset; 0 is <= pivot, 1 is >
-  uint32_t partition_level; // level of this tuple's partition ends.
-  uint32_t partition_end; // index where this tuple's partition ends.
+  uint64_t partition; // bitset; 0 is <= pivot, 1 is >
+  uint64_t partition_level; // level of this tuple's partition ends.
+  uint64_t partition_end; // index where this tuple's partition ends.
 
   /* Natural order is first by partition level,
    * then by partition id, then
@@ -114,15 +114,15 @@ typedef struct PTUPLE: STUPLE {
 
   /* Can skip other partition if there are bits that he has
    * and I don't (therefore, he cannot dominate me). */
-  inline bool canskip_partition(const uint32_t other) {
+  inline bool canskip_partition(const uint64_t other) {
     return (partition ^ other) & other;
   }
 } PTUPLE;
 
 // (Encoded) partition-based tuple with both partition level
-// and partition bitmask encoded into uint32_t.
+// and partition bitmask encoded into uint64_t.
 typedef struct EPTUPLE: STUPLE {
-  uint32_t partition; // bitset; 0 is <= pivot, 1 is >
+  uint64_t partition; // bitset; 0 is <= pivot, 1 is >
 
   /* Natural order is first by partition level,
    * then by partition id, then by score. */
@@ -150,17 +150,17 @@ typedef struct EPTUPLE: STUPLE {
 
   /* Can skip other partition if there are bits that he has
    * and I don't (therefore, he cannot dominate me). */
-  inline bool canskip_partition(const uint32_t other) const {
+  inline bool canskip_partition(const uint64_t other) const {
     return (getPartition() ^ other) & other;
   }
 
-  inline uint32_t getLevel() const {
+  inline uint64_t getLevel() const {
     return partition >> NUM_DIMS;
   }
-  inline uint32_t getPartition() const {
+  inline uint64_t getPartition() const {
     return partition & ALL_ONES;
   }
-  inline void setPartition(const uint32_t p_bitmap) {
+  inline void setPartition(const uint64_t p_bitmap) {
     partition = (__builtin_popcount(p_bitmap) << NUM_DIMS) | p_bitmap;
   }
 } PTUPLE2;
@@ -172,7 +172,7 @@ extern uint64_t dt_count_incomp;
 // returns the maximum attribute value
 inline float get_max(const STUPLE &p) {
   float maxc = p.elems[0];
-  for (uint32_t d = 1; d < NUM_DIMS; d++) {
+  for (uint64_t d = 1; d < NUM_DIMS; d++) {
     maxc = std::max( maxc, p.elems[d] );
   }
   return maxc;
@@ -195,7 +195,7 @@ inline int DominanceTest(const TUPLE &t1, const TUPLE &t2) {
 #endif
   bool t1_better = false, t2_better = false;
 
-  for (uint32_t i = 0; i < NUM_DIMS; i++) {
+  for (uint64_t i = 0; i < NUM_DIMS; i++) {
     if ( t1.elems[i] < t2.elems[i] )
       t1_better = true;
     else if ( t1.elems[i] > t2.elems[i] )
@@ -221,13 +221,13 @@ inline int DominanceTest(const TUPLE &t1, const TUPLE &t2) {
  *
  * In BSkyTree, it is by far the most frequent dominance test.
  */
-inline uint32_t DT_bitmap_dvc(const TUPLE &cur_value, const TUPLE &sky_value) {
+inline uint64_t DT_bitmap_dvc(const TUPLE &cur_value, const TUPLE &sky_value) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
 
-  uint32_t lattice = 0;
-  for (uint32_t dim = 0; dim < NUM_DIMS; dim++)
+  uint64_t lattice = 0;
+  for (uint64_t dim = 0; dim < NUM_DIMS; dim++)
     if ( sky_value.elems[dim] <= cur_value.elems[dim] )
       lattice |= SHIFTS[dim];
 
@@ -246,13 +246,13 @@ inline uint32_t DT_bitmap_dvc(const TUPLE &cur_value, const TUPLE &sky_value) {
  * Note: is not called so frequently as DT_bitmap_dvc in BSkyTree,
  * so performance gain is negligible.
  */
-inline uint32_t DT_bitmap(const TUPLE &cur_value, const TUPLE &sky_value) {
+inline uint64_t DT_bitmap(const TUPLE &cur_value, const TUPLE &sky_value) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
 
-  uint32_t lattice = 0;
-  for (uint32_t dim = 0; dim < NUM_DIMS; dim++)
+  uint64_t lattice = 0;
+  for (uint64_t dim = 0; dim < NUM_DIMS; dim++)
     if ( sky_value.elems[dim] < cur_value.elems[dim] )
       lattice |= SHIFTS[dim];
 
@@ -274,7 +274,7 @@ inline bool DominateLeft(const TUPLE &t1, const TUPLE &t2) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
-  uint32_t i;
+  uint64_t i;
   for (i = 0; i < NUM_DIMS && t1.elems[i] <= t2.elems[i]; ++i)
     ;
   if ( i < NUM_DIMS ) {
@@ -306,7 +306,7 @@ inline int DominateLeftDVC(const TUPLE &t1, const TUPLE &t2) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
-  for (uint32_t i = 0; i < NUM_DIMS; i++) {
+  for (uint64_t i = 0; i < NUM_DIMS; i++) {
     if ( t1.elems[i] > t2.elems[i] ) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count_incomp, 1 );
@@ -331,9 +331,9 @@ inline void DT_bitmap_withsum(EPTUPLE &cur_value, const EPTUPLE &sky_value) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
-  uint32_t partition = 0;
+  uint64_t partition = 0;
   cur_value.score = 0;
-  for (uint32_t d = 0; d < NUM_DIMS; d++) {
+  for (uint64_t d = 0; d < NUM_DIMS; d++) {
     if ( sky_value.elems[d] < cur_value.elems[d] )
       partition |= SHIFTS[d];
     cur_value.score += cur_value.elems[d];
@@ -356,7 +356,7 @@ inline void DT_bitmap_withsum(EPTUPLE &cur_value, const EPTUPLE &sky_value) {
  */
 inline int DT_dvc(const TUPLE &t1, const TUPLE &t2) {
   bool t1_better = false, t2_better = false;
-  for (uint32_t d = 0; d < NUM_DIMS; d++) {
+  for (uint64_t d = 0; d < NUM_DIMS; d++) {
 //    if ( t1.elems[d] < t2.elems[d] )
 //      t1_better = true;
 //    else if ( t1.elems[d] > t2.elems[d] )
@@ -404,7 +404,7 @@ inline bool DominatedLeft(const TUPLE &t1, const TUPLE &t2) {
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
 
-  for (uint32_t d = 0; d < NUM_DIMS; d++) {
+  for (uint64_t d = 0; d < NUM_DIMS; d++) {
     if ( t1.elems[d] < t2.elems[d] ) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count_incomp, 1 );
@@ -426,7 +426,7 @@ inline int DominateRightDVC(const TUPLE &t1, const TUPLE &t2) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
-  for (uint32_t i = 0; i < NUM_DIMS; i++) {
+  for (uint64_t i = 0; i < NUM_DIMS; i++) {
     if ( t1.elems[i] < t2.elems[i] ) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count_incomp, 1 );
@@ -448,7 +448,7 @@ inline bool EqualityTest(const TUPLE &t1, const TUPLE &t2) {
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
   bool eq = true;
-  for (uint32_t d = 0; d < NUM_DIMS; d++)
+  for (uint64_t d = 0; d < NUM_DIMS; d++)
     if ( t1.elems[d] != t2.elems[d] ) {
       eq = false;
       break;
@@ -459,7 +459,7 @@ inline bool EqualityTest(const TUPLE &t1, const TUPLE &t2) {
 inline float calc_norm_range ( const TUPLE &t, const float *mins, const float *ranges ) {
   float min, max;
   min = max = ( t.elems[0] - mins[0] ) / ranges[0];
-  for (uint32_t j = 1; j < NUM_DIMS; j++) {
+  for (uint64_t j = 1; j < NUM_DIMS; j++) {
     const float v_norm = ( t.elems[j] - mins[j] ) / ranges[j];
     if ( min > v_norm )
       min = v_norm;
@@ -476,7 +476,7 @@ inline bool DominateLeftNOAVX(const TUPLE &t1, const TUPLE &t2) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
-  uint32_t i;
+  uint64_t i;
   for (i = 0; i < NUM_DIMS && t1.elems[i] <= t2.elems[i]; ++i)
     ;
   if ( i < NUM_DIMS ) {
@@ -506,7 +506,7 @@ inline int DominanceTestNOAVX(const TUPLE &t1, const TUPLE &t2) {
 #endif
   bool t1_better = false, t2_better = false;
 
-  for (uint32_t i = 0; i < NUM_DIMS; i++) {
+  for (uint64_t i = 0; i < NUM_DIMS; i++) {
     if ( t1.elems[i] < t2.elems[i] )
       t1_better = true;
     else if ( t1.elems[i] > t2.elems[i] )
@@ -525,13 +525,13 @@ inline int DominanceTestNOAVX(const TUPLE &t1, const TUPLE &t2) {
   return DOM_INCOMP;
 }
 
-inline uint32_t DT_bitmap_NOAVX(const TUPLE &cur_value, const TUPLE &sky_value) {
+inline uint64_t DT_bitmap_NOAVX(const TUPLE &cur_value, const TUPLE &sky_value) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
 
-  uint32_t lattice = 0;
-  for (uint32_t dim = 0; dim < NUM_DIMS; dim++)
+  uint64_t lattice = 0;
+  for (uint64_t dim = 0; dim < NUM_DIMS; dim++)
     if ( sky_value.elems[dim] < cur_value.elems[dim] )
       lattice |= SHIFTS[dim];
 
@@ -544,13 +544,13 @@ inline uint32_t DT_bitmap_NOAVX(const TUPLE &cur_value, const TUPLE &sky_value) 
   return lattice;
 }
 
-inline uint32_t DT_bitmap_dvc_NOAVX(const TUPLE &cur_value, const TUPLE &sky_value) {
+inline uint64_t DT_bitmap_dvc_NOAVX(const TUPLE &cur_value, const TUPLE &sky_value) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
 
-  uint32_t lattice = 0;
-  for (uint32_t dim = 0; dim < NUM_DIMS; dim++)
+  uint64_t lattice = 0;
+  for (uint64_t dim = 0; dim < NUM_DIMS; dim++)
     if ( sky_value.elems[dim] <= cur_value.elems[dim] )
       lattice |= SHIFTS[dim];
 
@@ -567,7 +567,7 @@ inline int DominateLeftDVC_NOAVX(const TUPLE &t1, const TUPLE &t2) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count, 1 );
 #endif
-  for (uint32_t i = 0; i < NUM_DIMS; i++) {
+  for (uint64_t i = 0; i < NUM_DIMS; i++) {
     if ( t1.elems[i] > t2.elems[i] ) {
 #if COUNT_DT==1
   __sync_fetch_and_add( &dt_count_incomp, 1 );

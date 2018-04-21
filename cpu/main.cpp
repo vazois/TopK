@@ -7,7 +7,6 @@
 
 #include "../validation/bench_cpu.h"
 
-
 int main(int argc, char **argv){
 	ArgParser ap;
 	ap.parseArgs(argc,argv);
@@ -47,6 +46,7 @@ int main(int argc, char **argv){
 	if (TPAc_B == 1){ bench_tpac(ap.getString("-f"),n,d,KKS,KKE);	}
 	if (VTA_B == 1){ bench_vta(ap.getString("-f"),n,d,KKS,KKE); }
 	if (PTA_B == 1){ bench_pta(ap.getString("-f"),n,d,KKS,KKE); }
+	if (SLA_B == 1){ bench_sla(ap.getString("-f"),n,d,KKS,KKE); }
 
 	//bench_sla(ap.getString("-f"),n,d,K);
 	//test_dt();

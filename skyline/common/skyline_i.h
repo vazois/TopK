@@ -38,7 +38,7 @@ public:
 
   /* Pure virtual methods */
   virtual void Init(float** data) = 0;
-  virtual std::vector<uint32_t> Execute() = 0;
+  virtual std::vector<uint64_t> Execute() = 0;
 
   /* Profiling stuff (for breakdown charts). */
 #if PROFILER == 1

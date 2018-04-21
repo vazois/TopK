@@ -29,21 +29,23 @@ LD=0
 DISTR=1
 
 #TA Benchmark
-TA_B=0
+TA_B=1
 #TPAc Benchmark
-TPAc_B=0
+TPAc_B=1
 #TPAr Benchmark
-TPAr_B=0
+TPAr_B=1
 #VTA Benchmark
-VTA_B=0
+VTA_B=1
 #PTA Benchmark
-PTA_B=0
+PTA_B=1
+#SLA Benchmark
+SLA_B=1
 
 #Top-K
 KKS=16
 KKE=16
 
-BENCH= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B)
+BENCH= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B)
 
 #CPU CONFIGURATION
 CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp input/randdataset-1.1.0/src/randdataset.c
