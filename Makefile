@@ -15,7 +15,7 @@ PROFILER=0
 
 ######
 #TopK#
-#QM 0:Multiple dimension queries, 1:Single dimension Queries
+#QM 0:Reverse query attribute, 1:Forward query attributes
 QM=0
 #QD Dimension interval for testing
 QD=1

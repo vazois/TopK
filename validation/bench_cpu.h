@@ -37,25 +37,54 @@ uint8_t qq[72] =
 //float weights[8] = { 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8 };
 float weights[8] = { 1,1,1,1,1,1,1,1 };
 
-uint8_t attr[7][8] = {
-		{6,7,0,0,0,0,0,0},//2
-		{5,6,7,0,0,0,0,0},//3
-		{4,5,6,7,0,0,0,0},//4
-		{3,4,5,6,7,0,0,0},//5
-		{2,3,4,5,6,7,0,0},//6
-		{1,2,3,4,5,6,7,0},//7
-		{0,1,2,3,4,5,6,7},//8
-};
+#if QM == 0
+	#if NUM_DIMS == 3
+		uint8_t attr[2][3] = { {1,2,0}, {0,1,2} };
+	#elif NUM_DIMS == 4
+		uint8_t attr[3][4] = { {2,3,0,0}, {1,2,3,0}, {0,1,2,3} };
+	#elif NUM_DIMS == 6
+		uint8_t attr[5][6] = { {4,5,0,0,0,0}, {3,4,5,0,0,0}, {2,3,4,5,0,0}, {1,2,3,4,5,0}, {0,1,2,3,4,5} };
+	#else
+		uint8_t attr[7][8] = {
+				{6,7,0,0,0,0,0,0}, {5,6,7,0,0,0,0,0}, {4,5,6,7,0,0,0,0},
+				{3,4,5,6,7,0,0,0}, {2,3,4,5,6,7,0,0}, {1,2,3,4,5,6,7,0}, {0,1,2,3,4,5,6,7}
+		};
+	#endif
+#else
+	#if NUM_DIMS == 3
+		uint8_t attr[2][3] = { {0,1,0}, {0,1,2} };
+	#elif NUM_DIMS == 4
+		uint8_t attr[3][4] = { {0,1,0,0}, {0,1,2,0}, {0,1,2,3} };
+	#elif NUM_DIMS == 6
+		uint8_t attr[5][6] = {{0,1,0,0,0,0}, {0,1,2,0,0,0},  {0,1,2,3,0,0}, {0,1,2,3,4,0}, {0,1,2,3,4,5} };
+	#else
+		uint8_t attr[7][8] = {
+				{0,1,0,0,0,0,0,0}, {0,1,2,0,0,0,0,0}, {0,1,2,3,0,0,0,0},
+				{0,1,2,3,4,0,0,0}, {0,1,2,3,4,5,0,0}, {0,1,2,3,4,5,6,0}, {0,1,2,3,4,5,6,7}
+		};
+	#endif
+#endif
 
+//#if NUM_DIMS == 3
+//uint8_t attr[2][3] = { {1,2,0}, {0,1,2} };
+////uint8_t attr[2][3] = { {0,1,0}, {0,1,2} };
+//#elif NUM_DIMS == 4
+//uint8_t attr[3][4] = { {2,3,0,0}, {1,2,3,0}, {0,1,2,3} };
+////uint8_t attr[3][4] = { {0,1,0,0}, {0,1,2,0}, {0,1,2,3} };
+//#elif NUM_DIMS == 6
+//uint8_t attr[5][6] = { {4,5,0,0,0,0}, {3,4,5,0,0,0}, {2,3,4,5,0,0}, {1,2,3,4,5,0}, {0,1,2,3,4,5} };
+////uint8_t attr[5][6] = {{0,1,0,0,0,0}, {0,1,2,0,0,0},  {0,1,2,3,0,0}, {0,1,2,3,4,0}, {0,1,2,3,4,5} };
+//#else
 //uint8_t attr[7][8] = {
-//		{0,1,0,0,0,0,0,0},//2
-//		{0,1,2,0,0,0,0,0},//3
-//		{0,1,2,3,0,0,0,0},//4
-//		{0,1,2,3,4,0,0,0},//5
-//		{0,1,2,3,4,5,0,0},//6
-//		{0,1,2,3,4,5,6,0},//7
-//		{0,1,2,3,4,5,6,7},//8
+//		{6,7,0,0,0,0,0,0}, {5,6,7,0,0,0,0,0}, {4,5,6,7,0,0,0,0},
+//		{3,4,5,6,7,0,0,0}, {2,3,4,5,6,7,0,0}, {1,2,3,4,5,6,7,0}, {0,1,2,3,4,5,6,7}
 //};
+//
+////uint8_t attr[7][8] = {
+////		{0,1,0,0,0,0,0,0}, {0,1,2,0,0,0,0,0}, {0,1,2,3,0,0,0,0},
+////		{0,1,2,3,4,0,0,0}, {0,1,2,3,4,5,0,0}, {0,1,2,3,4,5,6,0}, {0,1,2,3,4,5,6,7}
+////};
+//#endif
 
 const std::string distributions[3] ={"correlated","independent","anticorrelated"};
 
@@ -73,8 +102,7 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke
 
 	ta.init();
 	ta.set_iter(ITER);
-	uint8_t q = f.items();
-	if (QM == 0) q = 2;
+	uint8_t q = 2;
 	for(uint64_t k = ks; k <= ke; k*=2){
 		std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
 		for(uint8_t i = q; i <= f.items();i+=QD){
@@ -104,8 +132,7 @@ void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 
 	tpar.init();
 	tpar.set_iter(ITER);
-	uint8_t q = f.items();
-	if (QM == 0) q = 2;
+	uint8_t q = 2;
 	for(uint64_t k = ks; k <= ke; k*=2){
 		std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
 		for(uint8_t i = q; i <= f.items();i+=QD){
@@ -148,8 +175,7 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 
 	tpac.init();
 	tpac.set_iter(ITER);
-	uint8_t q = f.items();
-	if (QM == 0) q = 2;
+	uint8_t q = 2;
 	for(uint64_t k = ks; k <= ke; k*=2){
 		std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
 		for(uint8_t i = q; i <= f.items();i+=QD){
@@ -192,8 +218,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 
 	vta.init();
 	vta.set_iter(ITER);
-	uint8_t q = f.items();
-	if (QM == 0) q = 2;
+	uint8_t q = 2;
 	for(uint64_t k = ks; k <= ke; k*=2){
 		std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
 		for(uint8_t i = q; i <= f.items();i+=QD){
@@ -236,8 +261,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 
 	pta.init();
 	pta.set_iter(ITER);
-	uint8_t q = f.items();
-	if (QM == 0) q = 2;
+	uint8_t q = 2;
 	for(uint64_t k = ks; k <= ke; k*=2){
 		std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
 		for(uint8_t i = q; i <= f.items();i+=QD){
@@ -280,8 +304,7 @@ void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t ks,uint64_t ke
 
 	sla.init();
 	sla.set_iter(ITER);
-	uint8_t q = f.items();
-	if (QM == 0) q = 2;
+	uint8_t q = 2;
 	for(uint64_t k = ks; k <= ke; k*=2){
 		std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
 		for(uint8_t i = q; i <= f.items();i+=QD){

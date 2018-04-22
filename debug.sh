@@ -6,21 +6,21 @@ START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
 DIMS=8
 
-#QM 0:Multiple dimension queries, 1:Single dimension Queries
+#QM 0:Reverse query attribute, 1:Forward query attributes
 QM=0
 #QD Dimension interval for testing
 QD=1
-#IMP 0:Scalar, 1:SIMD, 2:Threads, 3: All
-IMP=2
+#IMP 0:Scalar, 1:SIMD, 2:Threads
+IMP=1
 #ITER Testing iterations
 ITER=1
 #LD 0:load from file, 1: generate in memory
-LD=1
+LD=0
 
 #TA Benchmark
 TA_B=0
 #TPAc Benchmark
-TPAc_B=0
+TPAc_B=1
 #TPAr Benchmark
 TPAr_B=0
 #VTA Ben0hmark
@@ -31,11 +31,11 @@ PTA_B=1
 SLA_B=0
 
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=100
-KKE=100
+KKS=128
+KKE=128
 
 #distr c:correlated i:independent a:anticorrelated
-distr=i
+distr=c
 #bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
 #CPU:0,GPU:1
 device=$1
@@ -63,8 +63,6 @@ then
 else
 	make gpu_cc
 fi
-
-
 
 for (( n=$START_N; n<=$END_N; n*=2 ))
 do

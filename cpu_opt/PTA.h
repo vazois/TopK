@@ -194,6 +194,7 @@ void PTA<T,Z>::polar(){
 	//std::cout << "mm_size: " << mm.size() << " --> " << PPARTITIONS<< std::endl;
 	this->max_part_size = 0;
 	uint64_t count_full_parts = 0;
+	uint64_t count_n = 0;
 	for(typename std::map<Z,Z>::iterator it = mm.begin(); it != mm.end(); ++it){//Initialize partitions//
 		uint64_t psize = it->second + (PBLOCK_SIZE - (it->second % PBLOCK_SIZE));
 //		std::cout << "g(" << it->first << "):" << std::setfill('0') << std::setw(8) << it->second << " < "
@@ -202,11 +203,19 @@ void PTA<T,Z>::polar(){
 		this->parts[it->first].size = it->second;//True partition size
 		this->parts[it->first].block_num = ((float)psize)/PBLOCK_SIZE;//Maximum number of blocks//
 		this->parts[it->first].blocks = static_cast<pta_block<T,Z>*>(aligned_alloc(32,sizeof(pta_block<T,Z>)*this->parts[it->first].block_num));
+
+		//Set data blocks to zero
+		for(uint64_t n = 0; n < this->parts[it->first].block_num; n++){
+			for(uint64_t m = 0; m < PBLOCK_SIZE * NUM_DIMS; m++){ this->parts[it->first].blocks[n].tuples[m] = 0; }
+			for(uint64_t m = 0; m < this->d; m++){ this->parts[it->first].blocks[n].tarray[m]=0; }
+		}
 		this->max_part_size = std::max(this->max_part_size,it->second);
 		if(it->second > 0 ) count_full_parts++;
+		count_n+=it->second;
 	}
 	//std::cout << "max_part_size: " << this->max_part_size << std::endl;
 	std::cout << "count_full_parts: " << count_full_parts << std::endl;
+	std::cout << "count_n: " << count_n << " = " << this->n << std::endl;
 	free(pp);
 	free(pdata);
 }
@@ -219,13 +228,6 @@ void PTA<T,Z>::create_partitions(){
 	}
 	__gnu_parallel::sort(&ppos[0],(&ppos[0]) + this->n,cmp_pta_pos<Z>);//Sort tuples based on their assigned partitions
 
-//	for(uint64_t i = 0; i < 16; i++){
-//		std::cout << std::setfill('0') << std::setw(2) << ppos[i].pos << " < ";
-//		std::cout << std::setfill('0') << std::setw(8) << ppos[i].id ;
-//		std::cout << std::endl;
-//	}
-
-	//return ;
 	uint64_t gindex = 0;
 	pta_pos<Z> *pos = (pta_pos<Z>*)malloc(sizeof(pta_pos<Z>)*this->max_part_size);
 	pta_pair<T,Z> **lists = (pta_pair<T,Z>**)malloc(sizeof(pta_pair<T,Z>*)*this->d);
@@ -247,8 +249,6 @@ void PTA<T,Z>::create_partitions(){
 
 			for(uint64_t j = 0; j < this->parts[i].size;j++){
 				Z lid = lists[m][j].id;
-				//if( lid >= this->parts[i].size ) std::cout << "ERROR(1) " << lid << "," << this->parts[i].size << std::endl;
-				//if( lid == 914 ) std::cout << "914: "<< j << std::endl;
 				pos[lid].pos = std::min(pos[lid].pos,(Z)j);//Find minimum local position of appearance in list//
 			}
 		}
@@ -259,10 +259,9 @@ void PTA<T,Z>::create_partitions(){
 			Z upper = ((j + PBLOCK_SIZE) <  this->parts[i].size) ? PBLOCK_SIZE : this->parts[i].size - j;
 			this->parts[i].blocks[b].tuple_num = upper;
 			this->parts[i].blocks[b].offset = j;
-			//std::cout << i << " , " << j << " , " << PBLOCK_SIZE << " , " << this->parts[i].size <<" upper: " << upper << std::endl;
+
 			for(uint64_t l = 0; l < upper; l++){
 				Z lid = pos[j+l].id;//Find local tuple id
-				//if( (gindex + lid) >= this->n ) std::cout << "ERROR(2) " << (gindex + lid) <<" ,gindex " << gindex << " ,lid "<< lid << " ,j+l " << j+l << " , " << this->n << std::endl;
 				Z gid = ppos[(gindex + lid)].id;//Find global tuple id
 				for(uint32_t m = 0; m < this->d; m++){//Assign attributes to partitions
 					this->parts[i].blocks[b].tuples[ m * PBLOCK_SIZE + l] = this->cdata[ m * this->n + gid ];
