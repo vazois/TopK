@@ -26,21 +26,19 @@ def extract_csv(fname):
     print "Finish loading file ... "
     return station
 
-def view_data(station):
+def gather_stats(station):
     global attributes
     
-    count = 0
+    count_attr = dict()
     for s in station:
         for t in station[s]:
             for d in station[s][t]:
-                if len(station[s][t][d]) >= attributes:
-                    #print s, t, d,
-                    #for v in station[s][t][d]:
-                        #print v,
-                    #print ""
-                    count+=1
-    
-    print "tuples: ", count
+                size = len(station[s][t][d])
+                if size not in coun_attr:
+                    count_attr[size]=0
+                count_attr[size]+=1
+    for ca in count_attr:
+        print ca,":",count_attr[ca]
 
 def write_csv(fname,station):
     global attributes
@@ -65,4 +63,4 @@ if __name__ == "__main__":
     attributes = int(sys.argv[2])
     print "Process file: ", fname, attributes
     station=extract_csv(fname)
-    view_data(station)
+    gather_stats(station)
