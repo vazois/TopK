@@ -38,7 +38,9 @@ uint8_t qq[72] =
 float weights[8] = { 1,1,1,1,1,1,1,1 };
 
 #if QM == 0
-	#if NUM_DIMS == 3
+	#if NUM_DIMS == 2
+		uint8_t attr[1][2] = { {0,1} };
+	#elif NUM_DIMS == 3
 		uint8_t attr[2][3] = { {1,2,0}, {0,1,2} };
 	#elif NUM_DIMS == 4
 		uint8_t attr[3][4] = { {2,3,0,0}, {1,2,3,0}, {0,1,2,3} };
@@ -51,7 +53,9 @@ float weights[8] = { 1,1,1,1,1,1,1,1 };
 		};
 	#endif
 #else
-	#if NUM_DIMS == 3
+	#if NUM_DIMS == 2
+		uint8_t attr[1][2] = { {0,1} };
+	#elif NUM_DIMS == 3
 		uint8_t attr[2][3] = { {0,1,0}, {0,1,2} };
 	#elif NUM_DIMS == 4
 		uint8_t attr[3][4] = { {0,1,0,0}, {0,1,2,0}, {0,1,2,3} };
