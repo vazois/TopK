@@ -13,15 +13,56 @@
 #define SLA_ALPHA 1024
 #define SLA_QSIZE 8
 
+#define SBLOCK_SIZE 1024
+
+
+template<class T, class Z>
+struct sla_pair{
+	Z id;
+	T score;
+};
+
+template<class Z>
+struct sla_pos{
+	Z id;
+	Z pos;
+};
+
+template<class T, class Z>
+struct sla_block{
+	Z offset;
+	Z tuple_num;
+	T tarray[NUM_DIMS] __attribute__((aligned(32)));
+	T tuples[SBLOCK_SIZE * NUM_DIMS] __attribute__((aligned(32)));
+};
+
+template<class T, class Z>
+struct sla_partition{
+	Z offset;
+	Z size;
+	Z block_num;
+	sla_block<T,Z> *blocks;
+};
+
+template<class T,class Z>
+static bool cmp_sla_pair(const sla_pair<T,Z> &a, const sla_pair<T,Z> &b){ return a.score > b.score; };
+
+template<class Z>
+static bool cmp_sla_pos(const sla_pos<Z> &a, const sla_pos<Z> &b){ return a.pos < b.pos; };
+
 template<class T, class Z>
 class SLA : public AA<T,Z>{
 	public:
 		SLA(uint64_t n, uint64_t d) : AA<T,Z>(n,d){
 			this->algo = "SLA";
+			this->parts = NULL;
 		};
 
 		~SLA(){
-
+			if(this->parts!=NULL){
+				for(uint64_t i = 0; i < this->layer_num; i++) free(this->parts[i].blocks);
+				free(this->parts);
+			}
 		};
 
 		void init();
@@ -31,14 +72,15 @@ class SLA : public AA<T,Z>{
 
 	private:
 		std::vector<std::vector<Z>> layers;
-		std::vector<std::unordered_map<Z,std::vector<Z>>> parents;
+		sla_partition<T,Z> *parts;
+		uint64_t layer_num;
+		uint64_t max_part_size;
 
 		T** sky_data(T **cdata);
 		void build_layers(T **cdata);
-		void create_graph(T **cdata);
-		uint64_t partition_table(uint64_t first, uint64_t last, std::unordered_set<uint32_t> layer_set, T **cdata, Z *offset);
+		uint64_t partition_table(uint64_t first, uint64_t last, std::unordered_set<uint64_t> layer_set, T **cdata, Z *offset);
 
-		inline bool DT(T *p, T *q);
+		void create_lists();
 };
 
 template<class T, class Z>
@@ -50,7 +92,7 @@ T** SLA<T,Z>::sky_data(T **cdata){
 	for(uint64_t i = 0; i < this->n; i++){
 		for(uint8_t m = 0; m < this->d; m++){
 			//cdata[i][m] = this->cdata[m*this->n + i];
-			cdata[i][m] = (1.0f - this->cdata[m*this->n + i]);//Calculate maximum skyline
+			cdata[i][m] = (1.0f - this->cdata[m*this->n + i]);//Calculate maximum skyline // Read column-major to row-major
 		}
 	}
 	return cdata;
@@ -63,28 +105,31 @@ void SLA<T,Z>::build_layers(T **cdata){
 	uint64_t first = 0;
 	uint64_t last = this->n;
 
-	uint64_t ii = 0;
 	while(last > 100)
 	{
-		SkylineI* skyline = new Hybrid( SLA_THREADS, (uint32_t)(last), (uint32_t)(this->d), SLA_ALPHA, SLA_QSIZE );
+		//Compute skyline only on first to last tuples//
+		SkylineI* skyline = new Hybrid( SLA_THREADS, (uint64_t)(last), (uint64_t)(this->d), SLA_ALPHA, SLA_QSIZE );
 		skyline->Init( cdata );
-		std::vector<uint64_t> layer = skyline->Execute();
+		std::vector<uint64_t> layer = skyline->Execute();//Find ids of tuples that belong to the skyline
 		delete skyline;
-		std::cout << std::dec << std::setfill('0') << std::setw(10);
-		std::cout << last << " - ";
-		std::cout << std::dec << std::setfill('0') << std::setw(10);
-		std::cout << layer.size() << " = ";
+//		std::cout << std::dec << std::setfill('0') << std::setw(10);
+//		std::cout << last << " - ";
+//		std::cout << std::dec << std::setfill('0') << std::setw(10);
+//		std::cout << layer.size() << " = ";
 
-		std::unordered_set<uint32_t> layer_set;
+		std::unordered_set<uint64_t> layer_set;
 		for(uint64_t i = 0; i <layer.size(); i++){
 			layer_set.insert(layer[i]);
 			layer[i] = offset[layer[i]];//Real tuple id
 		}
 
+		//Split table to non-skyline points (beginning) and skyline points//
 		last = this->partition_table(first, last, layer_set, cdata, offset);
-		std::cout << std::dec << std::setfill('0') << std::setw(10);
-		std::cout << last << std::endl;
+//		std::cout << std::dec << std::setfill('0') << std::setw(10);
+//		std::cout << last << std::endl;
 		this->layers.push_back(layer);
+
+
 	}
 
 	if( last > 0 ){
@@ -92,131 +137,21 @@ void SLA<T,Z>::build_layers(T **cdata){
 		for(uint64_t i = 0; i < last; i++) layer.push_back(offset[i]);
 		this->layers.push_back(layer);
 	}
-	std::cout << "Layer count: " << this->layers.size() << std::endl;
+	this->layer_num = this->layers.size();
+	std::cout << "Layer count: " << this->layer_num << std::endl;
 	free(offset);
 
 	//DEBUG//
-	std::unordered_set<uint64_t> st;
-	for(uint32_t i = 0; i < this->layers.size();i++){
-		std::cout << "Layer (" << i << ")" << " = " << this->layers[i].size() << std::endl;
-		for(uint32_t j = 0; j < this->layers[i].size();j++){ st.insert(this->layers[i][j]); }
-	}
-	std::cout << "set values: <" << st.size() << " ? " << this->n << ">" << std::endl;
-}
-
-template<class T, class Z>
-inline bool SLA<T,Z>::DT(T *p, T *q){
-	uint32_t dt = 0xFF;
-	uint32_t mask = 0xFF;
-
-	__m128 p4_00,q4_00;
-	__m128 p4_01,q4_01;
-	__m128 gt4_00, gt4_01;
-	__m256 p8_00,q8_00;
-	__m256 p8_01,q8_01;
-	__m256 gt8_00,gt8_01;
-
-	switch(this->d){
-		case 4:
-			mask =0xF;
-			p4_00 = _mm_load_ps(p);
-			q4_00 = _mm_load_ps(q);
-			gt4_00 = _mm_cmp_ps(p4_00,q4_00,14);
-			dt = dt & _mm_movemask_ps(gt4_00);
-			break;
-		case 8:
-			p8_00 = _mm256_load_ps(p);
-			q8_00 = _mm256_load_ps(q);
-			gt8_00 = _mm256_cmp_ps(p8_00,q8_00,14);
-			dt = dt & _mm256_movemask_ps(gt8_00);
-			break;
-		case 12:
-			p8_00 = _mm256_load_ps(p);
-			q8_00 = _mm256_load_ps(q);
-			p4_00 = _mm_load_ps(&p[8]);
-			q4_00 = _mm_load_ps(&q[8]);
-
-			gt4_00 = _mm_cmp_ps(p4_00,q4_00,14);
-			gt8_00 = _mm256_set_m128(gt4_00,gt4_00);
-			gt8_01 = _mm256_cmp_ps(p8_00,q8_00,14);
-
-			gt8_00 = _mm256_and_ps(gt8_00,gt8_01);
-			dt = dt & _mm256_movemask_ps(gt8_00);
-			break;
-		case 16:
-			p8_00 = _mm256_load_ps(p);
-			q8_00 = _mm256_load_ps(q);
-			p8_01 = _mm256_load_ps(&p[8]);
-			q8_01 = _mm256_load_ps(&q[8]);
-
-			gt8_00 = _mm256_cmp_ps(p8_00,q8_00,14);
-			gt8_01 = _mm256_cmp_ps(p8_01,q8_01,14);
-			gt8_00 = _mm256_and_ps(gt8_00,gt8_01);
-
-			dt = dt & _mm256_movemask_ps(gt8_00);
-			break;
-		default:
-			break;
-	};
-
-	return (mask == dt);
-}
-
-template<class T, class Z>
-void SLA<T,Z>::create_graph(T **cdata){
-	parents.resize(this->layers.size());
-	for(uint64_t i = this->layers.size()-1; i > 0;i--){
-		std::unordered_map<Z,std::vector<Z>> pp = parents[i];
-		for(uint64_t j = 0; j < this->layers[i].size();j++){
-			Z q = this->layers[i][j];
-			pp.emplace(q,std::vector<Z>());
-		}
-	}
-
-	for(uint64_t i = this->layers.size()-1; i > 0;i--){
-		std::unordered_map<Z,std::vector<Z>> pp = parents[i];
-		for(uint64_t j = 0; j < this->layers[i].size();j++){
-			Z q00 = this->layers[i][j];
-//			Z q01 = this->layers[i][j];
-//			Z q02 = this->layers[i][j];
-//			Z q03 = this->layers[i][j];
-
-			for(uint64_t m = 0; m < this->layers[i-1].size();m++){
-				Z p = this->layers[i-1][m];
-				if(this->DT(cdata[p],cdata[q00])==0x1){ pp[q00].push_back(p); }
-//				if(this->DT(cdata[p],cdata[q01])==0x1){ pp[q01].push_back(p); }
-//				if(this->DT(cdata[p],cdata[q02])==0x1){ pp[q02].push_back(p); }
-//				if(this->DT(cdata[p],cdata[q03])==0x1){ pp[q03].push_back(p); }
-			}
-		}
-	}
-
-
-//	parents.resize(this->layers.size());
-//	//for(uint64_t i = this->layers.size()-1; i >= this->layers.size()-2;i--){//From last to first layer
-//	for(uint64_t i = this->layers.size()-1; i > 0;i--){//From last to first layer
-//		//std::vector<std::unordered_map<Z,std::vector<Z>> pp;
-//		std::unordered_map<Z,std::vector<Z>> pp = parents[i];
-//		for(uint64_t j = 0; j < this->layers[i].size();j++){
-//			Z q = this->layers[i][j];
-//			pp.emplace(q,std::vector<Z>());
-//		}
-//
-//		#pragma omp parallel for schedule(static) num_threads(ITHREADS)
-//		for(uint64_t j = 0; j < this->layers[i].size();j++){
-//			Z q = this->layers[i][j];
-//			for(uint64_t m = 0; m < this->layers[i-1].size();m++){
-//				Z p = this->layers[i-1][m];
-//				if(this->DT(cdata[p],cdata[q])==0x1){
-//					pp[q].push_back(p);
-//				}
-//			}
-//		}
+//	std::unordered_set<uint64_t> st;
+//	for(uint32_t i = 0; i < this->layers.size();i++){
+//		std::cout << "Layer (" << i << ")" << " = " << this->layers[i].size() << std::endl;
+//		for(uint32_t j = 0; j < this->layers[i].size();j++){ st.insert(this->layers[i][j]); }
 //	}
+//	std::cout << "set values: <" << st.size() << " ? " << this->n << ">" << std::endl;
 }
 
 template<class T, class Z>
-uint64_t SLA<T,Z>::partition_table(uint64_t first, uint64_t last, std::unordered_set<uint32_t> layer_set, T **cdata, Z *offset){
+uint64_t SLA<T,Z>::partition_table(uint64_t first, uint64_t last, std::unordered_set<uint64_t> layer_set, T **cdata, Z *offset){
 	while(first < last){
 		while(layer_set.find(first) == layer_set.end()){//Find a skyline point
 			++first;
@@ -227,11 +162,86 @@ uint64_t SLA<T,Z>::partition_table(uint64_t first, uint64_t last, std::unordered
 			--last;
 			if(first == last) return first;
 		}while(layer_set.find(last) != layer_set.end());
-		offset[first] = offset[last];
-		memcpy(cdata[first],cdata[last],sizeof(T)*this->d);
+		offset[first] = offset[last];// Copy real-id of non-skyline point to the beginning of the array
+		memcpy(cdata[first],cdata[last],sizeof(T)*this->d);// Copy non-skyline point to beginning of the array
 		++first;
 	}
 	return first;
+}
+
+template<class T, class Z>
+void SLA<T,Z>::create_lists(){
+	//Initialize partitions based on skyline layers//
+	this->parts = static_cast<sla_partition<T,Z>*>(aligned_alloc(32,sizeof(sla_partition<T,Z>)*this->layers.size()));
+	uint64_t offset = 0;
+	this->max_part_size = 0;
+	for(uint64_t i = 0; i < this->layer_num; i++){
+		uint64_t size = this->layers[i].size();
+		uint64_t block_num = (size - 1)/SBLOCK_SIZE + 1;
+
+//		std::cout << "Layer <<<" << i << ">>>" << std::endl;
+//		std::cout << "size: " << size << std::endl;
+//		std::cout << "block_num: " << block_num << std::endl;
+//		std::cout << "total blocks size: " << block_num * SBLOCK_SIZE << std::endl;
+
+		this->parts[i].offset = offset;
+		this->parts[i].size = size;
+		this->parts[i].block_num = block_num;
+		this->parts[i].blocks = static_cast<sla_block<T,Z>*>(aligned_alloc(32,sizeof(sla_block<T,Z>)*this->parts[i].block_num));
+
+		//Set Partition Blocks to Zero
+		for(uint64_t j = 0; j < this->parts[i].block_num; j++){
+			for(uint64_t m = 0; m < SBLOCK_SIZE * NUM_DIMS; m++){ this->parts[i].blocks[j].tuples[m] = 0; }
+			for(uint64_t m = 0; m < this->d; m++){ this->parts[i].blocks[j].tarray[m] = 0; }
+		}
+		offset+=size;
+		this->max_part_size = std::max(size,this->max_part_size);
+	}
+
+	//Build sorted lists for each layer//
+	sla_pos<Z> *pos = (sla_pos<Z>*)malloc(sizeof(sla_pos<Z>)*this->max_part_size);
+	sla_pair<T,Z> **lists = (sla_pair<T,Z>**)malloc(sizeof(sla_pair<T,Z>*)*this->d);
+	for(uint64_t m=0; m<this->d;m++) lists[m] = (sla_pair<T,Z>*)malloc(sizeof(sla_pair<T,Z>)*this->max_part_size);
+	for(uint64_t i = 0; i < this->layer_num; i++){
+		for(uint64_t j = 0; j < this->max_part_size;j++){ pos[j].id = j; pos[j].pos = this->parts[i].size; }//Initialize to max possible position
+
+		for(uint64_t m = 0; m < this->d; m++){
+			for(uint64_t j = 0; j < this->parts[i].size; j++){
+				Z id = this->layers[i][j];
+				lists[m][j].id = j;
+				lists[m][j].score = this->cdata[m*this->n + id];
+			}
+			__gnu_parallel::sort(lists[m],(lists[m]) + this->parts[i].size,cmp_sla_pair<T,Z>);//Sort to create lists
+
+			for(uint64_t j = 0; j < this->parts[i].size; j++){
+				Z lid = lists[m][j].id;
+				pos[lid].pos = std::min(pos[lid].pos,(Z)j);//Find minimum local position of appearance in list//
+			}
+		}
+		__gnu_parallel::sort(&pos[0],(&pos[0]) + this->parts[i].size,cmp_sla_pos<Z>);//Sort local tuple ids by minimum position//
+
+		uint64_t b = 0;
+		for(uint64_t j = 0; j < this->parts[i].size; j+=SBLOCK_SIZE){
+			Z upper = ((j + SBLOCK_SIZE) <  this->parts[i].size) ? SBLOCK_SIZE : this->parts[i].size - j;
+			this->parts[i].blocks[b].tuple_num = upper;
+			this->parts[i].blocks[b].offset = j;
+
+			for(uint64_t l = 0; l < upper; l++){
+				Z lid = pos[j+l].id;//Find local tuple id
+				Z gid = this->layers[i][lid];//Find global tuple id inside layer
+				for(uint32_t m = 0; m < this->d; m++){
+					this->parts[i].blocks[b].tuples[ m * SBLOCK_SIZE + l] = this->cdata[ m * this->n + gid ];
+				}
+			}
+
+			Z p = pos[j + upper - 1].pos;//Find last point position
+			for(uint32_t m = 0; m < this->d; m++){ this->parts[i].blocks[b].tarray[m] = lists[m][p].score; }//Extract threshold
+			b++;
+		}
+
+	}
+	for(uint32_t m=0; m<this->d;m++) free(lists[m]);
+	free(lists);
 }
 
 template<class T, class Z>
@@ -240,35 +250,89 @@ void SLA<T,Z>::init(){
 	//Copy data to compute skyline layers//
 	//////////////////////////////////////
 	T **cdata = NULL;
-	cdata = this->sky_data(cdata);
+	cdata = this->sky_data(cdata);//Preprocess data to new table
 
 	///////////////////////////
 	//Compute Skyline Layers//
 	//////////////////////////
 	this->t.start();
-	this->build_layers(cdata);
 
-	cdata = this->sky_data(cdata);
-	//this->create_graph(cdata);
-
+	this->build_layers(cdata);//Assign tuples to different layers
 	for(uint64_t i = 0; i < this->n; i++) free(cdata[i]);
 	free(cdata);
 
-
+	////////////////////////////
+	//Create Lists for Layers//
+	///////////////////////////
+	this->create_lists();
 
 	this->tt_init = this->t.lap();
 }
 
 template<class T, class Z>
 void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
-	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+	if(this->res.size() > 0) this->res.clear();
+
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	this->t.start();
+	for(uint64_t l = 0; l < this->layer_num; l++){
+		Z poffset = this->parts[l].offset;
+		for(uint64_t b = 0; b < this->parts[l].block_num; b++){
+			Z id = this->parts[l].offset + poffset;
+			T *tuples = this->parts[l].blocks[b].tuples;
 
+			for(uint64_t t = 0; t < this->parts[l].blocks[b].tuple_num; t+=8){
+				id+=t;
+				T score00 = 0; T score01 = 0;
+				T score02 = 0; T score03 = 0;
+				T score04 = 0; T score05 = 0;
+				T score06 = 0; T score07 = 0;
+				for(uint8_t m = 0; m < qq; m++){
+					T weight = weights[attr[m]];
+					uint32_t offset = attr[m]*VBLOCK_SIZE + t;
+					score00+=tuples[offset]*weight;
+					score01+=tuples[offset+1]*weight;
+					score02+=tuples[offset+2]*weight;
+					score03+=tuples[offset+3]*weight;
+					score04+=tuples[offset+4]*weight;
+					score05+=tuples[offset+5]*weight;
+					score06+=tuples[offset+6]*weight;
+					score07+=tuples[offset+7]*weight;
+				}
+				if(q.size() < k){
+					q.push(tuple_<T,Z>(id,score00));
+					q.push(tuple_<T,Z>(id+1,score01));
+					q.push(tuple_<T,Z>(id+2,score02));
+					q.push(tuple_<T,Z>(id+3,score03));
+					q.push(tuple_<T,Z>(id+4,score04));
+					q.push(tuple_<T,Z>(id+5,score05));
+					q.push(tuple_<T,Z>(id+6,score06));
+					q.push(tuple_<T,Z>(id+7,score07));
+				}else{
+					if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(id,score00)); }
+					if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(id+1,score01)); }
+					if(q.top().score < score02){ q.pop(); q.push(tuple_<T,Z>(id+2,score02)); }
+					if(q.top().score < score03){ q.pop(); q.push(tuple_<T,Z>(id+3,score03)); }
+					if(q.top().score < score04){ q.pop(); q.push(tuple_<T,Z>(id+4,score04)); }
+					if(q.top().score < score05){ q.pop(); q.push(tuple_<T,Z>(id+5,score05)); }
+					if(q.top().score < score06){ q.pop(); q.push(tuple_<T,Z>(id+6,score06)); }
+					if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(id+7,score07)); }
+				}
+				if(STATS_EFF) this->tuple_count+=8;
+			}
 
-	this->tt_processing=this->t.lap();
+			T threshold = 0;
+			T *tarray = this->parts[l].blocks[b].tarray;
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+			if(q.size() >= k && q.top().score >= threshold){ break; }
+		}
+	}
 
-	std::cout << "\nTODO: Implement scalar ...\n"; return;
+	this->tt_processing += this->t.lap();
+
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
@@ -277,13 +341,57 @@ void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 
 template<class T, class Z>
 void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
-	std::cout << this->algo << " find topKscalar (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+	if(this->res.size() > 0) this->res.clear();
+
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
+	float score[16] __attribute__((aligned(32)));
 	this->t.start();
+	for(uint64_t l = 0; l < this->layer_num; l++){
+		Z poffset = this->parts[l].offset;
+		for(uint64_t b = 0; b < this->parts[l].block_num; b++){
+			Z id = this->parts[l].offset + poffset;
+			T *tuples = this->parts[l].blocks[b].tuples;
 
-	this->tt_processing=this->t.lap();
+			for(uint64_t t = 0; t < this->parts[l].blocks[b].tuple_num; t+=16){
+				id+=t;
+				__m256 score00 = _mm256_setzero_ps();
+				__m256 score01 = _mm256_setzero_ps();
+				for(uint8_t m = 0; m < qq; m++){
+					T weight = weights[attr[m]];
+					uint32_t offset = attr[m]*SBLOCK_SIZE + t;
+					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+					__m256 load00 = _mm256_load_ps(&tuples[offset]);
+					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+					load00 = _mm256_mul_ps(load00,_weight);
+					load01 = _mm256_mul_ps(load01,_weight);
+					score00 = _mm256_add_ps(score00,load00);
+					score01 = _mm256_add_ps(score01,load01);
+				}
+				_mm256_store_ps(&score[0],score00);
+				_mm256_store_ps(&score[8],score01);
 
-	std::cout << "\nTODO: Implement simd ...\n"; return;
+				for(uint8_t l = 0; l < 16; l++){
+					if(q.size() < k){
+						q.push(tuple_<T,Z>(id,score[l]));
+					}else if(q.top().score < score[l]){
+						q.pop(); q.push(tuple_<T,Z>(id,score[l]));
+					}
+				}
+				if(STATS_EFF) this->tuple_count+=16;
+			}
+
+			T threshold = 0;
+			T *tarray = this->parts[l].blocks[b].tarray;
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+			if(q.size() >= k && q.top().score >= threshold){ break; }
+		}
+	}
+	this->tt_processing+=this->t.lap();
+
+	while(q.size() > k){ q.pop(); }
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
@@ -292,18 +400,81 @@ void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 
 template<class T, class Z>
 void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
-	uint32_t threads = THREADS;
+	uint32_t threads = THREADS < this->layer_num ? THREADS : this->layer_num;
 	Z tt_count[threads];
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> _q[threads];
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	omp_set_num_threads(threads);
 
 	std::cout << this->algo << " find top-" << k << " threads x "<< threads <<" (" << (int)qq << "D) ...";
-	this->t.start();
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+	if(this->res.size() > 0) this->res.clear();
 
+	this->t.start();
+#pragma omp parallel
+{
+	float score[16] __attribute__((aligned(32)));
+	uint32_t tid = omp_get_thread_num();
+	Z tuple_count = 0;
+	__builtin_prefetch(score,1,3);
+	for(uint64_t l = tid; l < this->layer_num; l+=threads){
+		Z poffset = this->parts[l].offset;
+		for(uint64_t b = 0; b < this->parts[l].block_num; b++){
+			Z id = this->parts[l].offset + poffset;
+			T *tuples = this->parts[l].blocks[b].tuples;
+
+			for(uint64_t t = 0; t < this->parts[l].blocks[b].tuple_num; t+=16){
+				id+=t;
+				__m256 score00 = _mm256_setzero_ps();
+				__m256 score01 = _mm256_setzero_ps();
+				for(uint8_t m = 0; m < qq; m++){
+					T weight = weights[attr[m]];
+					uint32_t offset = attr[m]*SBLOCK_SIZE + t;
+					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+					__m256 load00 = _mm256_load_ps(&tuples[offset]);
+					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+					load00 = _mm256_mul_ps(load00,_weight);
+					load01 = _mm256_mul_ps(load01,_weight);
+					score00 = _mm256_add_ps(score00,load00);
+					score01 = _mm256_add_ps(score01,load01);
+				}
+				_mm256_store_ps(&score[0],score00);
+				_mm256_store_ps(&score[8],score01);
+
+				for(uint8_t l = 0; l < 16; l++){
+					if(_q[tid].size() < k){
+						_q[tid].push(tuple_<T,Z>(id,score[l]));
+					}else if(_q[tid].top().score < score[l]){
+						_q[tid].pop(); _q[tid].push(tuple_<T,Z>(id,score[l]));
+					}
+				}
+				if(STATS_EFF) tuple_count+=16;
+			}
+
+			T threshold = 0;
+			T *tarray = this->parts[l].blocks[b].tarray;
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+			if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ break; }
+		}
+	}
+	if(STATS_EFF) tt_count[tid] = tuple_count;
+}
+
+	for(uint32_t m = 0; m < threads; m++){
+		while(!_q[m].empty()){
+			if(q.size() < k){
+				q.push(_q[m].top());
+			}else if(q.top().score < _q[m].top().score){
+				q.pop();
+				q.push(_q[m].top());
+			}
+			_q[m].pop();
+		}
+	}
 	this->tt_processing=this->t.lap();
 
-	std::cout << "\nTODO: Implement threads ...\n"; return;
+	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;

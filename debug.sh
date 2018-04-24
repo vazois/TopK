@@ -2,20 +2,20 @@
 
 #cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
 
-START_N=$((256*1024*1024))
-END_N=$((256*1024*1024))
+START_N=$((1*1024*1024))
+END_N=$((1*1024*1024))
 DIMS=8
 
 #QM 0:Reverse query attribute, 1:Forward query attributes
-QM=1
+QM=0
 #QD Dimension interval for testing
 QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads
-IMP=0
+IMP=2
 #ITER Testing iterations
-ITER=0
+ITER=1
 #LD 0:load from file, 1: generate in memory
-LD=1
+LD=0
 
 #TA Benchmark
 TA_B=0
@@ -24,14 +24,14 @@ TPAc_B=0
 #TPAr Benchmark
 TPAr_B=0
 #VTA Ben0hmark
-VTA_B=1
+VTA_B=0
 #PTA Benchmark
 PTA_B=0
 #SLA Benchmark
-SLA_B=0
+SLA_B=1
 
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=16
+KKS=128
 KKE=128
 
 #distr c:correlated i:independent a:anticorrelated

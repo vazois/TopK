@@ -179,6 +179,7 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 			T *tuples = parts[i].blocks[b].tuples;
 			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
 			for(uint64_t t = 0; t < tuple_num; t+=8){
+				id+=t;
 				T score00 = 0; T score01 = 0; T score02 = 0; T score03 = 0; T score04 = 0; T score05 = 0; T score06 = 0; T score07 = 0;
 				for(uint8_t m = 0; m < qq; m++){
 					T weight = weights[attr[m]];
@@ -250,6 +251,7 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 			T *tuples = parts[i].blocks[b].tuples;
 			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
 			for(uint64_t t = 0; t < tuple_num; t+=16){
+				id+=t;
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){
@@ -348,6 +350,7 @@ void VTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 			T *tuples = parts[i].blocks[b].tuples;
 			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
 			for(uint64_t t = 0; t < tuple_num; t+=16){
+				id+=t;
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){

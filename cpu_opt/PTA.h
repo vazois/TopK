@@ -314,13 +314,14 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 			T *tuples = this->parts[p].blocks[b].tuples;
 			//std::cout << b <<"< tuple_num: " << this->parts[p].blocks[b].tuple_num << std::endl;
 			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=8){
+				id+=t;
 				T score00 = 0; T score01 = 0;
 				T score02 = 0; T score03 = 0;
 				T score04 = 0; T score05 = 0;
 				T score06 = 0; T score07 = 0;
 				for(uint8_t m = 0; m < qq; m++){
 					T weight = weights[attr[m]];
-					uint32_t offset = attr[m]*VBLOCK_SIZE + t;
+					uint32_t offset = attr[m]*PBLOCK_SIZE + t;
 					score00+=tuples[offset]*weight;
 					score01+=tuples[offset+1]*weight;
 					score02+=tuples[offset+2]*weight;
@@ -392,11 +393,12 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 			T *tuples = this->parts[p].blocks[b].tuples;
 			//std::cout << b <<"< tuple_num: " << this->parts[p].blocks[b].tuple_num << std::endl;
 			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=16){
+				id+=t;
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){
 					T weight = weights[attr[m]];
-					uint32_t offset = attr[m]*VBLOCK_SIZE + t;
+					uint32_t offset = attr[m]*PBLOCK_SIZE + t;
 					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 					__m256 load00 = _mm256_load_ps(&tuples[offset]);
 					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
@@ -422,7 +424,6 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
 			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
-		//std::cout << "p: " <<p << " = " << count << std::endl;
 	}
 	this->tt_processing += this->t.lap();
 
@@ -466,11 +467,12 @@ void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 			T *tuples = this->parts[p].blocks[b].tuples;
 
 			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=16){
+				id+=t;
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){
 					T weight = weights[attr[m]];
-					uint32_t offset = attr[m]*VBLOCK_SIZE + t;
+					uint32_t offset = attr[m]*PBLOCK_SIZE + t;
 					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 					__m256 load00 = _mm256_load_ps(&tuples[offset]);
 					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
@@ -558,11 +560,12 @@ void PTA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *att
 			T *tuples = this->parts[p].blocks[b].tuples;
 
 			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=16){
+				id+=t;
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){
 					T weight = weights[attr[m]];
-					uint32_t offset = attr[m]*VBLOCK_SIZE + t;
+					uint32_t offset = attr[m]*PBLOCK_SIZE + t;
 					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 					__m256 load00 = _mm256_load_ps(&tuples[offset]);
 					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);

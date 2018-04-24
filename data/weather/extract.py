@@ -1,10 +1,15 @@
 import sys
+from subprocess import call
+from subprocess import check_output
 
 def extract_csv(fname):
     station = dict()
     
     print "Loading file ... "
+    rows=int(check_output(["wc","-l",fname]).split(" ")[0])
+    step = (rows/100)
     with open(fname,'r') as fp:
+        ll = 0
         for line in fp:
             data = line.strip().split(",")
             
@@ -22,7 +27,11 @@ def extract_csv(fname):
                 if date not in station[sid][type]:
                     station[sid][type][date] = list()
                 station[sid][type][date].append(float(data[3])/10)
-                    
+            
+            if ll % step == 0:
+                sys.stdout.write("\r%s%%" % str(round((float(ll)/rows)*100)))
+                sys.stdout.flush()
+            ll+=1
     print "Finish loading file ... "
     return station
 
@@ -34,7 +43,7 @@ def gather_stats(station):
         for t in station[s]:
             for d in station[s][t]:
                 size = len(station[s][t][d])
-                if size not in coun_attr:
+                if size not in count_attr:
                     count_attr[size]=0
                 count_attr[size]+=1
     for ca in count_attr:
@@ -61,6 +70,6 @@ if __name__ == "__main__":
     
     fname = sys.argv[1]
     attributes = int(sys.argv[2])
-    print "Process file: ", fname, attributes
+    print "Process file:", fname, attributes
     station=extract_csv(fname)
     gather_stats(station)
