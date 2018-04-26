@@ -10,6 +10,7 @@
 #define VBLOCK_SIZE 1024
 #define VSPLITS 2
 #define VPARTITIONS (IMP == 2 ? ((uint64_t)pow(VSPLITS,NUM_DIMS-1)) : 1)
+//#define VPARTITIONS (4)
 //#define VPARTITIONS (IMP == 2 ? THREADS : 1)
 
 template<class T, class Z>
@@ -70,32 +71,33 @@ class VTA : public AA<T,Z>{
 template<class T, class Z>
 void VTA<T,Z>::init(){
 	this->t.start();
-
 	//Allocate partition & blocks //
 	uint64_t part_offset = 0;
+	uint64_t part_size = ((this->n - 1) / VPARTITIONS) + 1;
 	for(uint64_t i = 0; i < VPARTITIONS; i++){
-		uint64_t first = ((i*this->n)/VPARTITIONS);
-		uint64_t last = (((i+1)*this->n)/VPARTITIONS) - 1;
+		uint64_t first = (i*part_size);
+		uint64_t last = (i+1)*part_size;
+		//std::cout << "<<" << first << "," << last << ">>" << std::endl;
+		last = last < this->n ? last : this->n;
 		parts[i].offset = part_offset;
-		parts[i].size = last - first + 1;
+		parts[i].size = last - first;
 		parts[i].block_num = ((parts[i].size - 1) / VBLOCK_SIZE) + 1;
-		//parts[i].blocks = (bta_block<T,Z>*)malloc(sizeof(bta_block<T,Z>)*parts[i].block_num);
 		parts[i].blocks = static_cast<vta_block<T,Z>*>(aligned_alloc(32,sizeof(vta_block<T,Z>)*parts[i].block_num));
 
 		uint64_t block_offset = 0;
+		uint64_t block_size = (parts[i].size - 1)/parts[i].block_num + 1;
 		for(uint64_t j = 0; j <parts[i].block_num; j++){
-			uint64_t ftuple = ((i*parts[i].size)/parts[i].block_num);
-			uint64_t ltuple = (((i+1)*parts[i].size)/parts[i].block_num);
+			uint64_t ftuple = j * block_size;
+			uint64_t ltuple = (j+1)*block_size;
+			ltuple = ltuple < parts[i].size ? ltuple : parts[i].size;
+			//std::cout <<"("<< j <<")[" << ftuple << "," << ltuple << "]" << std::endl;
 			parts[i].blocks[j].offset = block_offset;
 			parts[i].blocks[j].tuple_num = ltuple - ftuple;
 			//std::cout << "j< " << j << "=" << ftuple  << "," << ltuple << std::endl;
 			block_offset+= ltuple - ftuple;
 		}
-
-		//std::cout << "i: " << i << "=" << first  << "," << last << std::endl;
-		part_offset += last - first + 1;
+		part_offset += last - first;
 	}
-	//std::cout << part_offset << " ? " << this->n << std::endl;
 	//////////////////////////////////////////////////////////
 
 	//Initialize Partitions and Blocks//
@@ -135,25 +137,13 @@ void VTA<T,Z>::init(){
 			uint64_t jj;
 			for(jj = 0; jj < parts[i].blocks[bnum].tuple_num; jj++){//For each block//
 				Z id = order[j+jj].id;//Get next tuple in order
-
-				for(uint8_t m = 0; m < this->d; m++){
-					parts[i].blocks[bnum].tuples[m*VBLOCK_SIZE + jj] = this->cdata[m*this->n + (poffset + id)];
-//					if(jj >= BLOCK_SIZE){
-//						std::cout << "<< " <<jj << ": " <<parts[i].blocks[bnum].tuple_num  << std::endl;
-//						break;
-//					}
-					//parts[i].blocks[bnum].tuples[jj][m] = 1;
-				}
+				for(uint8_t m = 0; m < this->d; m++){ parts[i].blocks[bnum].tuples[m*VBLOCK_SIZE + jj] = this->cdata[m*this->n + (poffset + id)]; }
 			}
 			Z pos = order[j+jj-1].pos;
-			for(uint8_t m = 0; m < this->d; m++){
-				parts[i].blocks[bnum].tarray[m] = lists[m][pos].score;
-			}
-
+			for(uint8_t m = 0; m < this->d; m++){ parts[i].blocks[bnum].tarray[m] = lists[m][pos].score; }
 			j+=parts[i].blocks[bnum].tuple_num;
 			bnum++;
 		}
-
 		poffset += parts[i].size;
 	}
 
@@ -321,7 +311,7 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 		q.pop();
 	}
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
 
@@ -430,8 +420,13 @@ void VTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 
 	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
 	T threshold = _q.top().score;
+	while(!_q.empty()){
+		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
+		this->res.push_back(_q.top());
+		_q.pop();
+	}
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << " threshold=[" << threshold <<"] (" << _q.size() << ")" << std::endl;
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
 

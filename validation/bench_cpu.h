@@ -69,34 +69,13 @@ float weights[8] = { 1,1,1,1,1,1,1,1 };
 	#endif
 #endif
 
-//#if NUM_DIMS == 3
-//uint8_t attr[2][3] = { {1,2,0}, {0,1,2} };
-////uint8_t attr[2][3] = { {0,1,0}, {0,1,2} };
-//#elif NUM_DIMS == 4
-//uint8_t attr[3][4] = { {2,3,0,0}, {1,2,3,0}, {0,1,2,3} };
-////uint8_t attr[3][4] = { {0,1,0,0}, {0,1,2,0}, {0,1,2,3} };
-//#elif NUM_DIMS == 6
-//uint8_t attr[5][6] = { {4,5,0,0,0,0}, {3,4,5,0,0,0}, {2,3,4,5,0,0}, {1,2,3,4,5,0}, {0,1,2,3,4,5} };
-////uint8_t attr[5][6] = {{0,1,0,0,0,0}, {0,1,2,0,0,0},  {0,1,2,3,0,0}, {0,1,2,3,4,0}, {0,1,2,3,4,5} };
-//#else
-//uint8_t attr[7][8] = {
-//		{6,7,0,0,0,0,0,0}, {5,6,7,0,0,0,0,0}, {4,5,6,7,0,0,0,0},
-//		{3,4,5,6,7,0,0,0}, {2,3,4,5,6,7,0,0}, {1,2,3,4,5,6,7,0}, {0,1,2,3,4,5,6,7}
-//};
-//
-////uint8_t attr[7][8] = {
-////		{0,1,0,0,0,0,0,0}, {0,1,2,0,0,0,0,0}, {0,1,2,3,0,0,0,0},
-////		{0,1,2,3,4,0,0,0}, {0,1,2,3,4,5,0,0}, {0,1,2,3,4,5,6,0}, {0,1,2,3,4,5,6,7}
-////};
-//#endif
-
 const std::string distributions[3] ={"correlated","independent","anticorrelated"};
 
 void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
 	File<float> f(fname,false,n,d);
 	TA<float,uint64_t> ta(f.rows(),f.items());
 
-	if (LD == 0){
+	if (LD != 0){
 		std::cout << "Loading data from file !!!" <<std::endl;
 		f.load(ta.get_cdata());
 	}else{
@@ -126,7 +105,7 @@ void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 	File<float> f(fname,false,n,d);
 	TPAr<float,uint64_t> tpar(f.rows(),f.items());
 
-	if (LD == 0){
+	if (LD != 1){
 		std::cout << "Loading data from file !!!" <<std::endl;
 		f.load(tpar.get_cdata());
 	}else{
@@ -169,7 +148,7 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 	TPAc<float,uint64_t> tpac(f.rows(),f.items());
 	f.set_transpose(true);
 
-	if (LD == 0){
+	if (LD != 1){
 		std::cout << "Loading data from file !!!" <<std::endl;
 		f.load(tpac.get_cdata());
 	}else{
@@ -212,7 +191,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 	VTA<float,uint64_t> vta(f.rows(),f.items());
 	f.set_transpose(true);
 
-	if (LD == 0){
+	if (LD != 1){
 		std::cout << "Loading data from file !!!" <<std::endl;
 		f.load(vta.get_cdata());
 	}else{
@@ -255,7 +234,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 	PTA<float,uint64_t> pta(f.rows(),f.items());
 	f.set_transpose(true);
 
-	if (LD == 0){
+	if (LD != 1){
 		std::cout << "Loading data from file !!!" <<std::endl;
 		f.load(pta.get_cdata());
 	}else{
@@ -275,7 +254,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 			}else if(IMP == 1){
 				pta.findTopKsimd(k,i,weights,attr[i-q]);
 			}else if(IMP == 2){
-				pta.findTopKthreads(k,i,weights,attr[i-q]);
+				pta.findTopKthreads2(k,i,weights,attr[i-q]);
 			}
 			pta.reset_clocks();
 			//Benchmark
@@ -285,7 +264,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 				}else if(IMP == 1){
 					pta.findTopKsimd(k,i,weights,attr[i-q]);
 				}else if(IMP == 2){
-					pta.findTopKthreads(k,i,weights,attr[i-q]);
+					pta.findTopKthreads2(k,i,weights,attr[i-q]);
 				}
 			}
 			pta.benchmark();
@@ -298,7 +277,7 @@ void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t ks,uint64_t ke
 	SLA<float,uint64_t> sla(f.rows(),f.items());
 	f.set_transpose(true);
 
-	if (LD == 0){
+	if (LD != 1){
 		std::cout << "Loading data from file !!!" <<std::endl;
 		f.load(sla.get_cdata());
 	}else{

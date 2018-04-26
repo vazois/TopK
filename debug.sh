@@ -1,44 +1,19 @@
 #!/bin/bash
 
-#cd data/; python skydata.py $N $D $distr ; cd .. ; make cpu_cc ; ./cpu_run -f=data/$fname
-
+#############################
+###### DATA PARAMETERS ######
+#############################
 START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
 DIMS=8
-
-#QM 0:Reverse query attribute, 1:Forward query attributes
-QM=0
-#QD Dimension interval for testing
-QD=1
-#IMP 0:Scalar, 1:SIMD, 2:Threads
-IMP=2
-#ITER Testing iterations
-ITER=1
-#LD 0:load from file, 1: generate in memory
-LD=0
-
-#TA Benchmark
-TA_B=0
-#TPAc Benchmark
-TPAc_B=0
-#TPAr Benchmark
-TPAr_B=0
-#VTA Ben0hmark
-VTA_B=0
-#PTA Benchmark
-PTA_B=0
-#SLA Benchmark
-SLA_B=1
-
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
 KKE=128
+#LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
+LD=0
 
 #distr c:correlated i:independent a:anticorrelated
-distr=a
-#bench=0#0:NA, 1:FA, 2:TA, 3:BPA, 4:CBA
-#CPU:0,GPU:1
-device=$1
+distr=i
 #randdataset3: higher precission , randdataset: lower precission
 script=randdataset
 
@@ -57,17 +32,80 @@ else
 	exit
 fi
 
+#REAL DATA PARAMETERS
+REAL_DATA_PATH=data/weather/weather_82362028_8
+#REAL_DATA_N=$START_N
+REAL_DATA_N=$(echo $REAL_DATA_PATH| cut -d'_' -f 2)
+REAL_DATA_D=$(echo $REAL_DATA_PATH| cut -d'_' -f 3)
+#echo "REAL_DATA: "$REAL_DATA_N","$REAL_DATA_D
+#exit 1
+if [ $LD -eq 2 ]
+then
+	DIMS=$REAL_DATA_D
+fi
+
+###################################
+###### EXPERIMENT PARAMETERS ######
+###################################
+#CPU:0,GPU:1
+device=0
+#QM 0:Reverse query attribute, 1:Forward query attributes
+QM=0
+#QD Dimension interval for testing
+QD=1
+#IMP 0:Scalar, 1:SIMD, 2:Threads
+IMP=1
+#ITER Testing iterations
+ITER=10
+
+#TA Benchmark
+TA_B=0
+#TPAc Benchmark
+TPAc_B=0
+#TPAr Benchmark
+TPAr_B=0
+#VTA Ben0hmark
+VTA_B=0
+#PTA Benchmark
+PTA_B=1
+#SLA Benchmark
+SLA_B=0
+#####################################################################################	
+
+####################################
+###### COMPILATION PARAMETERS ######
+####################################
 if [ $device -eq 0 ]
 then
 	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE
 else
 	make gpu_cc
 fi
+#################################################################################
 
-for (( n=$START_N; n<=$END_N; n*=2 ))
-do
+
+#############################################
+###### EXPERIMENT EXECUTION PARAMETERS ######
+#############################################
+if [ $LD -eq 2 ]
+then
+	echo "<--------------USING REAL DATA PATH----------------->"
+	if [ $device -eq 0 ]
+	then
+  		./cpu_run -f=$REAL_DATA_PATH -n=$REAL_DATA_N -d=$DIMS
+	else
+  		./gpu_run -f=$REAL_DATA_PATH -n=$REAL_DATA_N -d=$DIMS
+	fi
+	echo "<--------------------------------------------------->"
+	if [ $? -eq 1 ]
+	then
+		echo "error occured!!!"
+		exit
+	fi
+else
+	for (( n=$START_N; n<=$END_N; n*=2 ))
+	do
 		fname='d_'$n'_'$DIMS'_'$distr
-		fname2='d_'$n'_'$DIMS'_'$distr'_o'
 		#echo "Processing ... "$fname
 		if [ ! -f data/$fname ] && [ $LD -eq 0 ] 
 		then
@@ -91,4 +129,5 @@ do
 		sleep 1
 		#rm -rf data/$fname
 		echo "<--------------------------------------------------->"
-done
+	done
+fi

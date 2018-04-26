@@ -233,16 +233,20 @@ int File<T>::fetch(T *&p, uint64_t d, FILE *f){
 
 template<class T>
 void File<T>::read_scanf(){
-	FILE *f;
+	FILE *f=NULL;
 	f = fopen(this->fname.c_str(), "r");
 	uint64_t i = 0;
+	if (f == NULL) {
+		std::cout << "Error opening file!!!!" << std::endl;
+		exit(1);
+	}
 
 	float progress = 0.0;
 	uint64_t step = 1024;
 	uint64_t ii = 0;
 
 	T *ptr = &data[i];
-	while(fetch(ptr,d,f) > 0){
+	while(fetch(ptr,d,f) > 0 && ii < this->n){
 		i+=(d);
 		ptr = &data[i];
 
@@ -260,8 +264,12 @@ void File<T>::read_scanf(){
 template<class T>
 void File<T>::read_scanf_t(){
 	//std::cout << "Read scanf transpose..." << std::endl;
-	FILE *f;
+	FILE *f = NULL;
 	f = fopen(this->fname.c_str(), "r");
+	if (f == NULL) {
+		std::cout << "Error opening file!!!!" << std::endl;
+		exit(1);
+	}
 	uint64_t i = 0;
 
 	float progress = 0.0;
@@ -269,7 +277,8 @@ void File<T>::read_scanf_t(){
 
 	T *buffer = (T*)malloc(sizeof(T) * this->d);
 	T *ptr = &(data[i]);
-	while(this->fetch(buffer,this->d,f) > 0){
+	while(this->fetch(buffer,this->d,f) > 0 && i < this->n){
+		//std::cout << "read\n";
 		for(uint64_t j = 0; j < this->d; j++){
 			ptr[ j * this->n + i ] = buffer[j];
 		}

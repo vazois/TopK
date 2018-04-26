@@ -1,9 +1,9 @@
 #!/bin/bash
 
 URL=https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/by_year/
-START_YEAR=1960
-END_YEAR=2017
-D=2
+START_YEAR=$1
+END_YEAR=$2
+D=$3
 LIMIT=$((END_YEAR-START_YEAR+1))
 
 if (( LIMIT < D ))
@@ -31,5 +31,5 @@ do
 	rm -rf $FILE
 done
 
-#echo "Gathering data ... "
-#python extract.py $OUTPUT $D
+echo "Gathering data ... "
+python extract.py $OUTPUT $D
