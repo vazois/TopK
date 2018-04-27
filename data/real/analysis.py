@@ -6,17 +6,20 @@ from itertools import combinations
 
 def read_csv(fname,n,d):
     fp = open(fname,'r')
-    cdata= [[0 for i in range(n)] for j in range(d)]
+    cdata=[[] for i in range(d)]
+    step = (n/100)
     
-    print "Loading file ... "
-    lines = fp.readlines()
-    for i in range(len(lines)):
-        ll = lines[i].strip().split(",")
-        for j in range(d):
-            cdata[j][i]=float(ll[j])
-    
-    print "Finish loading file ... "
-    fp.close()
+    with open(fname,'r') as fp:
+        i=0
+        for line in fp:
+            data = line.strip().split(",")
+            for j in range(d):
+                cdata[j].append(float(data[j]))
+            i+=1
+            if i % step == 0:
+                sys.stdout.write("\r%s%%" % str(round((float(i)/n)*100)))
+                sys.stdout.flush()
+
     return cdata
     
 def find_correlation(cdata,n,d):

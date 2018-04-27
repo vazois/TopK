@@ -122,9 +122,10 @@ void PTA<T,Z>::polar(){
 	pta_pair<T,Z> *pp = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
 	this->part_id = static_cast<Z*>(aligned_alloc(32,sizeof(Z)*this->n));
 
+	T _one = 1.1;
 	__m256 pi_2 = _mm256_set1_ps(PI_2);
 	__m256 abs = _mm256_set1_ps(0x7FFFFFFF);
-	__m256 one = _mm256_set1_ps(1.1);
+	__m256 one = _mm256_set1_ps(_one);
 	for(uint64_t i = 0; i < this->n; i+=8){//Calculate hyperspherical coordinates for each point
 		uint8_t remain = i + 8 < this->n ? 8 : (this->n - i);
 		__m256 sum = _mm256_setzero_ps();
@@ -156,7 +157,20 @@ void PTA<T,Z>::polar(){
 				curr = next;
 			}
 		}else{
-
+			for(uint32_t j = i; j < i + remain; j++){
+				T curr =this->cdata[(this->d-1)*this->n + j] - _one;
+				T next;
+				T sum = 0;
+				T f = 0;
+				for(uint32_t m = this->d-1; m > 0;m--){
+					next = this->cdata[(m-1)*this->n + j];
+					next = next - _one;
+					sum += curr*curr;
+					f = fabs(atan( sqrt(sum) / next));
+					uint64_t offset = (m-1)*this->n + j;
+					pdata[offset] = f*PI_2;
+				}
+			}
 		}
 	}
 	std::cout << "STEP1\n";
