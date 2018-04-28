@@ -3,14 +3,14 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((3172455))
-END_N=$((3172455))
+START_N=$((16*1024*1024))
+END_N=$((16*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
 KKE=128
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=0
+LD=2
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -33,7 +33,7 @@ else
 fi
 
 #REAL DATA PARAMETERS
-REAL_DATA_PATH=data/weather/weather_82362028_8
+REAL_DATA_PATH=data/real/hg_11000000_8
 #REAL_DATA_N=$START_N
 REAL_DATA_N=$(echo $REAL_DATA_PATH| cut -d'_' -f 2)
 REAL_DATA_D=$(echo $REAL_DATA_PATH| cut -d'_' -f 3)
@@ -59,7 +59,7 @@ IMP=1
 ITER=10
 
 #TA Benchmark
-TA_B=0
+TA_B=1
 #TPAc Benchmark
 TPAc_B=0
 #TPAr Benchmark
@@ -92,6 +92,7 @@ then
 	echo "<--------------USING REAL DATA PATH----------------->"
 	if [ $device -eq 0 ]
 	then
+		echo "./cpu_run -f=$REAL_DATA_PATH -n=$REAL_DATA_N -d=$DIMS"
   		./cpu_run -f=$REAL_DATA_PATH -n=$REAL_DATA_N -d=$DIMS
 	else
   		./gpu_run -f=$REAL_DATA_PATH -n=$REAL_DATA_N -d=$DIMS

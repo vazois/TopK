@@ -6,7 +6,7 @@ OUTPUT="taxi_data.csv"
 def normalize(v,MMAX,MMIN):
     return (v - MMIN)/(MMAX-MMIN)
 
-def build_csv(fname,d):
+def build_csv(fname):
     global OUTPUT
     outp = open(OUTPUT,"w")
     with open(fname,'r') as fp:
@@ -18,8 +18,8 @@ def build_csv(fname,d):
             data = line.strip().split(" ")
             data = ",".join([str(float(v)) for v in data])
             outp.write(data+"\n")    
-            
             rows+=1
+            
     outp.close()
     print rows,items
     os.rename(OUTPUT,"taxi_"+str(rows)+"_"+str(items))
@@ -60,14 +60,13 @@ def build_norm_csv(fname,d):
     os.rename(OUTPUT,"taxi_"+str(rows)+"_"+str(items))
     
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print "Usage:",sys.argv[0],"<file> <attributes>"
+    if len(sys.argv) < 2:
+        print "Usage:",sys.argv[0],"<file>"
         exit(1)
         
     fname = sys.argv[1]
-    d = int(sys.argv[2])
-    print "Input file:", fname, d
-    #build_csv(fname,d)
-    build_norm_csv(fname,d)
+    print "Input file:",fname
+    build_csv(fname)
+    #build_norm_csv(fname)
     
     

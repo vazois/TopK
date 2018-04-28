@@ -16,6 +16,7 @@ then
 	exit 1
 fi
 
+F=0
 for (( n=0; n<$MONTH_COUNT; n+=1 ))
 do
 	NEXT_DATE=$(date +%Y-%m -d "$DATE + $n month")
@@ -30,6 +31,11 @@ do
 	fi
 	
 	echo "Extracting columns ... "
-	awk -F "\"*,\"*" '{print $4,$5,$11,$12,$13,$14,$15}' $FILE > $OUTPUT
-
+	if [ $F -eq 0 ]
+	then
+		awk -F "\"*,\"*" '{print $4" "$5" "$11" "$12" "$13" "$14" "$15}' $FILE > $OUTPUT
+		F=1
+	else
+		awk -F "\"*,\"*" 'FNR > 2 {print $4" "$5" "$11" "$12" "$13" "$14" "$15}' $FILE >> $OUTPUT
+	fi
 done
