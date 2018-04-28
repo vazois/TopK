@@ -63,4 +63,4 @@ if __name__ == "__main__":
     fname = sys.argv[1]
     attributes = int(sys.argv[2])
     print "Process file:", fname, attributes
-    station=build_csv(fname)
+    build_csv(fname)

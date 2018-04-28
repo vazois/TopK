@@ -70,6 +70,7 @@ class VTA : public AA<T,Z>{
 
 template<class T, class Z>
 void VTA<T,Z>::init(){
+	normalize_transpose<T,Z>(this->cdata, this->n, this->d);
 	this->t.start();
 	//Allocate partition & blocks //
 	uint64_t part_offset = 0;

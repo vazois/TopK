@@ -126,54 +126,51 @@ void PTA<T,Z>::polar(){
 	__m256 pi_2 = _mm256_set1_ps(PI_2);
 	__m256 abs = _mm256_set1_ps(0x7FFFFFFF);
 	__m256 one = _mm256_set1_ps(_one);
+	float angles[8] __attribute__((aligned(32)));
 	for(uint64_t i = 0; i < this->n; i+=8){//Calculate hyperspherical coordinates for each point
-		uint8_t remain = i + 8 < this->n ? 8 : (this->n - i);
-		__m256 sum = _mm256_setzero_ps();
-		__m256 f = _mm256_setzero_ps();
-		__m256 curr;
-		__m256 next;
+		//std::cout << "[" << i << "]" << std::endl;
+		if(i + 7 < this->n){
+			__m256 sum = _mm256_setzero_ps();
+			__m256 f = _mm256_setzero_ps();
+			__m256 curr;
+			__m256 next;
 
-		if( remain == 8 ){
-			_mm256_load_ps(&this->cdata[(this->d-1)*this->n + i]);
+			curr = _mm256_load_ps(&this->cdata[(this->d-1)*this->n + i]);
 			curr = _mm256_sub_ps(curr,one);//x_i=x_i - 1.0
 			for(uint32_t m = this->d-1; m > 0;m--){
+				uint64_t offset = (m-1)*this->n + i;
 				next = _mm256_load_ps(&this->cdata[(m-1)*this->n + i]);//x_(i-1)
 				next = _mm256_sub_ps(next,one);
 				sum = _mm256_add_ps(sum,_mm256_mul_ps(curr,curr));//(sum +=x_i ^ 2)
 				f = _mm256_sqrt_ps(sum);//sqrt(x_i^2+x_(i-1)^2+...)
-
-
 				f = _mm256_div_ps(f,next);//sqrt(x_i^2+x_(i-1)^2+...+x_(i-k)/x_(i-k+1)
-				uint64_t offset = (m-1)*this->n + i;
-				_mm256_store_ps(&pdata[offset],f);
-				pdata[offset] = fabs(atan(pdata[offset])*PI_2);
-				pdata[offset+1] = fabs(atan(pdata[offset+1])*PI_2);
-				pdata[offset+2] = fabs(atan(pdata[offset+2])*PI_2);
-				pdata[offset+3] = fabs(atan(pdata[offset+3])*PI_2);
-				pdata[offset+4] = fabs(atan(pdata[offset+4])*PI_2);
-				pdata[offset+5] = fabs(atan(pdata[offset+5])*PI_2);
-				pdata[offset+6] = fabs(atan(pdata[offset+6])*PI_2);
-				pdata[offset+7] = fabs(atan(pdata[offset+7])*PI_2);
+
+				_mm256_store_ps(&angles[0],f);
+				pdata[offset] = fabs(atan(angles[0])*PI_2);
+				pdata[offset+1] = fabs(atan(angles[1])*PI_2);
+				pdata[offset+2] = fabs(atan(angles[2])*PI_2);
+				pdata[offset+3] = fabs(atan(angles[3])*PI_2);
+				pdata[offset+4] = fabs(atan(angles[4])*PI_2);
+				pdata[offset+5] = fabs(atan(angles[5])*PI_2);
+				pdata[offset+6] = fabs(atan(angles[6])*PI_2);
+				pdata[offset+7] = fabs(atan(angles[7])*PI_2);
 				curr = next;
 			}
 		}else{
-			for(uint32_t j = i; j < i + remain; j++){
-				T curr =this->cdata[(this->d-1)*this->n + j] - _one;
-				T next;
-				T sum = 0;
-				T f = 0;
+			for(uint32_t j = i; j < this->n; j++){
+				T curr = this->cdata[(this->d-1)*this->n + j] - _one;
+				T next, sum = 0, f = 0;
 				for(uint32_t m = this->d-1; m > 0;m--){
-					next = this->cdata[(m-1)*this->n + j];
-					next = next - _one;
+					uint64_t offset = (m-1)*this->n + j;
+					next = this->cdata[offset] - _one;
 					sum += curr*curr;
 					f = fabs(atan( sqrt(sum) / next));
-					uint64_t offset = (m-1)*this->n + j;
 					pdata[offset] = f*PI_2;
+					curr = next;
 				}
 			}
 		}
 	}
-	std::cout << "STEP1\n";
 
 	uint64_t mod = (this->n / PSLITS);
 	uint64_t mul = 1;
@@ -181,29 +178,15 @@ void PTA<T,Z>::polar(){
 	for(uint32_t m = 0; m < this->d-1; m++){//For each hyperspherical coordinate
 		for(uint64_t i = 0; i < this->n; i++){ pp[i].id = i; pp[i].score = pdata[m*this->n + i]; }
 		__gnu_parallel::sort(&pp[0],(&pp[0]) + this->n,cmp_pta_pair_asc<T,Z>);//determine splitting points
-		for(uint64_t i = 0; i < this->n; i++){
-			this->part_id[pp[i].id]+=(mul*(i / mod));
-		}// Assign partition id
+		for(uint64_t i = 0; i < this->n; i++){ this->part_id[pp[i].id]+=(mul*(i / mod)); }// Assign partition id
 		mul*=PSLITS;
 	}
-	std::cout << "STEP2\n";
-
-//	for(uint64_t i = 0; i < 16; i++){
-//		std::cout << std::fixed;
-//		std::cout << "[";
-//		for(uint32_t m = 0; m < this->d; m++){ std::cout << std::setprecision(4) << this->cdata[m*this->n + i] << " , "; }
-//		std::cout << "] ";
-//		std::cout << "[";
-//		for(uint32_t m = 0; m < this->d-1; m++){ std::cout << std::setprecision(4) << pdata[m*this->n + i] << " , "; }
-//		std::cout << "] ";
-//		std::cout << this->part_id[i];
-//		std::cout << std::endl;
-//	}
 
 	//Count and verify number of points inside each partition//
 	std::map<Z,Z> mm;
 	for(uint64_t i = 0; i < PPARTITIONS;i++) mm.insert(std::pair<Z,Z>(i,0));
 	for(uint64_t i = 0; i < this->n; i++){
+		if(this->part_id[i] >= PPARTITIONS) this->part_id[i] = PPARTITIONS - 1;
 		Z pid = this->part_id[i];
 		mm[pid]+=1;
 	}
@@ -304,8 +287,8 @@ void PTA<T,Z>::create_partitions(){
 
 template<class T, class Z>
 void PTA<T,Z>::init(){
+	normalize_transpose<T,Z>(this->cdata, this->n, this->d);
 	this->t.start();
-
 	std::cout << "computing polar coordinates ..." << std::endl;
 	this->polar();
 	std::cout << "creating partitions ..." << std::endl;

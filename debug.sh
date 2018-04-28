@@ -3,8 +3,8 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((1*1024*1024))
-END_N=$((1*1024*1024))
+START_N=$((3172455))
+END_N=$((3172455))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
@@ -116,6 +116,7 @@ else
 		
 		if [ $device -eq 0 ]
 		then
+			echo "./cpu_run -f=data/$fname -n=$n -d=$DIMS"
   			./cpu_run -f=data/$fname -n=$n -d=$DIMS
 		else
   			./gpu_run -f=data/$fname -n=$n -d=$DIMS

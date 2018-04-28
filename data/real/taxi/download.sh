@@ -30,6 +30,6 @@ do
 	fi
 	
 	echo "Extracting columns ... "
-	awk -F "\"*,\"*" '{print $5","$6}' $FILE > $OUTPUT
+	awk -F "\"*,\"*" '{print $4,$5,$11,$12,$13,$14,$15}' $FILE > $OUTPUT
 
 done

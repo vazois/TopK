@@ -27,8 +27,8 @@ class  TPAr : public AA<T,Z>{
 template<class T, class Z>
 void TPAr<T,Z>::init(){
 	this->scores = (T*) malloc(sizeof(T)*this->n);
+	normalize<T,Z>(this->cdata, this->n, this->d);
 	this->t.start();
-
 	this->tt_init = this->t.lap();
 }
 

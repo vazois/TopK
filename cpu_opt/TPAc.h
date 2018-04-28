@@ -25,10 +25,8 @@ class  TPAc : public AA<T,Z>{
 
 template<class T, class Z>
 void TPAc<T,Z>::init(){
-	std::cout << this->algo << " Init ..." << std::endl;
-	this->scores = (T*) malloc(sizeof(T)*this->n);
+	normalize_transpose<T,Z>(this->cdata, this->n, this->d);
 	this->t.start();
-
 	this->tt_init = this->t.lap();
 }
 

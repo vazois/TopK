@@ -75,7 +75,7 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke
 	File<float> f(fname,false,n,d);
 	TA<float,uint64_t> ta(f.rows(),f.items());
 
-	if (LD != 0){
+	if (LD != 1){
 		std::cout << "Loading data from file !!!" <<std::endl;
 		f.load(ta.get_cdata());
 	}else{

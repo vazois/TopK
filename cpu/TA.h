@@ -40,6 +40,7 @@ class TA : public AA<T,Z>{
 template<class T,class Z>
 void TA<T,Z>::init(){
 	//this->lists.resize(this->d);
+	normalize<T,Z>(this->cdata, this->n, this->d);
 	this->alists = (pred<T,Z>**)malloc(sizeof(pred<T,Z>*)*this->d);
 	for(uint32_t m = 0; m < this->d; m++){ this->alists[m] = (pred<T,Z>*)malloc(sizeof(pred<T,Z>)*this->n); }
 
