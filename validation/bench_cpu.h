@@ -16,11 +16,6 @@
 #include "../cpu_opt/PTA.h"
 #include "../cpu_opt/SLA.h"
 
-//#define ITER 1
-//#define IMP 1//0:Scalar 1:SIMD 2:Threads + SIMD
-//#define QM 1//0:Multiple Queries 1: Single Queries
-//#define QD 1
-
 //[0,1,2,3][4,5,6,7][8,9,10,11][12,13,14,15]
 uint8_t qq[72] =
 	{
@@ -267,7 +262,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 			}else if(IMP == 1){
 				pta.findTopKsimd(k,i,weights,attr[i-q]);
 			}else if(IMP == 2){
-				pta.findTopKthreads2(k,i,weights,attr[i-q]);
+				pta.findTopKthreads(k,i,weights,attr[i-q]);
 			}
 			pta.reset_clocks();
 			//Benchmark
@@ -277,7 +272,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 				}else if(IMP == 1){
 					pta.findTopKsimd(k,i,weights,attr[i-q]);
 				}else if(IMP == 2){
-					pta.findTopKthreads2(k,i,weights,attr[i-q]);
+					pta.findTopKthreads(k,i,weights,attr[i-q]);
 				}
 			}
 			pta.benchmark();

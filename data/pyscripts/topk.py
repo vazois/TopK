@@ -31,22 +31,19 @@ if __name__ == "__main__":
 #         info=FA(db,q,k)
 #         print "<FA>: ("+str(q)+"D) [ threshold =",info[0].id,",{0:.4f}".format(info[0].score),"] , [ accesses =",info[1],"]"
      
-#     db0=create_lists(db)
-#     for q in qq:
-#         cmb = [m for m in combinations([i for i in range(db[1])], q)]
-#         avg_objects_fetched=0
-#         for c in cmb:
-#             tt = time.time()
-#             info=TA(db0,c,k)
-#             tt = time.time() - tt 
-#             avg_objects_fetched+=info[1]
-#             print "<TA>: ("+str(q)+"D)",c,"[ threshold =",info[0].id,",{0:.4f}".format(info[0].score),"] , [ accesses =",info[1],"] , [ tt = ", tt ," ]"
-#         print "<TA>: AVG("+str(q)+"D)",int(round(float(avg_objects_fetched)/len(cmb)))
-#     db0=[]
-    
-#     info=BTA(db,qq,k,0)
-    #info=BTA(db,qq,k,1)
-#     info=BTA(db,qq,k,2)
-    info=BTA(db,qq,k,3)
+    db0=create_lists(db)
+    for q in qq:
+        cmb = [m for m in combinations([i for i in range(db[1])], q)]
+        avg_objects_fetched=0
+        for c in cmb:
+            tt = time.time()
+            info=TA(db0,c,k)
+            tt = time.time() - tt 
+            avg_objects_fetched+=info[1]
+            print "<TA>: ("+str(q)+"D)",c,"[ threshold =",info[0].id,",{0:.4f}".format(info[0].score),"] , [ accesses =",info[1],"] , [ tt = ", tt ," ]"
+        print "<TA>: AVG("+str(q)+"D)",int(round(float(avg_objects_fetched)/len(cmb)))
+    db0=[]
+
+#    info=BTA(db,qq,k,3)
 
     

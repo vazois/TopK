@@ -19,8 +19,8 @@ fi
 F=0
 for (( n=0; n<$MONTH_COUNT; n+=1 ))
 do
-	NEXT_DATE=$(date +%Y-%m -d "$DATE + $n month")
-	#echo "$NEXT_DATE"
+	NEXT_DATE=$(date +%Y-%m -d "$DATE + $n year")
+	echo "$NEXT_DATE"
 	
 	FILE=$PREFIX_FNAME$NEXT_DATE".csv"
 	

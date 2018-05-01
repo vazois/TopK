@@ -84,7 +84,6 @@ class File{
 		bool packed;
 };
 
-
 template<class T>
 void File<T>::line_specifier(){
 	//create fscanf line specifier
@@ -349,6 +348,7 @@ void File<T>::gen(T *&data, uint8_t type){
 	}else if ( type == 1 ){
 		generate_indep_inmem(this->data,this->n,this->d,this->transpose);
 	}else if ( type == 2 ){
+		std::cout << "Anticorrelated\n";
 		generate_anti_inmem(this->data,this->n,this->d,this->transpose);
 	}
 }

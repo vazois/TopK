@@ -232,7 +232,7 @@ random_peak(double min, double max, int dim)
 	double	sum = 0.0;
 
 	for (d = 0; d < dim; d++)
-		sum += random_equal(0.1, 0.99);
+		sum += random_equal(0.0, 1.0);
 	sum /= dim;
 	return sum * (max - min) + min;
 }
@@ -358,8 +358,6 @@ void generate_indep_inmem(float *data, uint64_t n, uint64_t d, bool transpose){
 	}
 }
 
-
-
 /*
  * generate_corr
  *
@@ -430,7 +428,7 @@ void generate_corr_inmem(float *data, uint64_t n, uint64_t d, bool transpose){
 			}
 		}else{
 			for (uint64_t m = 0; m < d; m++){
-				data[count*m + n] = x[m];
+				data[m*n + count] = x[m];
 			}
 		}
 		count++;
@@ -495,6 +493,10 @@ void generate_anti_inmem(float *data,uint64_t n, uint64_t d, bool transpose){
 		{
 			double	v = random_normal(0.5, 0.25);
 			double	l = v <= 0.5 ? v : 1.0 - v;
+			if( l == 0 ){
+				std::cout << l << " , " << v << std::endl;
+				exit(1);
+			}
 
 			for (uint64_t m = 0; m < d; m++)
 				x[m] = v;
@@ -502,6 +504,7 @@ void generate_anti_inmem(float *data,uint64_t n, uint64_t d, bool transpose){
 			for (uint64_t m = 0; m < d; m++)
 			{
 				double h = random_equal(-l, l);
+				//while (h < 0.001 || h > -0.001) h = random_equal(-l, l);
 				x[m] += h;
 				x[(m + 1) % d] -= h;
 			}
@@ -513,7 +516,7 @@ void generate_anti_inmem(float *data,uint64_t n, uint64_t d, bool transpose){
 			}
 		}else{
 			for (uint64_t m = 0; m < d; m++){
-				data[count*m + n] = x[m];
+				data[m*n + count] = x[m];
 			}
 		}
 		count++;

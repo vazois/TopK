@@ -15,7 +15,7 @@
         _mm256_insertf128_ps(_mm256_castps128_ps256(vb), va, 1)
 #endif
 
-#define THREADS 16
+#define THREADS 32
 #define ITHREADS 32 //INITIALIZATION THREADS
 #define STATS_EFF true
 
@@ -36,6 +36,7 @@ void normalize_transpose(T *&cdata, uint64_t n, uint64_t d){
 		mmin[m] = std::numeric_limits<T>::max();
 		for(uint64_t i = 0; i < n; i++){
 			T value = cdata[m*n + i];
+			//if (m == 0) std::cout << m << " < " << value << "," << value <<"," << mmax[m] << std::endl;
 			mmax[m] = std::max(mmax[m],value);
 			mmin[m] = std::min(mmin[m],value);
 		}
@@ -46,6 +47,7 @@ void normalize_transpose(T *&cdata, uint64_t n, uint64_t d){
 		T _max = mmax[m];
 		T _min = mmin[m];
 		T _mm = _max - _min;
+		//if ( _mm == 0 ){ std::cout << m << " <"<< _max << " - " << _min << std::endl; }
 		for(uint64_t i = 0; i < n; i++){
 			T value = cdata[m*n+i];
 			value = (value - _min)/_mm;

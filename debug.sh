@@ -3,17 +3,17 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((16*1024*1024))
-END_N=$((16*1024*1024))
+START_N=$((256*1024*1024))
+END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=128
-KKE=128
+KKS=32
+KKE=32
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=2
+LD=1
 
 #distr c:correlated i:independent a:anticorrelated
-distr=i
+distr=c
 #randdataset3: higher precission , randdataset: lower precission
 script=randdataset
 
@@ -33,7 +33,7 @@ else
 fi
 
 #REAL DATA PARAMETERS
-REAL_DATA_PATH=data/real/hg_11000000_8
+REAL_DATA_PATH=data/real/higgs/h_22000000_8
 #REAL_DATA_N=$START_N
 REAL_DATA_N=$(echo $REAL_DATA_PATH| cut -d'_' -f 2)
 REAL_DATA_D=$(echo $REAL_DATA_PATH| cut -d'_' -f 3)
@@ -56,10 +56,10 @@ QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads
 IMP=1
 #ITER Testing iterations
-ITER=10
+ITER=1
 
 #TA Benchmark
-TA_B=1
+TA_B=0
 #TPAc Benchmark
 TPAc_B=0
 #TPAr Benchmark

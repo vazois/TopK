@@ -9,6 +9,7 @@
 #include <map>
 
 #define PSLITS 2
+#define PREDUCE 2
 #define PI 3.1415926535
 #define PI_2 (180.0f/PI)
 #define SIMD_GROUP 16
@@ -182,6 +183,25 @@ void PTA<T,Z>::polar(){
 		mul*=PSLITS;
 	}
 
+//	uint64_t size = (this->n -1) / PSLITS + 1;
+//	uint32_t shf = 0;
+//	std::cout << "shf:" << shf << std::endl;
+//	for(uint64_t i = 0; i < this->n; i++) this->part_id[i] = 0;
+//	for(uint32_t m = 0; m < this->d-1; m++){
+//		for(uint64_t i = 0; i < this->n; i++){ pp[i].id = i; pp[i].score = pdata[m*this->n + i]; }
+//		__gnu_parallel::sort(&pp[0],(&pp[0]) + this->n,cmp_pta_pair_asc<T,Z>);//determine splitting points
+//
+//		uint64_t part = 0;
+//		for(uint64_t i = 0; i < this->n; i+=size){
+//			uint64_t upper = i + size < this->n ? size : this->n - size;
+//			for(uint64_t j = 0; j < upper; j++){
+//				this->part_id[pp[i+j].id] |= (part << shf);
+//			}
+//			part++;
+//		}
+//		shf+=(uint32_t)log2((double)PSLITS);;
+//	}
+
 	//Count and verify number of points inside each partition//
 	std::map<Z,Z> mm;
 	for(uint64_t i = 0; i < PPARTITIONS;i++) mm.insert(std::pair<Z,Z>(i,0));
@@ -196,6 +216,7 @@ void PTA<T,Z>::polar(){
 	uint64_t count_full_parts = 0;
 	uint64_t count_n = 0;
 	for(typename std::map<Z,Z>::iterator it = mm.begin(); it != mm.end(); ++it){//Initialize partitions//
+		if (it->second == 0) continue;
 		uint64_t psize = it->second + (PBLOCK_SIZE - (it->second % PBLOCK_SIZE));
 //		std::cout << "g(" << it->first << "):" << std::setfill('0') << std::setw(8) << it->second << " < "
 //				<< psize << " [ " << ((float)psize)/PBLOCK_SIZE << " , " << ((float)psize)/SIMD_GROUP << " ] " << std::endl;
@@ -218,6 +239,7 @@ void PTA<T,Z>::polar(){
 	std::cout << "count_n: " << count_n << " = " << this->n << std::endl;
 	free(pp);
 	free(pdata);
+	//exit(1);
 }
 
 template<class T, class Z>
@@ -234,8 +256,8 @@ void PTA<T,Z>::create_partitions(){
 	for(uint32_t m=0; m<this->d;m++) lists[m] = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->max_part_size);
 	for(uint32_t m = 0; m < this->d; m++){ for(uint64_t j = 0; j < this->max_part_size;j++){ lists[m][j].id = 0; lists[m][j].score = 0; } }
 
-	std::cout << "Initialized helper arrays ... \n";
 	for(uint64_t i = 0; i < PPARTITIONS;i++){//Build Partitions
+		if(this->parts[i].size == 0) continue;
 		//INITIALIZE//
 		for(uint64_t j = 0; j < this->max_part_size;j++){ pos[j].id = j; pos[j].pos = this->parts[i].size; }//Initialize to max possible position
 		//for(uint32_t m = 0; m < this->d; m++){ for(uint64_t j = 0; j < this->max_part_size;j++){ lists[m][j].id = 0; lists[m][j].score = 0; } }
