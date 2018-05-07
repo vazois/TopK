@@ -16,19 +16,6 @@
 #include "../cpu_opt/PTA.h"
 #include "../cpu_opt/SLA.h"
 
-//[0,1,2,3][4,5,6,7][8,9,10,11][12,13,14,15]
-uint8_t qq[72] =
-	{
-		1,15,//2
-		1,5,9,13,//4
-		1,3,5,7,9,13,//6
-		1,3,5,7,9,11,13,15,//8
-		0,1,3,4,5,7,8,11,12,15,//10
-		0,1,3,4,5,7,9,10,11,12,13,14,//12
-		0,1,2,3,4,5,7,8,9,10,11,12,13,14,//14
-		0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15//16
-	};
-
 //float weights[8] = { 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8 };
 float weights[8] = { 1,1,1,1,1,1,1,1 };
 
@@ -77,7 +64,18 @@ float weights[8] = { 1,1,1,1,1,1,1,1 };
 	#endif
 #endif
 
+
 const std::string distributions[3] ={"correlated","independent","anticorrelated"};
+
+uint8_t work_array[WORKLOAD];
+
+void random_workload(){
+	srand(time(NULL));
+	for(uint64_t i = 0; i < WORKLOAD;i++){
+		work_array[i]=rand() % ((NUM_DIMS) - 2 + 1) + 2;
+		//std::cout << "work_array: " << (int)work_array[i] << std::endl;
+	}
+}
 
 void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
 	File<float> f(fname,false,n,d);
@@ -167,26 +165,47 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 	tpac.init();
 	tpac.set_iter(ITER);
 	uint8_t q = 2;
-	for(uint64_t k = ks; k <= ke; k*=2){
-		std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
-		for(uint8_t i = q; i <= f.items();i+=QD){
-			//Warm up
-			if (IMP == 0){
-				tpac.findTopKscalar(k,i,weights,attr[i-q]);
-			}else if(IMP == 1){
-				tpac.findTopKsimd(k,i,weights,attr[i-q]);
-			}else if(IMP == 2){
-				tpac.findTopKthreads(k,i,weights,attr[i-q]);
-			}
-			tpac.reset_clocks();
-			//Benchmark
-			for(uint8_t m = 0; m < ITER;m++){
+	if(IMP!=3){
+		for(uint64_t k = ks; k <= ke; k*=2){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
+			for(uint8_t i = q; i <= f.items();i+=QD){
+				//Warm up
 				if (IMP == 0){
 					tpac.findTopKscalar(k,i,weights,attr[i-q]);
 				}else if(IMP == 1){
 					tpac.findTopKsimd(k,i,weights,attr[i-q]);
 				}else if(IMP == 2){
 					tpac.findTopKthreads(k,i,weights,attr[i-q]);
+				}
+				tpac.reset_clocks();
+				//Benchmark
+				for(uint8_t m = 0; m < ITER;m++){
+					if (IMP == 0){
+						tpac.findTopKscalar(k,i,weights,attr[i-q]);
+					}else if(IMP == 1){
+						tpac.findTopKsimd(k,i,weights,attr[i-q]);
+					}else if(IMP == 2){
+						tpac.findTopKthreads(k,i,weights,attr[i-q]);
+					}
+				}
+				tpac.benchmark();
+			}
+		}
+	}else{
+		random_workload();
+		omp_set_num_threads(MQTHREADS);
+		std::cout << "<<<Multiple Queries TPAc>>>" << std::endl;
+		for(uint64_t k = ks; k <= ke; k*=2){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
+			#pragma omp parallel
+			{
+				uint32_t tid = omp_get_thread_num();
+				for(uint64_t j = tid; j < WORKLOAD; j+=MQTHREADS){
+					uint8_t i = work_array[j];
+					//std::cout << (int)i << "\n";
+					for(uint8_t m = 0; m < ITER;m++){
+						tpac.findTopKsimdMQ(k,i,weights,attr[i-2],tid);
+					}
 				}
 			}
 			tpac.benchmark();
@@ -210,26 +229,46 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 	vta.init();
 	vta.set_iter(ITER);
 	uint8_t q = 2;
-	for(uint64_t k = ks; k <= ke; k*=2){
-		std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
-		for(uint8_t i = q; i <= f.items();i+=QD){
-			//Warm up
-			if (IMP == 0){
-				vta.findTopKscalar(k,i,weights,attr[i-q]);
-			}else if(IMP == 1){
-				vta.findTopKsimd(k,i,weights, attr[i-q]);
-			}else if(IMP == 2){
-				vta.findTopKthreads(k,i,weights,attr[i-q]);
-			}
-			vta.reset_clocks();
-			//Benchmark
-			for(uint8_t m = 0; m < ITER;m++){
+	if(IMP!=3){
+		for(uint64_t k = ks; k <= ke; k*=2){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
+			for(uint8_t i = q; i <= f.items();i+=QD){
+				//Warm up
 				if (IMP == 0){
 					vta.findTopKscalar(k,i,weights,attr[i-q]);
 				}else if(IMP == 1){
-					vta.findTopKsimd(k,i,weights,attr[i-q]);
+					vta.findTopKsimd(k,i,weights, attr[i-q]);
 				}else if(IMP == 2){
 					vta.findTopKthreads(k,i,weights,attr[i-q]);
+				}
+				vta.reset_clocks();
+				//Benchmark
+				for(uint8_t m = 0; m < ITER;m++){
+					if (IMP == 0){
+						vta.findTopKscalar(k,i,weights,attr[i-q]);
+					}else if(IMP == 1){
+						vta.findTopKsimd(k,i,weights,attr[i-q]);
+					}else if(IMP == 2){
+						vta.findTopKthreads(k,i,weights,attr[i-q]);
+					}
+				}
+				vta.benchmark();
+			}
+		}
+	}else{
+		random_workload();
+		omp_set_num_threads(MQTHREADS);
+		std::cout << "<<<Multiple Queries VTA>>>" << std::endl;
+		for(uint64_t k = ks; k <= ke; k*=2){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
+			#pragma omp parallel
+			{
+				uint32_t tid = omp_get_thread_num();
+				for(uint64_t j = tid; j < WORKLOAD; j+=MQTHREADS){
+					uint8_t i = work_array[j];
+					for(uint8_t m = 0; m < ITER;m++){
+						vta.findTopKsimdMQ(k,i,weights,attr[i-2],tid);
+					}
 				}
 			}
 			vta.benchmark();
@@ -253,26 +292,47 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 	pta.init();
 	pta.set_iter(ITER);
 	uint8_t q = 2;
-	for(uint64_t k = ks; k <= ke; k*=2){
-		std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
-		for(uint8_t i = q; i <= f.items();i+=QD){
-			//Warm up
-			if (IMP == 0){
-				pta.findTopKscalar(k,i,weights,attr[i-q]);
-			}else if(IMP == 1){
-				pta.findTopKsimd(k,i,weights,attr[i-q]);
-			}else if(IMP == 2){
-				pta.findTopKthreads(k,i,weights,attr[i-q]);
-			}
-			pta.reset_clocks();
-			//Benchmark
-			for(uint8_t m = 0; m < ITER;m++){
+	if(IMP!=3){
+		for(uint64_t k = ks; k <= ke; k*=2){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
+			for(uint8_t i = q; i <= f.items();i+=QD){
+				//Warm up
 				if (IMP == 0){
 					pta.findTopKscalar(k,i,weights,attr[i-q]);
 				}else if(IMP == 1){
 					pta.findTopKsimd(k,i,weights,attr[i-q]);
 				}else if(IMP == 2){
 					pta.findTopKthreads(k,i,weights,attr[i-q]);
+				}
+				pta.reset_clocks();
+				//Benchmark
+				for(uint8_t m = 0; m < ITER;m++){
+					if (IMP == 0){
+						pta.findTopKscalar(k,i,weights,attr[i-q]);
+					}else if(IMP == 1){
+						pta.findTopKsimd(k,i,weights,attr[i-q]);
+					}else if(IMP == 2){
+						pta.findTopKthreads(k,i,weights,attr[i-q]);
+					}
+				}
+				pta.benchmark();
+			}
+		}
+	}else{
+		random_workload();
+		omp_set_num_threads(MQTHREADS);
+		std::cout << "<<<Multiple Queries PTA>>>" << std::endl;
+		for(uint64_t k = ks; k <= ke; k*=2){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
+			#pragma omp parallel
+			{
+				uint32_t tid = omp_get_thread_num();
+				for(uint64_t j = tid; j < WORKLOAD; j+=MQTHREADS){
+					uint8_t i = work_array[j];
+					//std::cout << (int)i << "\n";
+					for(uint8_t m = 0; m < ITER;m++){
+						pta.findTopKsimdMQ(k,i,weights,attr[i-2],tid);
+					}
 				}
 			}
 			pta.benchmark();

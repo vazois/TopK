@@ -115,6 +115,9 @@ class AA{
 		bool stats_time;
 		uint64_t bt_bytes;
 		uint64_t ax_bytes;
+
+		double tt_array[MQTHREADS];
+		uint32_t queries_per_second;
 };
 
 template<class T,class Z>
@@ -136,6 +139,8 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->algo= this->algo + " ( sequential ) ";
 	this->bt_bytes=sizeof(T)*n*d;
 	this->ax_bytes=0;
+	for(int i = 0; i < MQTHREADS; i++) this->tt_array[i] = 0;
+	this->queries_per_second = 0;
 }
 
 template<class T,class Z>
@@ -192,7 +197,18 @@ void AA<T,Z>::benchmark(){
 	std::cout << std::fixed << std::setprecision(8);
 	std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
 	std::cout << "tt_init: " << this->tt_init << std::endl;
-	std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
+	if(IMP != 3){
+		std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
+	}else{
+		this->tt_processing = 0;
+		for(int i = 0; i < MQTHREADS;i++){
+			this->tt_processing=std::max(this->tt_processing,this->tt_array[i]);
+			//std::cout << i <<" : " << this->tt_array[i] << std::endl;
+		}
+		this->tt_processing=this->tt_processing/this->iter;
+		std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
+		std::cout << "tuples_per_account: " << WORKLOAD/(this->tt_processing/1000) << std::endl;
+	}
 	//std::cout << "tt_ranking: " << this->tt_ranking/this->iter << std::endl;
 
 	if(STATS_EFF){

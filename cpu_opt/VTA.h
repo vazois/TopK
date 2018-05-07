@@ -63,6 +63,7 @@ class VTA : public AA<T,Z>{
 		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr, uint32_t tid);
 
 	private:
 		vta_partition<T,Z> parts[VPARTITIONS];
@@ -314,6 +315,86 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
+}
+
+template<class T, class Z>
+void VTA<T,Z>::findTopKsimdMQ(uint64_t k, uint8_t qq, T *weights, uint8_t *attr, uint32_t tid){
+	Time<msecs> t;
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+	if(this->res.size() > 0) this->res.clear();
+
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
+	float score[16] __attribute__((aligned(32)));
+	__builtin_prefetch(score,1,3);
+	t.start();
+	for(uint64_t i = 0; i < VPARTITIONS; i++){
+		for(uint64_t b = 0; b < parts[i].block_num; b++){
+			Z tuple_num = parts[i].blocks[b].tuple_num;
+			T *tuples = parts[i].blocks[b].tuples;
+			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
+			for(uint64_t t = 0; t < tuple_num; t+=16){
+				id+=t;
+				__m256 score00 = _mm256_setzero_ps();
+				__m256 score01 = _mm256_setzero_ps();
+				for(uint8_t m = 0; m < qq; m++){
+					T weight = weights[attr[m]];
+					uint64_t offset = attr[m]*VBLOCK_SIZE + t;
+					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+					__m256 load00 = _mm256_load_ps(&tuples[offset]);
+					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+					load00 = _mm256_mul_ps(load00,_weight);
+					load01 = _mm256_mul_ps(load01,_weight);
+					score00 = _mm256_add_ps(score00,load00);
+					score01 = _mm256_add_ps(score01,load01);
+				}
+				_mm256_store_ps(&score[0],score00);
+				_mm256_store_ps(&score[8],score01);
+				if(q.size() < k){//insert if empty space in queue
+					q.push(tuple_<T,Z>(id,score[0]));
+					q.push(tuple_<T,Z>(id+1,score[1]));
+					q.push(tuple_<T,Z>(id+2,score[2]));
+					q.push(tuple_<T,Z>(id+3,score[3]));
+					q.push(tuple_<T,Z>(id+4,score[4]));
+					q.push(tuple_<T,Z>(id+5,score[5]));
+					q.push(tuple_<T,Z>(id+6,score[6]));
+					q.push(tuple_<T,Z>(id+7,score[7]));
+					q.push(tuple_<T,Z>(id+8,score[8]));
+					q.push(tuple_<T,Z>(id+9,score[9]));
+					q.push(tuple_<T,Z>(id+10,score[10]));
+					q.push(tuple_<T,Z>(id+11,score[11]));
+					q.push(tuple_<T,Z>(id+12,score[12]));
+					q.push(tuple_<T,Z>(id+13,score[13]));
+					q.push(tuple_<T,Z>(id+14,score[14]));
+					q.push(tuple_<T,Z>(id+15,score[15]));
+				}else{//delete smallest element if current score is bigger
+					if(q.top().score < score[0]){ q.pop(); q.push(tuple_<T,Z>(id,score[0])); }
+					if(q.top().score < score[1]){ q.pop(); q.push(tuple_<T,Z>(id+1,score[1])); }
+					if(q.top().score < score[2]){ q.pop(); q.push(tuple_<T,Z>(id+2,score[2])); }
+					if(q.top().score < score[3]){ q.pop(); q.push(tuple_<T,Z>(id+3,score[3])); }
+					if(q.top().score < score[4]){ q.pop(); q.push(tuple_<T,Z>(id+4,score[4])); }
+					if(q.top().score < score[5]){ q.pop(); q.push(tuple_<T,Z>(id+5,score[5])); }
+					if(q.top().score < score[6]){ q.pop(); q.push(tuple_<T,Z>(id+6,score[6])); }
+					if(q.top().score < score[7]){ q.pop(); q.push(tuple_<T,Z>(id+7,score[7])); }
+					if(q.top().score < score[8]){ q.pop(); q.push(tuple_<T,Z>(id+8,score[8])); }
+					if(q.top().score < score[9]){ q.pop(); q.push(tuple_<T,Z>(id+9,score[9])); }
+					if(q.top().score < score[10]){ q.pop(); q.push(tuple_<T,Z>(id+10,score[10])); }
+					if(q.top().score < score[11]){ q.pop(); q.push(tuple_<T,Z>(id+11,score[11])); }
+					if(q.top().score < score[12]){ q.pop(); q.push(tuple_<T,Z>(id+12,score[12])); }
+					if(q.top().score < score[13]){ q.pop(); q.push(tuple_<T,Z>(id+13,score[13])); }
+					if(q.top().score < score[14]){ q.pop(); q.push(tuple_<T,Z>(id+14,score[14])); }
+					if(q.top().score < score[15]){ q.pop(); q.push(tuple_<T,Z>(id+15,score[15])); }
+				}
+				if(STATS_EFF) this->tuple_count+=16;
+			}
+
+			T threshold = 0;
+			T *tarray = parts[i].blocks[b].tarray;
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+			if(q.size() >= k && q.top().score >= threshold) break;
+		}
+	}
+	this->tt_array[tid] += t.lap();
 }
 
 template<class T, class Z>

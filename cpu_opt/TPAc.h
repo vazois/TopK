@@ -19,6 +19,7 @@ class  TPAc : public AA<T,Z>{
 		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr, uint32_t tid);
 	private:
 		T *scores;
 };
@@ -177,6 +178,14 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 			if(q.top().score < score[14]){ q.pop(); q.push(tuple_<T,Z>(i+14,score[14])); }
 			if(q.top().score < score[15]){ q.pop(); q.push(tuple_<T,Z>(i+15,score[15])); }
 		}
+
+//		for(uint8_t l = 0; l < 16; l++){
+//			if(q.size() < k){
+//				q.push(tuple_<T,Z>(l,score[l]));
+//			}else if(q.top().score < score[l]){
+//				q.pop(); q.push(tuple_<T,Z>(l,score[l]));
+//			}
+//		}
 	}
 	this->tt_processing += this->t.lap();
 	if(STATS_EFF) this->tuple_count=this->n;
@@ -190,6 +199,47 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
+}
+
+template<class T, class Z>
+void TPAc<T,Z>::findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr, uint32_t tid){
+	Time<msecs> t;
+	//std::cout << this->algo << " find top-" << k << " simdMQ (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+	if(this->res.size() > 0) this->res.clear();
+
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
+	float score[16] __attribute__((aligned(32)));
+	t.start();
+	__builtin_prefetch(score,1,3);
+	for(uint64_t i = 0; i < this->n; i+=16){
+		__m256 score00 = _mm256_setzero_ps();
+		__m256 score01 = _mm256_setzero_ps();
+		for(uint8_t m = 0; m < qq; m++){
+			uint64_t offset00 = attr[m] * this->n + i;
+			uint64_t offset01 = attr[m] * this->n + i + 8;
+			T weight = weights[attr[m]];
+			__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+			__m256 load00 = _mm256_load_ps(&this->cdata[offset00]);
+			__m256 load01 = _mm256_load_ps(&this->cdata[offset01]);
+			load00 = _mm256_mul_ps(load00,_weight);
+			load01 = _mm256_mul_ps(load01,_weight);
+			score00 = _mm256_add_ps(score00,load00);
+			score01 = _mm256_add_ps(score01,load01);
+		}
+		_mm256_store_ps(&score[0],score00);
+		_mm256_store_ps(&score[8],score01);
+
+		for(uint8_t l = 0; l < 16; l++){
+			if(q.size() < k){
+				q.push(tuple_<T,Z>(l,score[l]));
+			}else if(q.top().score < score[l]){
+				q.pop(); q.push(tuple_<T,Z>(l,score[l]));
+			}
+		}
+	}
+	this->tt_array[tid] += t.lap();
 }
 
 template<class T, class Z>

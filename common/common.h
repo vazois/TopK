@@ -15,15 +15,16 @@
         _mm256_insertf128_ps(_mm256_castps128_ps256(vb), va, 1)
 #endif
 
-#define THREADS 32
+#define MQTHREADS 16
+#define THREADS 16
 #define ITHREADS 32 //INITIALIZATION THREADS
-#define STATS_EFF true
+#define STATS_EFF false
+#define WORKLOAD 1024*128
 
 #include <parallel/algorithm>
 #include <omp.h>
 #include <cstdlib>
 #include <limits>
-
 
 template <class T, class Z>
 void normalize_transpose(T *&cdata, uint64_t n, uint64_t d){
@@ -89,6 +90,5 @@ void normalize(T *& cdata, uint64_t n, uint64_t d){
 	free(mmax);
 	free(mmin);
 }
-
 
 #endif
