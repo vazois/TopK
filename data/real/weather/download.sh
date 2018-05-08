@@ -6,14 +6,10 @@ END_YEAR=$2
 D=$3
 LIMIT=$((END_YEAR-START_YEAR+1))
 
-if (( LIMIT < D ))
-then
-	echo "Attributes should be at most END_YEAR-START_YEAR+1 ( "$LIMIT" )"
-	exit
-fi
-
 OUTPUT=$START_YEAR"_"$END_YEAR".csv"
+
 rm -rf $OUTPUT
+TMP="tmp.csv"
 
 for (( n=$START_YEAR; n<=$END_YEAR; n+=1 ))
 do
@@ -27,9 +23,13 @@ do
 	
 	echo "Merging with "$OUTPUT" ... "
 	FILE=$n".csv"
-	cat $FILE | grep -e "TMAX" -e "TMIN" >> $OUTPUT
+	awk -F "\"*,\"*" '$3=="TMAX" || $3=="TMIN"{print $1","$3","$4}' $FILE >> $OUTPUT
+	#awk -F "\"*,\"*" '$3=="TMAX" || $3=="TMIN"{print $1","$2","$3","$4}' $FILE >> $OUTPUT
+	#awk -F "\"*,\"*" '$3=="TMAX" || $3=="TMIN" || $3=="WSF2" || $3=="WSF5" {print $1","$2","$3","$4}' $FILE >> $OUTPUT
+	#awk -F "\"*,\"*" '$3=="WSF2" || $3=="WSF5"{print $1","$2","$4}' $FILE >> $OUTPUT
 	rm -rf $FILE
 done
 
-echo "Gathering data ... "
-python extract.py $OUTPUT $D
+n=($(wc -l $OUTPUT))
+echo $n
+mv $OUTPUT "w_"$n"_1"

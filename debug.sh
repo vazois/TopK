@@ -7,10 +7,10 @@ START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=16
+KKS=128
 KKE=128
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=1
+LD=2
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -33,7 +33,7 @@ else
 fi
 
 #REAL DATA PARAMETERS
-REAL_DATA_PATH=data/real/posts_9100485_2
+REAL_DATA_PATH=data/real/higgs/h_66000000_5
 #REAL_DATA_N=$START_N
 REAL_DATA_N=$(echo $REAL_DATA_PATH| cut -d'_' -f 2)
 REAL_DATA_D=$(echo $REAL_DATA_PATH| cut -d'_' -f 3)
@@ -54,12 +54,12 @@ QM=0
 #QD Dimension interval for testing
 QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries
-IMP=3
+IMP=1
 #ITER Testing iterations
 ITER=10
 
 #TA Benchmark
-TA_B=0
+TA_B=1
 #TPAc Benchmark
 TPAc_B=0
 #TPAr Benchmark
