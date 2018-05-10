@@ -11,7 +11,6 @@
 #define VSPLITS 1
 #define VPARTITIONS (IMP == 2 ? ((uint64_t)pow(VSPLITS,NUM_DIMS-1)) : 1)
 //#define VPARTITIONS (4)
-//#define VPARTITIONS (IMP == 2 ? THREADS : 1)
 
 template<class T, class Z>
 struct vta_pair{

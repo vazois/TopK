@@ -128,8 +128,6 @@ void SLA<T,Z>::build_layers(T **cdata){
 //		std::cout << std::dec << std::setfill('0') << std::setw(10);
 //		std::cout << last << std::endl;
 		this->layers.push_back(layer);
-
-
 	}
 
 	if( last > 0 ){
@@ -246,6 +244,7 @@ void SLA<T,Z>::create_lists(){
 
 template<class T, class Z>
 void SLA<T,Z>::init(){
+	normalize_transpose<T,Z>(this->cdata, this->n, this->d);
 	///////////////////////////////////////
 	//Copy data to compute skyline layers//
 	//////////////////////////////////////
@@ -279,6 +278,7 @@ void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	this->t.start();
 	for(uint64_t l = 0; l < this->layer_num; l++){
+		if ( l  > k ) break;
 		Z poffset = this->parts[l].offset;
 		for(uint64_t b = 0; b < this->parts[l].block_num; b++){
 			Z id = this->parts[l].offset + poffset;
@@ -350,6 +350,7 @@ void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	float score[16] __attribute__((aligned(32)));
 	this->t.start();
 	for(uint64_t l = 0; l < this->layer_num; l++){
+		if ( l  > k ) break;
 		Z poffset = this->parts[l].offset;
 		for(uint64_t b = 0; b < this->parts[l].block_num; b++){
 			Z id = this->parts[l].offset + poffset;
@@ -419,6 +420,7 @@ void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 	Z tuple_count = 0;
 	__builtin_prefetch(score,1,3);
 	for(uint64_t l = tid; l < this->layer_num; l+=threads){
+		if ( l  > k ) break;
 		Z poffset = this->parts[l].offset;
 		for(uint64_t b = 0; b < this->parts[l].block_num; b++){
 			Z id = this->parts[l].offset + poffset;

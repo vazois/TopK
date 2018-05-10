@@ -10,7 +10,7 @@ DIMS=8
 KKS=128
 KKE=128
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=2
+LD=0
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -33,7 +33,7 @@ else
 fi
 
 #REAL DATA PARAMETERS
-REAL_DATA_PATH=data/real/higgs/h_66000000_5
+REAL_DATA_PATH=data/real/weather/wtuples_262059930_8
 #REAL_DATA_N=$START_N
 REAL_DATA_N=$(echo $REAL_DATA_PATH| cut -d'_' -f 2)
 REAL_DATA_D=$(echo $REAL_DATA_PATH| cut -d'_' -f 3)
@@ -54,12 +54,12 @@ QM=0
 #QD Dimension interval for testing
 QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries
-IMP=1
+IMP=2
 #ITER Testing iterations
 ITER=10
 
 #TA Benchmark
-TA_B=1
+TA_B=0
 #TPAc Benchmark
 TPAc_B=0
 #TPAr Benchmark

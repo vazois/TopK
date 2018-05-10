@@ -33,9 +33,9 @@ def extract_csv(fname,d):
 				outp.write(line[:-1]+"\n")
 				cdata[sid]=list()
 				rows+=1
-				if LIMIT < rows:
-					outp.close()
-					return rows
+				#if LIMIT < rows:
+				#	outp.close()
+				#	return rows
 			
 			if i % step == 0:
 				sys.stdout.write("\r%s%%" % str(round((float(i)/n)*100)))

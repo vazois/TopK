@@ -54,41 +54,6 @@ static bool cmp_pta_pair(const pta_pair<T,Z> &a, const pta_pair<T,Z> &b){ return
 template<class T,class Z>
 static bool cmp_pta_pair_asc(const pta_pair<T,Z> &a, const pta_pair<T,Z> &b){ return a.score < b.score; };
 
-template<class T>
-inline void sortnet_8(T *&data){
-	T a0 = data[0], a1 = data[1], a2 = data[2], a3 = data[3];
-	T a4 = data[4], a5 = data[5], a6 = data[6], a7 = data[7];
-	T t0;
-
-	t0 = std::max(a0,a1); a1 = std::min(a0,a1); a0 = t0;
-	t0 = std::max(a2,a3); a3 = std::min(a2,a3); a2 = t0;
-	t0 = std::max(a4,a5); a5 = std::min(a4,a5); a4 = t0;
-	t0 = std::max(a6,a7); a7 = std::min(a6,a7); a6 = t0;
-
-	t0 = std::max(a0,a2); a2 = std::min(a0,a2); a0 = t0;
-	t0 = std::max(a1,a3); a3 = std::min(a1,a3); a1 = t0;
-	t0 = std::max(a4,a6); a6 = std::min(a4,a6); a4 = t0;
-	t0 = std::max(a5,a7); a7 = std::min(a5,a7); a5 = t0;
-
-	t0 = std::max(a1,a2); a2 = std::min(a1,a2); a1 = t0;
-	t0 = std::max(a5,a6); a6 = std::min(a5,a6); a5 = t0;
-
-	t0 = std::max(a0,a4); a4 = std::min(a0,a4); a0 = t0;
-	t0 = std::max(a1,a5); a5 = std::min(a1,a5); a1 = t0;
-	t0 = std::max(a2,a6); a6 = std::min(a2,a6); a2 = t0;
-	t0 = std::max(a3,a7); a7 = std::min(a3,a7); a3 = t0;
-
-	t0 = std::max(a2,a4); a4 = std::min(a2,a4); a2 = t0;
-	t0 = std::max(a3,a5); a5 = std::min(a3,a5); a3 = t0;
-
-	t0 = std::max(a1,a2); a2 = std::min(a1,a2); a1 = t0;
-	t0 = std::max(a3,a4); a4 = std::min(a3,a4); a3 = t0;
-	t0 = std::max(a5,a6); a6 = std::min(a5,a6); a5 = t0;
-
-	data[0] = a0; data[1] = a1; data[2] = a2; data[3] = a3;
-	data[4] = a4; data[5] = a5; data[6] = a6; data[7] = a7;
-}
-
 template<class T,class Z>
 class PTA : public AA<T,Z>{
 	public:
@@ -106,6 +71,7 @@ class PTA : public AA<T,Z>{
 		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKthreads2(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr, uint32_t tid);
 
 	private:
@@ -182,25 +148,6 @@ void PTA<T,Z>::polar(){
 		for(uint64_t i = 0; i < this->n; i++){ this->part_id[pp[i].id]+=(mul*(i / mod)); }// Assign partition id
 		mul*=PSLITS;
 	}
-
-//	uint64_t size = (this->n -1) / PSLITS + 1;
-//	uint32_t shf = 0;
-//	std::cout << "shf:" << shf << std::endl;
-//	for(uint64_t i = 0; i < this->n; i++) this->part_id[i] = 0;
-//	for(uint32_t m = 0; m < this->d-1; m++){
-//		for(uint64_t i = 0; i < this->n; i++){ pp[i].id = i; pp[i].score = pdata[m*this->n + i]; }
-//		__gnu_parallel::sort(&pp[0],(&pp[0]) + this->n,cmp_pta_pair_asc<T,Z>);//determine splitting points
-//
-//		uint64_t part = 0;
-//		for(uint64_t i = 0; i < this->n; i+=size){
-//			uint64_t upper = i + size < this->n ? size : this->n - size;
-//			for(uint64_t j = 0; j < upper; j++){
-//				this->part_id[pp[i+j].id] |= (part << shf);
-//			}
-//			part++;
-//		}
-//		shf+=(uint32_t)log2((double)PSLITS);;
-//	}
 
 	//Count and verify number of points inside each partition//
 	std::map<Z,Z> mm;
@@ -576,6 +523,108 @@ void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 			T *tarray = this->parts[p].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
 			if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ break; }
+		}
+		//std::cout << "p: " <<p << " = " << count << std::endl;
+	}
+	if(STATS_EFF) tt_count[tid] = tuple_count;
+}
+	for(uint32_t m = 0; m < threads; m++){
+		while(!_q[m].empty()){
+			if(q.size() < k){
+				q.push(_q[m].top());
+			}else if(q.top().score < _q[m].top().score){
+				q.pop();
+				q.push(_q[m].top());
+			}
+			_q[m].pop();
+		}
+	}
+	this->tt_processing += this->t.lap();
+
+	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
+	T threshold = q.top().score;
+	while(!q.empty()){
+		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
+		this->res.push_back(q.top());
+		q.pop();
+	}
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
+}
+
+template<class T, class Z>
+void PTA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
+	uint32_t threads = THREADS < PPARTITIONS ? THREADS : PPARTITIONS;
+	Z tt_count[threads];
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> _q[threads];
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
+	omp_set_num_threads(threads);
+
+	std::cout << this->algo << " find top-" << k << " threads (2) x "<< threads <<" (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+	if(this->res.size() > 0) this->res.clear();
+
+	this->t.start();
+#pragma omp parallel
+{
+	float score[16] __attribute__((aligned(32)));
+	uint32_t tid = omp_get_thread_num();
+	Z tuple_count = 0;
+	__builtin_prefetch(score,1,3);
+	uint64_t max_block_num = this->parts[0].block_num;
+	bool stop[(PPARTITIONS-1)/THREADS + 1];
+	uint32_t count=0;
+	for(uint64_t p = tid; p < PPARTITIONS; p+=threads){
+		max_block_num = std::max(max_block_num,this->parts[p].block_num);
+		stop[count]=false;
+		count++;
+	}
+
+	for(uint64_t b = 0; b < max_block_num; b++){
+		uint32_t count=0;
+		for(uint64_t p = tid; p < PPARTITIONS; p+=threads){
+			if(stop[count]) continue;
+			if(this->parts[p].block_num <= b) continue;
+			if(this->parts[p].size == 0) continue;
+			Z poffset = this->parts[p].offset;
+			Z id = this->parts[p].offset + poffset;
+			T *tuples = this->parts[p].blocks[b].tuples;
+
+			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=16){
+				id+=t;
+				__m256 score00 = _mm256_setzero_ps();
+				__m256 score01 = _mm256_setzero_ps();
+				for(uint8_t m = 0; m < qq; m++){
+					T weight = weights[attr[m]];
+					uint32_t offset = attr[m]*PBLOCK_SIZE + t;
+					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+					__m256 load00 = _mm256_load_ps(&tuples[offset]);
+					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+					load00 = _mm256_mul_ps(load00,_weight);
+					load01 = _mm256_mul_ps(load01,_weight);
+					score00 = _mm256_add_ps(score00,load00);
+					score01 = _mm256_add_ps(score01,load01);
+				}
+				_mm256_store_ps(&score[0],score00);
+				_mm256_store_ps(&score[8],score01);
+
+				for(uint8_t l = 0; l < 16; l++){
+					if(_q[tid].size() < k){
+						_q[tid].push(tuple_<T,Z>(id,score[l]));
+					}else if(_q[tid].top().score < score[l]){
+						_q[tid].pop(); _q[tid].push(tuple_<T,Z>(id,score[l]));
+					}
+				}
+				if(STATS_EFF) tuple_count+=16;
+			}
+
+			T threshold = 0;
+			T *tarray = this->parts[p].blocks[b].tarray;
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+			if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ stop[count]=true; }
+			count++;
 		}
 		//std::cout << "p: " <<p << " = " << count << std::endl;
 	}
