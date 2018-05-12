@@ -3,14 +3,14 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((1*1024*1024))
-END_N=$((1*1024*1024))
+START_N=$((256*1024*1024))
+END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=128
+KKS=16
 KKE=128
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=0
+LD=1
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -33,9 +33,11 @@ else
 fi
 
 #REAL DATA PARAMETERS
-REAL_DATA_PATH=data/real/weather/wtuples_262059930_8
+REAL_DATA_PATH=data/real/weather/wtuples_524119860_8
+#REAL_DATA_PATH=data/real/higgs/h_11000000_5
 #REAL_DATA_N=$START_N
-REAL_DATA_N=$(echo $REAL_DATA_PATH| cut -d'_' -f 2)
+#REAL_DATA_N=$(echo $REAL_DATA_PATH| cut -d'_' -f 2)
+REAL_DATA_N=524000000
 REAL_DATA_D=$(echo $REAL_DATA_PATH| cut -d'_' -f 3)
 #echo "REAL_DATA: "$REAL_DATA_N","$REAL_DATA_D
 #exit 1

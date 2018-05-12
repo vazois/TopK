@@ -302,7 +302,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 				}else if(IMP == 1){
 					pta.findTopKsimd(k,i,weights,attr[i-q]);
 				}else if(IMP == 2){
-					pta.findTopKthreads(k,i,weights,attr[i-q]);
+					pta.findTopKthreads2(k,i,weights,attr[i-q]);
 				}
 				pta.reset_clocks();
 				//Benchmark
@@ -312,7 +312,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 					}else if(IMP == 1){
 						pta.findTopKsimd(k,i,weights,attr[i-q]);
 					}else if(IMP == 2){
-						pta.findTopKthreads(k,i,weights,attr[i-q]);
+						pta.findTopKthreads2(k,i,weights,attr[i-q]);
 					}
 				}
 				pta.benchmark();
@@ -365,7 +365,7 @@ void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t ks,uint64_t ke
 			}else if(IMP == 1){
 				sla.findTopKsimd(k,i,weights,attr[i-q]);
 			}else if(IMP == 2){
-				sla.findTopKthreads(k,i,weights,attr[i-q]);
+				sla.findTopKthreads2(k,i,weights,attr[i-q]);
 			}
 			sla.reset_clocks();
 			//Benchmark
@@ -375,7 +375,7 @@ void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t ks,uint64_t ke
 				}else if(IMP == 1){
 					sla.findTopKsimd(k,i,weights,attr[i-q]);
 				}else if(IMP == 2){
-					sla.findTopKthreads(k,i,weights,attr[i-q]);
+					sla.findTopKthreads2(k,i,weights,attr[i-q]);
 				}
 			}
 			sla.benchmark();

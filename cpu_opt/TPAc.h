@@ -124,6 +124,7 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	float score[16] __attribute__((aligned(32)));
 	this->t.start();
+	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	__builtin_prefetch(score,1,3);
 	for(uint64_t i = 0; i < this->n; i+=16){
 		__m256 score00 = _mm256_setzero_ps();
@@ -139,6 +140,10 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 			load01 = _mm256_mul_ps(load01,_weight);
 			score00 = _mm256_add_ps(score00,load00);
 			score01 = _mm256_add_ps(score01,load01);
+			#if LD == 2
+				score00 = _mm256_div_ps(score00,dim_num);
+				score01 = _mm256_div_ps(score01,dim_num);
+			#endif
 		}
 		_mm256_store_ps(&score[0],score00);
 		_mm256_store_ps(&score[8],score01);
@@ -213,6 +218,7 @@ void TPAc<T,Z>::findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr,
 	float score[16] __attribute__((aligned(32)));
 	t.start();
 	__builtin_prefetch(score,1,3);
+	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	for(uint64_t i = 0; i < this->n; i+=16){
 		__m256 score00 = _mm256_setzero_ps();
 		__m256 score01 = _mm256_setzero_ps();
@@ -227,6 +233,11 @@ void TPAc<T,Z>::findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr,
 			load01 = _mm256_mul_ps(load01,_weight);
 			score00 = _mm256_add_ps(score00,load00);
 			score01 = _mm256_add_ps(score01,load01);
+
+			#if LD == 2
+				score00 = _mm256_div_ps(score00,dim_num);
+				score01 = _mm256_div_ps(score01,dim_num);
+			#endif
 		}
 		_mm256_store_ps(&score[0],score00);
 		_mm256_store_ps(&score[8],score01);
@@ -261,6 +272,7 @@ void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr
 	uint64_t start = ((uint64_t)thread_id)*(this->n)/THREADS;
 	uint64_t end = ((uint64_t)(thread_id+1))*(this->n)/THREADS;
 
+	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	for(uint64_t i = start; i < end; i+=16){
 		__m256 score00 = _mm256_setzero_ps();
 		__m256 score01 = _mm256_setzero_ps();
@@ -275,6 +287,11 @@ void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr
 			load01 = _mm256_mul_ps(load01,_weight);
 			score00 = _mm256_add_ps(score00,load00);
 			score01 = _mm256_add_ps(score01,load01);
+
+			#if LD == 2
+				score00 = _mm256_div_ps(score00,dim_num);
+				score01 = _mm256_div_ps(score01,dim_num);
+			#endif
 		}
 		_mm256_store_ps(&score[0],score00);
 		_mm256_store_ps(&score[8],score01);

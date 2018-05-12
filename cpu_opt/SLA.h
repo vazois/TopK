@@ -12,9 +12,9 @@
 #define SLA_THREADS 16
 #define SLA_ALPHA 1024
 #define SLA_QSIZE 8
+#define SPARTITIONS 128
 
 #define SBLOCK_SIZE 1024
-
 
 template<class T, class Z>
 struct sla_pair{
@@ -69,6 +69,7 @@ class SLA : public AA<T,Z>{
 		void findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
 
 	private:
 		std::vector<std::vector<Z>> layers;
@@ -140,11 +141,24 @@ void SLA<T,Z>::build_layers(T **cdata){
 	free(offset);
 
 	//DEBUG//
-//	std::unordered_set<uint64_t> st;
-//	for(uint32_t i = 0; i < this->layers.size();i++){
-//		std::cout << "Layer (" << i << ")" << " = " << this->layers[i].size() << std::endl;
+	std::unordered_set<uint64_t> st;
+	for(uint32_t i = 0; i < this->layers.size();i++){
+//		uint64_t expected_size = (this->n-1)/SPARTITIONS + 1;
+//		uint64_t splits = (this->layers[i].size() - 1) / (expected_size) + 1;
+//		std::cout << "Layer (" << i << ")" << " = " << this->layers[i].size() << "," << expected_size << "," << splits << std::endl;
+//
+//		std::vector<uint64_t> layer;
+//		for(uint64_t j = 0; j < this->layers[i].size;j+=expected_size){
+//			uint64_t upper = j+expected_size < this->layers[i].size ? expected_size : this->layers[i].size() - j;
+//
+//			for(uint64_t m = 0; m < upper; m++){
+//
+//			}
+//		}
+
 //		for(uint32_t j = 0; j < this->layers[i].size();j++){ st.insert(this->layers[i][j]); }
-//	}
+	}
+//	exit(1);
 //	std::cout << "set values: <" << st.size() << " ? " << this->n << ">" << std::endl;
 }
 
@@ -349,6 +363,7 @@ void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	float score[16] __attribute__((aligned(32)));
 	this->t.start();
+	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	for(uint64_t l = 0; l < this->layer_num; l++){
 		if ( l  > k ) break;
 		Z poffset = this->parts[l].offset;
@@ -370,6 +385,11 @@ void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);
 					score01 = _mm256_add_ps(score01,load01);
+
+					#if LD == 2
+						score00 = _mm256_div_ps(score00,dim_num);
+						score01 = _mm256_div_ps(score01,dim_num);
+					#endif
 				}
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
@@ -419,6 +439,7 @@ void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 	uint32_t tid = omp_get_thread_num();
 	Z tuple_count = 0;
 	__builtin_prefetch(score,1,3);
+	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	for(uint64_t l = tid; l < this->layer_num; l+=threads){
 		if ( l  > k ) break;
 		Z poffset = this->parts[l].offset;
@@ -440,6 +461,11 @@ void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);
 					score01 = _mm256_add_ps(score01,load01);
+
+					#if LD == 2
+						score00 = _mm256_div_ps(score00,dim_num);
+						score01 = _mm256_div_ps(score01,dim_num);
+					#endif
 				}
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
@@ -458,6 +484,101 @@ void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 			T *tarray = this->parts[l].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
 			if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ break; }
+		}
+	}
+	if(STATS_EFF) tt_count[tid] = tuple_count;
+}
+
+	for(uint32_t m = 0; m < threads; m++){
+		while(!_q[m].empty()){
+			if(q.size() < k){
+				q.push(_q[m].top());
+			}else if(q.top().score < _q[m].top().score){
+				q.pop();
+				q.push(_q[m].top());
+			}
+			_q[m].pop();
+		}
+	}
+	this->tt_processing=this->t.lap();
+
+	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
+	T threshold = q.top().score;
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
+	this->threshold = threshold;
+}
+
+template<class T, class Z>
+void SLA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
+	uint32_t threads = THREADS;
+	Z tt_count[threads];
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> _q[threads];
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
+	omp_set_num_threads(threads);
+
+	std::cout << this->algo << " find top-" << k << " threads (2) x "<< threads <<" (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+	if(this->res.size() > 0) this->res.clear();
+
+	this->t.start();
+#pragma omp parallel
+{
+	float score[16] __attribute__((aligned(32)));
+	uint32_t tid = omp_get_thread_num();
+	Z tuple_count = 0;
+	__builtin_prefetch(score,1,3);
+	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
+	for(uint64_t l = 0; l < this->layer_num; l++){
+		if ( l  > k ) break;
+		Z poffset = this->parts[l].offset;
+		for(uint64_t b = 0; b < this->parts[l].block_num; b++){
+			Z id = this->parts[l].offset + poffset;
+			T *tuples = this->parts[l].blocks[b].tuples;
+
+			uint64_t chunk =(this->parts[l].blocks[b].tuple_num - 1)/threads + 1;
+			uint64_t start = tid*(chunk);
+			uint64_t end = (tid+1)*(chunk);
+
+			for(uint64_t t = start; t < end; t+=16){
+				id+=t;
+				__m256 score00 = _mm256_setzero_ps();
+				__m256 score01 = _mm256_setzero_ps();
+				for(uint8_t m = 0; m < qq; m++){
+					T weight = weights[attr[m]];
+					uint32_t offset = attr[m]*SBLOCK_SIZE + t;
+					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+					__m256 load00 = _mm256_load_ps(&tuples[offset]);
+					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+					load00 = _mm256_mul_ps(load00,_weight);
+					load01 = _mm256_mul_ps(load01,_weight);
+					score00 = _mm256_add_ps(score00,load00);
+					score01 = _mm256_add_ps(score01,load01);
+					#if LD == 2
+						score00 = _mm256_div_ps(score00,dim_num);
+						score01 = _mm256_div_ps(score01,dim_num);
+					#endif
+				}
+				_mm256_store_ps(&score[0],score00);
+				_mm256_store_ps(&score[8],score01);
+
+				for(uint8_t l = 0; l < 16; l++){
+					if(_q[tid].size() < k){
+						_q[tid].push(tuple_<T,Z>(id,score[l]));
+					}else if(_q[tid].top().score < score[l]){
+						_q[tid].pop(); _q[tid].push(tuple_<T,Z>(id,score[l]));
+					}
+				}
+				if(STATS_EFF) tuple_count+=16;
+			}
+
+			T threshold = 0;
+			T *tarray = this->parts[l].blocks[b].tarray;
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+			#pragma omp_barrier
+			for(uint8_t m = 0; m < qq; m++) if(_q[m].size() >= k && _q[m].top().score >= threshold){ break; }
+			//if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ break; }
 		}
 	}
 	if(STATS_EFF) tt_count[tid] = tuple_count;

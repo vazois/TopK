@@ -9,12 +9,13 @@
 #include <map>
 
 #define PSLITS 2
-#define PREDUCE 2
+#define PREDUCE 1
 #define PI 3.1415926535
 #define PI_2 (180.0f/PI)
 #define SIMD_GROUP 16
 
-#define PBLOCK_SIZE 1024
+#define PBLOCK_SIZE 64
+#define PBLOCK_SHF 10
 #define PPARTITIONS (((uint64_t)pow(PSLITS,NUM_DIMS-1)))
 
 template<class T, class Z>
@@ -72,6 +73,7 @@ class PTA : public AA<T,Z>{
 		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKthreads2(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKthreads3(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 		void findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr, uint32_t tid);
 
 	private:
@@ -154,6 +156,7 @@ void PTA<T,Z>::polar(){
 	for(uint64_t i = 0; i < PPARTITIONS;i++) mm.insert(std::pair<Z,Z>(i,0));
 	for(uint64_t i = 0; i < this->n; i++){
 		if(this->part_id[i] >= PPARTITIONS) this->part_id[i] = PPARTITIONS - 1;
+		this->part_id[i]/=PREDUCE;
 		Z pid = this->part_id[i];
 		mm[pid]+=1;
 	}
@@ -163,7 +166,7 @@ void PTA<T,Z>::polar(){
 	uint64_t count_full_parts = 0;
 	uint64_t count_n = 0;
 	for(typename std::map<Z,Z>::iterator it = mm.begin(); it != mm.end(); ++it){//Initialize partitions//
-		if (it->second == 0) continue;
+		if (it->second == 0){ this->parts[it->first].size = 0; continue; }
 		uint64_t psize = it->second + (PBLOCK_SIZE - (it->second % PBLOCK_SIZE));
 //		std::cout << "g(" << it->first << "):" << std::setfill('0') << std::setw(8) << it->second << " < "
 //				<< psize << " [ " << ((float)psize)/PBLOCK_SIZE << " , " << ((float)psize)/SIMD_GROUP << " ] " << std::endl;
@@ -186,7 +189,6 @@ void PTA<T,Z>::polar(){
 	std::cout << "count_n: " << count_n << " = " << this->n << std::endl;
 	free(pp);
 	free(pdata);
-	//exit(1);
 }
 
 template<class T, class Z>
@@ -213,6 +215,7 @@ void PTA<T,Z>::create_partitions(){
 			for(uint64_t j = 0; j < this->parts[i].size;j++){
 				Z gid = ppos[(gindex + j)].id;//global tuple id
 				lists[m][j].id = j;//local tuple id//
+				//if (gid >= this->n) std::cout << "ERROR: " << gid << std::endl;
 				lists[m][j].score = this->cdata[m*this->n + gid];
 			}
 			__gnu_parallel::sort(lists[m],(lists[m]) + this->parts[i].size,cmp_pta_pair<T,Z>);//Sort to create lists
@@ -243,6 +246,7 @@ void PTA<T,Z>::create_partitions(){
 			b++;
 		}
 		this->parts[i].offset = gindex;//Update global index
+		//std::cout << "gindex: " << gindex << std::endl;
 		gindex+=this->parts[i].size;
 	}
 
@@ -353,6 +357,7 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	float score[16] __attribute__((aligned(32)));
 	this->t.start();
+	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	for(uint64_t p = 0; p < PPARTITIONS; p++){
 		if(this->parts[p].size == 0) continue;
 		Z poffset = this->parts[p].offset;
@@ -376,6 +381,10 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);
 					score01 = _mm256_add_ps(score01,load01);
+					#if LD == 2
+						score00 = _mm256_div_ps(score00,dim_num);
+						score01 = _mm256_div_ps(score01,dim_num);
+					#endif
 				}
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
@@ -419,6 +428,7 @@ void PTA<T,Z>::findTopKsimdMQ(uint64_t k, uint8_t qq, T *weights, uint8_t *attr,
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	float score[16] __attribute__((aligned(32)));
 	t.start();
+	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	for(uint64_t p = 0; p < PPARTITIONS; p++){
 		if(this->parts[p].size == 0) continue;
 		Z poffset = this->parts[p].offset;
@@ -442,6 +452,11 @@ void PTA<T,Z>::findTopKsimdMQ(uint64_t k, uint8_t qq, T *weights, uint8_t *attr,
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);
 					score01 = _mm256_add_ps(score01,load01);
+
+					#if LD == 2
+						score00 = _mm256_div_ps(score00,dim_num);
+						score01 = _mm256_div_ps(score01,dim_num);
+					#endif
 				}
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
@@ -484,6 +499,7 @@ void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 	uint32_t tid = omp_get_thread_num();
 	Z tuple_count = 0;
 	__builtin_prefetch(score,1,3);
+	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	for(uint64_t p = tid; p < PPARTITIONS; p+=threads){
 		if(this->parts[p].size == 0) continue;
 		Z poffset = this->parts[p].offset;
@@ -505,6 +521,10 @@ void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);
 					score01 = _mm256_add_ps(score01,load01);
+					#if LD == 2
+						score00 = _mm256_div_ps(score00,dim_num);
+						score01 = _mm256_div_ps(score01,dim_num);
+					#endif
 				}
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
@@ -524,7 +544,6 @@ void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
 			if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ break; }
 		}
-		//std::cout << "p: " <<p << " = " << count << std::endl;
 	}
 	if(STATS_EFF) tt_count[tid] = tuple_count;
 }
@@ -574,20 +593,23 @@ void PTA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *att
 	Z tuple_count = 0;
 	__builtin_prefetch(score,1,3);
 	uint64_t max_block_num = this->parts[0].block_num;
-	bool stop[(PPARTITIONS-1)/THREADS + 1];
-	uint32_t count=0;
+	bool stop[((PPARTITIONS)-1)/THREADS + 1];
+
+	uint32_t mypart = 0;
 	for(uint64_t p = tid; p < PPARTITIONS; p+=threads){
 		max_block_num = std::max(max_block_num,this->parts[p].block_num);
-		stop[count]=false;
-		count++;
+		stop[mypart]=false;
+		mypart++;
 	}
 
+	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	for(uint64_t b = 0; b < max_block_num; b++){
-		uint32_t count=0;
+		mypart = 0;
 		for(uint64_t p = tid; p < PPARTITIONS; p+=threads){
-			if(stop[count]) continue;
+			if(stop[mypart]) continue;
 			if(this->parts[p].block_num <= b) continue;
 			if(this->parts[p].size == 0) continue;
+
 			Z poffset = this->parts[p].offset;
 			Z id = this->parts[p].offset + poffset;
 			T *tuples = this->parts[p].blocks[b].tuples;
@@ -606,6 +628,10 @@ void PTA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *att
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);
 					score01 = _mm256_add_ps(score01,load01);
+					#if LD == 2
+						score00 = _mm256_div_ps(score00,dim_num);
+						score01 = _mm256_div_ps(score01,dim_num);
+					#endif
 				}
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
@@ -623,8 +649,8 @@ void PTA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *att
 			T threshold = 0;
 			T *tarray = this->parts[p].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ stop[count]=true; }
-			count++;
+			if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ stop[mypart]=true; }
+			mypart++;
 		}
 		//std::cout << "p: " <<p << " = " << count << std::endl;
 	}
@@ -654,5 +680,100 @@ void PTA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *att
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
+
+template<class T, class Z>
+void PTA<T,Z>::findTopKthreads3(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
+	uint32_t threads = THREADS < PPARTITIONS ? THREADS : PPARTITIONS;
+	Z tt_count[threads];
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> _q[threads];
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
+	omp_set_num_threads(threads);
+
+	std::cout << this->algo << " find top-" << k << " threads (3) x "<< threads <<" (" << (int)qq << "D) ...";
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+	if(this->res.size() > 0) this->res.clear();
+
+	this->t.start();
+#pragma omp parallel
+{
+	float score[16] __attribute__((aligned(32)));
+	uint32_t tid = omp_get_thread_num();
+	Z tuple_count = 0;
+	__builtin_prefetch(score,1,3);
+	for(uint64_t p = tid; p < PPARTITIONS; p+=threads){
+		if(this->parts[p].size == 0) continue;
+		Z poffset = this->parts[p].offset;
+		for(uint64_t b = 0; b < this->parts[p].block_num; b++){
+			Z id = this->parts[p].offset + poffset;
+			T *tuples = this->parts[p].blocks[b].tuples;
+
+			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=16){
+				id+=t;
+				__m256 score00 = _mm256_setzero_ps();
+				__m256 score01 = _mm256_setzero_ps();
+				for(uint8_t m = 0; m < qq; m++){
+					uint64_t a = attr[m];
+					T weight = weights[a];
+					uint32_t offset = a * PBLOCK_SIZE + t;
+					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+					__m256 load00 = _mm256_load_ps(&tuples[offset]);
+					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+					load00 = _mm256_mul_ps(load00,_weight);
+					load01 = _mm256_mul_ps(load01,_weight);
+					score00 = _mm256_add_ps(score00,load00);
+					score01 = _mm256_add_ps(score01,load01);
+					#if LD == 2
+						__m256 dim_num = _mm256_set_ps(NUM_DIMS,NUM_DIMS,NUM_DIMS,NUM_DIMS,NUM_DIMS,NUM_DIMS,NUM_DIMS,NUM_DIMS);
+						score00 = _mm256_div_ps(score00,dim_num);
+						score01 = _mm256_div_ps(score01,dim_num);
+					#endif
+				}
+				_mm256_store_ps(&score[0],score00);
+				_mm256_store_ps(&score[8],score01);
+
+				for(uint8_t l = 0; l < 16; l++){
+					if(_q[tid].size() < k){
+						_q[tid].push(tuple_<T,Z>(id,score[l]));
+					}else if(_q[tid].top().score < score[l]){
+						_q[tid].pop(); _q[tid].push(tuple_<T,Z>(id,score[l]));
+					}
+				}
+				if(STATS_EFF) tuple_count+=16;
+			}
+
+//			T threshold = 0;
+//			T *tarray = this->parts[p].blocks[b].tarray;
+//			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+//			if(_q[tid].size() >= k && _q[tid].top().score >= threshold){ break; }
+		}
+	}
+	if(STATS_EFF) tt_count[tid] = tuple_count;
+}
+	for(uint32_t m = 0; m < threads; m++){
+		while(!_q[m].empty()){
+			if(q.size() < k){
+				q.push(_q[m].top());
+			}else if(q.top().score < _q[m].top().score){
+				q.pop();
+				q.push(_q[m].top());
+			}
+			_q[m].pop();
+		}
+	}
+	this->tt_processing += this->t.lap();
+
+	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
+	T threshold = q.top().score;
+	while(!q.empty()){
+		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
+		this->res.push_back(q.top());
+		q.pop();
+	}
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
+}
+
 
 #endif
