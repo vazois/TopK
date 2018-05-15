@@ -9,8 +9,8 @@
 
 #define VBLOCK_SIZE 1024
 #define VSPLITS 2
-#define VPARTITIONS (IMP == 2 ? ((uint64_t)pow(VSPLITS,NUM_DIMS-1)) : 1)
-//#define VPARTITIONS (THREADS)
+//#define VPARTITIONS (IMP == 2 ? ((uint64_t)pow(VSPLITS,NUM_DIMS-1)) : 1)
+#define VPARTITIONS (IMP == 2 ? (THREADS) : 1)
 
 template<class T, class Z>
 struct vta_pair{

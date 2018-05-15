@@ -3,14 +3,14 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((256*1024*1024))
-END_N=$((256*1024*1024))
+START_N=$((1*1024*1024))
+END_N=$((1*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=16
 KKE=128
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=1
+LD=0
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -56,7 +56,7 @@ QM=0
 #QD Dimension interval for testing
 QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries
-IMP=2
+IMP=1
 #ITER Testing iterations
 ITER=10
 
@@ -69,9 +69,9 @@ TPAr_B=0
 #VTA Benhmark
 VTA_B=0
 #PTA Benchmark
-PTA_B=1
+PTA_B=0
 #SLA Benchmark
-SLA_B=0
+SLA_B=1
 #####################################################################################	
 
 ####################################

@@ -14,7 +14,7 @@
 #define PI_2 (180.0f/PI)
 #define SIMD_GROUP 16
 
-#define PBLOCK_SIZE 64
+#define PBLOCK_SIZE 1024
 #define PBLOCK_SHF 10
 #define PPARTITIONS (((uint64_t)pow(PSLITS,NUM_DIMS-1)))
 

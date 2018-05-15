@@ -29,11 +29,13 @@ if __name__ == "__main__":
     print "Process file: ", fname
     mm = gather(fname)
     
-    for measurement in mm:
-        print measurement
-        for v in mm[measurement]:
-            print v
-
+#     for measurement in mm:
+#         print measurement
+#         for v in mm[measurement]:
+#             print v
+    
+    for i in range(len(mm["tt_procesing"])):
+        print mm["tt_procesing"][i],mm["tuple_count"][i]
     
     
     
