@@ -78,9 +78,7 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 			if(eset.find(p.tid) == eset.end()){
 				T score00 = 0;
 				for(uint8_t m = 0; m < qq; m++){ score00+=this->cdata[p.tid * this->d + attr[m]] * weight; }
-				#if LD == 2
-					score00 /= qq;
-				#endif
+
 				if(STATS_EFF) this->pred_count+=this->d;
 				if(STATS_EFF) this->tuple_count+=1;
 				eset.insert(p.tid);
@@ -92,7 +90,6 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 				}
 			}
 		}
-
 		if(q.size() >= k && ((q.top().score) >= threshold) ){ break; }
 	}
 	this->tt_processing += this->t.lap();

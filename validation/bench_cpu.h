@@ -239,7 +239,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 				}else if(IMP == 1){
 					vta.findTopKsimd(k,i,weights, attr[i-q]);
 				}else if(IMP == 2){
-					vta.findTopKthreads(k,i,weights,attr[i-q]);
+					vta.findTopKthreads2(k,i,weights,attr[i-q]);
 				}
 				vta.reset_clocks();
 				//Benchmark
@@ -249,7 +249,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 					}else if(IMP == 1){
 						vta.findTopKsimd(k,i,weights,attr[i-q]);
 					}else if(IMP == 2){
-						vta.findTopKthreads(k,i,weights,attr[i-q]);
+						vta.findTopKthreads2(k,i,weights,attr[i-q]);
 					}
 				}
 				vta.benchmark();

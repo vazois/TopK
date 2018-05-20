@@ -384,11 +384,6 @@ void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);
 					score01 = _mm256_add_ps(score01,load01);
-
-					#if LD == 2
-						score00 = _mm256_div_ps(score00,dim_num);
-						score01 = _mm256_div_ps(score01,dim_num);
-					#endif
 				}
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
@@ -465,10 +460,6 @@ void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);
 					score01 = _mm256_add_ps(score01,load01);
-					#if LD == 2
-						score00 = _mm256_div_ps(score00,dim_num);
-						score01 = _mm256_div_ps(score01,dim_num);
-					#endif
 				}
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
@@ -507,7 +498,7 @@ void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 			_q[m].pop();
 		}
 	}
-	this->tt_processing=this->t.lap();
+	this->tt_processing+=this->t.lap();
 
 	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
 	threshold = q.top().score;
@@ -562,10 +553,6 @@ void SLA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *att
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);
 					score01 = _mm256_add_ps(score01,load01);
-					#if LD == 2
-						score00 = _mm256_div_ps(score00,dim_num);
-						score01 = _mm256_div_ps(score01,dim_num);
-					#endif
 				}
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
@@ -601,7 +588,7 @@ void SLA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *att
 			_q[m].pop();
 		}
 	}
-	this->tt_processing=this->t.lap();
+	this->tt_processing+=this->t.lap();
 
 	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
 	T threshold = q.top().score;
