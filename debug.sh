@@ -3,14 +3,14 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((32*1024*1024))
-END_N=$((32*1024*1024))
+START_N=$((256*1024*1024))
+END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=16
-KKE=1024
+KKS=128
+KKE=128
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=2
+LD=1
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -55,10 +55,17 @@ device=0
 QM=0
 #QD Dimension interval for testing
 QD=1
-#IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries
+#IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
 IMP=2
 #ITER Testing iterations
-ITER=10
+ITER=1
+#Multiple Thread Count
+MQTHREADS=16
+
+if [ ! -z $1 ]
+then
+    MQTHREADS=$1
+fi
 
 #TA Benchmark
 TA_B=0
@@ -79,7 +86,7 @@ SLA_B=0
 ####################################
 if [ $device -eq 0 ]
 then
-	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE
+	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS
 else
 	make gpu_cc
 fi

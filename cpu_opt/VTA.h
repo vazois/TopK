@@ -241,6 +241,12 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	float score[16] __attribute__((aligned(32)));
 	__builtin_prefetch(score,1,3);
 	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
+//	__m256 _weight00,_weight01,_weight02,_weight03,_weight04,_weight05,_weight06,_weight07;
+//	if(qq =< 1)
+//	for(uint8_t m = 0; m < qq; m++){
+//		T weight = weights[attr[m]];
+//		_weight00 = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+//	}
 	this->t.start();
 	for(uint64_t i = 0; i < VPARTITIONS; i++){
 		for(uint64_t b = 0; b < parts[i].block_num; b++){
@@ -251,12 +257,19 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 				id+=t;
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
+//				__m256 score02 = _mm256_setzero_ps();
+//				__m256 score03 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){
 					T weight = weights[attr[m]];
 					uint64_t offset = attr[m]*VBLOCK_SIZE + t;
 					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 					__m256 load00 = _mm256_load_ps(&tuples[offset]);
 					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+//					__m256 load02 = _mm256_load_ps(&tuples[offset+16]);
+//					__m256 load03 = _mm256_load_ps(&tuples[offset+24]);
+//					__m256 load00 = reinterpret_cast<const __m256>(_mm256_stream_load_si256((__m256i *) &tuples[offset]));
+//					__m256 load01 = reinterpret_cast<const __m256>(_mm256_stream_load_si256((__m256i *) &tuples[offset+8]));
+
 					load00 = _mm256_mul_ps(load00,_weight);
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);
@@ -265,6 +278,8 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
+				//_mm256_stream_ps(&score[0],score00);
+				//_mm256_stream_ps(&score[8],score00);
 				if(q.size() < k){//insert if empty space in queue
 					q.push(tuple_<T,Z>(id,score[0]));
 					q.push(tuple_<T,Z>(id+1,score[1]));
@@ -533,8 +548,12 @@ void VTA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *att
 					T weight = weights[attr[m]];
 					uint64_t offset = attr[m]*VBLOCK_SIZE + t;
 					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
-					__m256 load00 = _mm256_load_ps(&tuples[offset]);
-					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+//					__m256 load00 = _mm256_load_ps(&tuples[offset]);
+//					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+
+					__m256 load00 = reinterpret_cast<const __m256>(_mm256_stream_load_si256((__m256i *) &tuples[offset]));
+					__m256 load01 = reinterpret_cast<const __m256>(_mm256_stream_load_si256((__m256i *) &tuples[offset+8]));
+
 					load00 = _mm256_mul_ps(load00,_weight);
 					load01 = _mm256_mul_ps(load01,_weight);
 					score00 = _mm256_add_ps(score00,load00);

@@ -90,12 +90,20 @@ void PTA<T,Z>::polar(){
 	pta_pair<T,Z> *pp = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
 	this->part_id = static_cast<Z*>(aligned_alloc(32,sizeof(Z)*this->n));
 
+//	omp_set_num_threads(THREADS);
+//#pragma omp parallel
+//	{
 	T _one = 1.1;
 	__m256 pi_2 = _mm256_set1_ps(PI_2);
 	__m256 abs = _mm256_set1_ps(0x7FFFFFFF);
 	__m256 one = _mm256_set1_ps(_one);
 	float angles[8] __attribute__((aligned(32)));
+//	uint32_t tid = omp_get_thread_num();
+//	uint64_t chunk = (this->n-1)/THREADS + 1;
+//	uint64_t start = chunk*(tid);
+//	uint64_t end = chunk*(tid+1);
 	for(uint64_t i = 0; i < this->n; i+=8){//Calculate hyperspherical coordinates for each point
+	//for(uint64_t i = start; i < end; i+=8){//Calculate hyperspherical coordinates for each point
 		//std::cout << "[" << i << "]" << std::endl;
 		if(i + 7 < this->n){
 			__m256 sum = _mm256_setzero_ps();
@@ -139,6 +147,7 @@ void PTA<T,Z>::polar(){
 			}
 		}
 	}
+//}
 
 	uint64_t mod = (this->n / PSLITS);
 	uint64_t mul = 1;
@@ -265,7 +274,6 @@ void PTA<T,Z>::init(){
 	this->polar();
 	std::cout << "creating partitions ..." << std::endl;
 	this->create_partitions();
-
 	this->tt_init = this->t.lap();
 }
 
@@ -457,7 +465,6 @@ void PTA<T,Z>::findTopKsimdMQ(uint64_t k, uint8_t qq, T *weights, uint8_t *attr,
 						q.pop(); q.push(tuple_<T,Z>(id,score[l]));
 					}
 				}
-				if(STATS_EFF) this->tuple_count+=16;
 			}
 
 			T threshold = 0;

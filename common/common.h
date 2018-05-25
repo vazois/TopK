@@ -15,7 +15,7 @@
         _mm256_insertf128_ps(_mm256_castps128_ps256(vb), va, 1)
 #endif
 
-#define MQTHREADS 16
+//#define MQTHREADS 1
 #define THREADS 16
 #define ITHREADS 32 //INITIALIZATION THREADS
 #define STATS_EFF true

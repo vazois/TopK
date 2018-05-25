@@ -27,6 +27,8 @@ ITER=1
 LD=0
 #DISTR c:correlated i:independent a:anticorrelated
 DISTR=1
+#Multiple thread count
+MQTHREADS=32
 
 #TA Benchmark
 TA_B=1
@@ -45,7 +47,7 @@ SLA_B=1
 KKS=16
 KKE=16
 
-BENCH= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B)
+BENCH= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS)
 
 #CPU CONFIGURATION
 CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp input/randdataset-1.1.0/src/randdataset.c

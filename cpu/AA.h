@@ -87,6 +87,7 @@ class AA{
 		void reset_clocks(){
 			this->tt_processing = 0;
 			this->tt_ranking = 0;
+			for(int i = 0; i < MQTHREADS;i++){ this->tt_array[i] = 0; }
 		}
 
 	protected:
@@ -197,7 +198,7 @@ void AA<T,Z>::benchmark(){
 	std::cout << std::fixed << std::setprecision(8);
 	std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
 	std::cout << "tt_init: " << this->tt_init << std::endl;
-	if(IMP != 3){
+	if(IMP < 3){
 		std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
 	}else{
 		this->tt_processing = 0;
@@ -207,7 +208,7 @@ void AA<T,Z>::benchmark(){
 		}
 		this->tt_processing=this->tt_processing/this->iter;
 		std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
-		std::cout << "tuples_per_account: " << WORKLOAD/(this->tt_processing/1000) << std::endl;
+		std::cout << "tuples_per_second: " << WORKLOAD/(this->tt_processing/1000) << std::endl;
 	}
 	//std::cout << "tt_ranking: " << this->tt_ranking/this->iter << std::endl;
 
