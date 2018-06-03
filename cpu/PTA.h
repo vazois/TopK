@@ -4,7 +4,7 @@
 * Partitioned Threshold Aggregation
 */
 
-#include "../cpu/AA.h"
+#include "AA.h"
 #include <cmath>
 #include <map>
 

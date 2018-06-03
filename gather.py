@@ -8,7 +8,7 @@ def gather(fname):
     mm["tt_procesing"] = list()
     mm["tuple_count"] = list()
     mm["tt_init"] = list()
-    #mm["tuples_per_second"] = list()
+    mm["tuples_per_second"] = list()
     
     for line in fp.readlines():
         if line.startswith("tt_procesing:"):
@@ -45,8 +45,8 @@ if __name__ == "__main__":
     for i in range(len(mm["tt_init"])):
         #print mm["tt_init"][i]
         #print mm["tt_procesing"][i],mm["tuple_count"][i],mm["tt_init"][i]
-        print mm["tuple_count"][i]
-        #print mm["tuples_per_second"][i]
+        #print mm["tuple_count"][i]
+        print mm["tuples_per_second"][i]
         #print mm["tt_procesing"][i]
 
     

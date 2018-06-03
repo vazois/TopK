@@ -1,7 +1,7 @@
 #ifndef MSA_H
 #define MSA_H
 
-#include "../cpu/AA.h"
+#include "AA.h"
 #include <cmath>
 
 

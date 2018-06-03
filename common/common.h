@@ -18,8 +18,8 @@
 //#define MQTHREADS 1
 #define THREADS 16
 #define ITHREADS 32 //INITIALIZATION THREADS
-#define STATS_EFF true
-#define WORKLOAD 1024*128
+//#define STATS_EFF true
+//#define WORKLOAD 1024*128
 
 #include <parallel/algorithm>
 #include <omp.h>

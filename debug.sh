@@ -3,8 +3,8 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((256*1024*1024))
-END_N=$((256*1024*1024))
+START_N=$((1*1024*1024))
+END_N=$((1*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
@@ -17,6 +17,8 @@ distr=i
 #randdataset3: higher precission , randdataset: lower precission
 script=randdataset
 
+######################
+### DO NOT CHANGE  ###
 DSTR=0
 if [ $distr == "c" ]
 then
@@ -31,6 +33,7 @@ else
 	echo "DSTR not valid option!!!!"
 	exit
 fi
+######################
 
 #REAL DATA PARAMETERS
 REAL_DATA_PATH=data/real/weather/wtuples_261552285_8
@@ -56,11 +59,15 @@ QM=0
 #QD Dimension interval for testing
 QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
-IMP=2
+IMP=1
 #ITER Testing iterations
-ITER=1
+ITER=10
 #Multiple Thread Count
 MQTHREADS=16
+#Gather object evaluation statistics
+STATS_EFF=false
+#Choose workload for multi-query evaluation
+WORKLOAD=$((1024*128))
 
 if [ ! -z $1 ]
 then
@@ -70,13 +77,13 @@ fi
 #TA Benchmark
 TA_B=0
 #TPAc Benchmark
-TPAc_B=0
+TPAc_B=1
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
 VTA_B=0
 #PTA Benchmark
-PTA_B=1
+PTA_B=0
 #SLA Benchmark
 SLA_B=0
 #####################################################################################	
@@ -86,7 +93,7 @@ SLA_B=0
 ####################################
 if [ $device -eq 0 ]
 then
-	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS
+	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 else
 	make gpu_cc
 fi

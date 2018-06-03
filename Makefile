@@ -29,6 +29,10 @@ LD=0
 DISTR=1
 #Multiple thread count
 MQTHREADS=32
+#Gather object evaluation statistics
+STATS_EFF=true
+#Choose workload for multi-query evaluation
+WORKLOAD=32768
 
 #TA Benchmark
 TA_B=1
@@ -47,7 +51,7 @@ SLA_B=1
 KKS=16
 KKE=16
 
-BENCH= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS)
+BENCH= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
 
 #CPU CONFIGURATION
 CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp input/randdataset-1.1.0/src/randdataset.c

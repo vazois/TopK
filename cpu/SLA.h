@@ -7,7 +7,7 @@
 
 #include <unordered_map>
 #include "../skyline/hybrid/hybrid.h"
-#include "../cpu/AA.h"
+#include "AA.h"
 
 #define SLA_THREADS 16
 #define SLA_ALPHA 1024

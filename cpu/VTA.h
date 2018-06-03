@@ -5,7 +5,7 @@
 * Vectorized Threshold Aggregation
 */
 
-#include "../cpu/AA.h"
+#include "AA.h"
 
 #define VBLOCK_SIZE 1024
 #define VSPLITS 2

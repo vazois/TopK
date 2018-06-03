@@ -1,8 +1,8 @@
 #ifndef LSA_H
 #define LSA_H
 
-#include "../cpu/AA.h"
-#include "../cpu/reorder_attr_cpu_c.h"
+#include "AA.h"
+#include "reorder_attr_cpu_c.h"
 
 template<class T, class Z>
 struct lsa_pair{

@@ -8,13 +8,13 @@
 #include "../cpu/AA.h"
 #include "../cpu/TA.h"
 
-#include "../cpu_opt/MSA.h"
-#include "../cpu_opt/LSA.h"
-#include "../cpu_opt/TPAc.h"
-#include "../cpu_opt/TPAr.h"
-#include "../cpu_opt/VTA.h"
-#include "../cpu_opt/PTA.h"
-#include "../cpu_opt/SLA.h"
+#include "../cpu/MSA.h"
+#include "../cpu/LSA.h"
+#include "../cpu/TPAc.h"
+#include "../cpu/TPAr.h"
+#include "../cpu/VTA.h"
+#include "../cpu/PTA.h"
+#include "../cpu/SLA.h"
 
 float weights[8] = { 1,1,1,1,1,1,1,1 };//Q0
 //float weights[8] = { 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8 };//Q1
@@ -195,23 +195,43 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 			}
 		}
 	}else{
-		random_workload();
-		omp_set_num_threads(MQTHREADS);
-		std::cout << "<<<Multiple Queries TPAc>>>" << std::endl;
-		for(uint64_t k = ks; k <= ke; k*=2){
-			std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
-			#pragma omp parallel
-			{
-				uint32_t tid = omp_get_thread_num();
-				for(uint64_t j = tid; j < WORKLOAD; j+=MQTHREADS){
-					uint8_t i = work_array[j];
-					//std::cout << (int)i << "\n";
-					for(uint8_t m = 0; m < ITER;m++){
-						tpac.findTopKsimdMQ(k,i,weights,attr[i-2],tid);
+		if(IMP==3){
+			random_workload();
+			omp_set_num_threads(MQTHREADS);
+			std::cout << "<<<Random Attribute Multiple Queries PTA - ("<<MQTHREADS<< ") threads >>>" << std::endl;
+			for(uint64_t k = ks; k <= ke; k*=2){
+				std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
+				#pragma omp parallel
+				{
+					uint32_t tid = omp_get_thread_num();
+					for(uint64_t j = tid; j < WORKLOAD; j+=MQTHREADS){
+						uint8_t i = work_array[j];
+						for(uint8_t m = 0; m < ITER;m++){
+							tpac.findTopKsimdMQ(k,i,weights,attr[i-2],tid);
+						}
 					}
 				}
+				tpac.benchmark();
 			}
-			tpac.benchmark();
+		}else{
+			omp_set_num_threads(MQTHREADS);
+			std::cout << "<<<Same Attribute Multiple Queries PTA - ("<<MQTHREADS<< ") threads >>>" << std::endl;
+			for(uint64_t k = ks; k <= ke; k*=2){
+				for(uint8_t i = q; i <= f.items();i+=QD){
+					std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+					#pragma omp parallel
+					{
+						uint32_t tid = omp_get_thread_num();
+						for(uint64_t j = tid; j < WORKLOAD; j+=MQTHREADS){
+							for(uint8_t m = 0; m < ITER;m++){
+								tpac.findTopKsimdMQ(k,i,weights,attr[i-2],tid);
+							}
+						}
+					}
+					tpac.benchmark();
+					tpac.reset_clocks();
+				}
+			}
 		}
 	}
 }
