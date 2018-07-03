@@ -10,7 +10,7 @@ DIMS=8
 KKS=128
 KKE=128
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=1
+LD=0
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -53,7 +53,7 @@ fi
 ###### EXPERIMENT PARAMETERS ######
 ###################################
 #CPU:0,GPU:1
-device=0
+device=1
 #QM 0:Reverse query attribute, 1:Forward query attributes
 QM=0
 #QD Dimension interval for testing
@@ -77,7 +77,7 @@ fi
 #TA Benchmark
 TA_B=0
 #TPAc Benchmark
-TPAc_B=1
+TPAc_B=0
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
@@ -95,7 +95,7 @@ if [ $device -eq 0 ]
 then
 	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 else
-	make gpu_cc
+	make gpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR KKS=$KKS KKE=$KKE STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 fi
 #################################################################################
 

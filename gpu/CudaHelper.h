@@ -279,7 +279,6 @@ __host__ void cudaFinalize();
  */
 template<class V> __host__ void safeMalloc(V **addr, unsigned int size, std::string msg);
 template<class V> __host__ void safeMallocHost(V **addr, unsigned int size, std::string msg);
-template<class V> __host__ void safeCpyToSymbol(V *symbol, V *data, std::string msg);
 template<class V> __host__ void safeCopyToDevice(V *to, V *from, unsigned int size, std::string msg);
 template<class V> __host__ void safeCopyToHost(V *to, V *from, unsigned int size, std::string msg);
 

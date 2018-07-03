@@ -190,7 +190,7 @@ void GPA<T>::findTopK(uint64_t k){
 
 				uint32_t gpu_prefix = radix_select_gpu_findK(gcol_ui,n,this->n - k);
 				float gpu_prefixf = *(float*)&gpu_prefix;
-				printf("kgpu: 0x%08x, %f\n",gpu_prefix,gpu_prefixf);
+				printf("kgpu: 0x%04x, %f\n",gpu_prefix,gpu_prefixf);
 			}
 			cudaFreeHost(col_ui);
 			cudaFree(gcol_ui);
@@ -212,7 +212,7 @@ void GPA<T>::findTopK(uint64_t k){
 
 			uint32_t gpu_prefix = radix_select_gpu_findK(gcol_ui,tmpN,tmpN - k);
 			float threshold = *(float*)&gpu_prefix;
-			printf("kgpu: 0x%08x, %f\n",gpu_prefix,threshold);//Debug
+			printf("kgpu: 0x%08x, %.4f\n",gpu_prefix,threshold);//Debug
 
 			cconfig.prune_tuples(tuples.tuple_ids,tuples.scores,&this->gdata[i*n],&this->gdata[(i+1)*n],tmpN,threshold,suffix_len);
 

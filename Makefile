@@ -1,6 +1,6 @@
 CC=g++
 #CC=icpc
-NVCC=/usr/local/cuda-8.0/bin/nvcc
+NVCC=/usr/local/cuda-9.0/bin/nvcc
 
 #REORDER APP
 CC_REORDER=input/main.cpp
@@ -66,6 +66,7 @@ GC_EXE=gpu_run
 #NVCC_FLAGS = --ptxas-options=-v -gencode arch=compute_35,code=sm_35 -rdc=true
 ARCH = -gencode arch=compute_61,code=sm_61
 #ARCH = -gencode arch=compute_35,code=sm_35
+GPU_PARAMETERS= -DKKS=$(KKS) -DKKE=$(KKE) -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
 
 all: cpu_cc
 
@@ -80,7 +81,7 @@ reorder_cc:
 	$(CC) $(CC_FLAGS) $(CC_OPT_FLAGS) $(CC_REORDER) -o $(CC_EXE_RE)
 
 gpu_cc:
-	$(NVCC) -std=c++11 $(ARCH) $(GC_MAIN) -o $(GC_EXE) -I cub-1.7.4/
+	$(NVCC) -std=c++11 $(GPU_PARAMETERS) $(ARCH) $(GC_MAIN) -o $(GC_EXE) -I cub-1.7.4/
 	
 clean:
 	rm -rf $(CC_EXE)

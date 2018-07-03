@@ -47,7 +47,7 @@ class File{
 
 		void load();
 		void load(T *&data);
-		void gen(T *&data, uint8_t type);
+		void gen(T *&data, int8_t type);
 
 		void store(std::string fname, T *data);
 		uint64_t items(){return this->d;}
@@ -332,7 +332,7 @@ void File<T>::load(T *& data){
 }
 
 template<class T>
-void File<T>::gen(T *&data, uint8_t type){
+void File<T>::gen(T *&data, int8_t type){
 	if(data == NULL){
 		data = static_cast<T*>(aligned_alloc(32, sizeof(T) * (this->n) * (this->d)));
 	}

@@ -9,6 +9,11 @@
 #define U32_BYTES_PER_TUPLE 8
 #define U64_BYTES_PER_TUPLE 12
 
+#define MAX_ATTRIBUTES 8
+
+__constant__ float gpu_weights[MAX_ATTRIBUTES];
+__constant__ float gpu_query[MAX_ATTRIBUTES];
+
 template<class T, class Z>
 class GAA{
 	public:
@@ -55,6 +60,7 @@ class GAA{
 			std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
 			std::cout << "tuples_per_second: " << (this->tt_processing == 0 ? 0 : WORKLOAD/(this->tt_processing/1000)) << std::endl;
 			std::cout << "tuple_count: " << this->tuple_count << std::endl;
+			std::cout << "< ---------------------------------------------- >" << std::endl;
 		}
 
 		void reset_stats(){
