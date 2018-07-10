@@ -15,6 +15,7 @@ float weights[MAX_ATTRIBUTES] = { 1,1,1,1,1,1,1,1 };//Q0
 //float weights[MAX_ATTRIBUTES] = { 0.4,0.3,0.2,0.1,0.1,0.2,0.3,0.4 };//Q4
 
 uint32_t query[MAX_ATTRIBUTES] = {0,1,2,3,4,5,6,7};
+const std::string distributions[3] ={"correlated","independent","anticorrelated"};
 
 void bench_gpam(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	File<float> f(fname,true,n,d);
@@ -55,11 +56,21 @@ void bench_bta(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	bta.alloc();
 	std::cout << "Loading data ... " << std::endl;
 	f.set_transpose(true);
-	f.load(bta.get_cdata());
+
+	if (LD != 1){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(bta.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(bta.get_cdata(),DISTR);
+	}
 
 	std::cout << "Calculating top-k ... " << std::endl;
 	bta.init(weights,query);
-	bta.findTopK(k);
+	for(uint64_t m = MAX_ATTRIBUTES ; m <= MAX_ATTRIBUTES; m++){
+		bta.findTopK(k,m);
+		bta.benchmark();
+	}
 }
 
 

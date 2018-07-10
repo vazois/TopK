@@ -5,7 +5,6 @@
 #include <iostream>
 #include <ctime>
 
-
 static double sqr(double a);
 
 static void padding_init(void);
@@ -31,14 +30,9 @@ static void generate_indep(int count, int dim);
 static void generate_corr(int count, int dim);
 static void generate_anti(int count, int dim);
 
-
 void generate_indep_inmem(float *data,uint64_t n, uint64_t d, bool transpose);
 void generate_corr_inmem(float *data,uint64_t n, uint64_t d, bool transpose);
 void generate_anti_inmem(float *data,uint64_t n, uint64_t d, bool transpose);
-
-//static void generate_corr_inmem(int count, int dim);
-//static void generate_anti_inmem(int count, int dim);
-
 
 static void usage();
 
