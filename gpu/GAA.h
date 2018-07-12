@@ -53,26 +53,27 @@ static T find_threshold(T *cscores, uint64_t n, uint64_t k){
 }
 
 template<class T, class Z>
-static T find_partial_threshold(T *cscores, uint64_t n, uint64_t k){
+static T find_partial_threshold(T *cscores, uint64_t n, uint64_t k, bool type, uint32_t remainder){
 	std::priority_queue<T, std::vector<ranked_tuple<T,Z>>, MaxFirst<T,Z>> q;
-//	for(uint64_t j = 0; j < n; j+=(k*2)){
-//		for(uint64_t i = 0; i < k;i++){
-//			if(q.size() < k){
-//				q.push(ranked_tuple<T,Z>(i+j,cscores[i+j]));
-//			}else if ( q.top().score < cscores[i+j] ){
-//				q.pop();
-//				q.push(ranked_tuple<T,Z>(i+j,cscores[i+j]));
-//			}
-//		}
-//	}
 
-	for(uint64_t j = 0; j < n; j+=4096){
-		for(uint64_t i = 0; i < k;i++){
+	if(type){
+		for(uint64_t j = 0; j < n; j+=4096){
+			for(uint64_t i = 0; i < k;i++){
+				if(q.size() < k){
+					q.push(ranked_tuple<T,Z>(i+j,cscores[i+j]));
+				}else if ( q.top().score < cscores[i+j] ){
+					q.pop();
+					q.push(ranked_tuple<T,Z>(i+j,cscores[i+j]));
+				}
+			}
+		}
+	}else{
+		for(uint64_t j = 0; j < remainder; j++){
 			if(q.size() < k){
-				q.push(ranked_tuple<T,Z>(i+j,cscores[i+j]));
-			}else if ( q.top().score < cscores[i+j] ){
+				q.push(ranked_tuple<T,Z>(j,cscores[j]));
+			}else if ( q.top().score < cscores[j] ){
 				q.pop();
-				q.push(ranked_tuple<T,Z>(i+j,cscores[i+j]));
+				q.push(ranked_tuple<T,Z>(j,cscores[j]));
 			}
 		}
 	}
