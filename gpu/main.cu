@@ -1,6 +1,9 @@
 #include "../validation/bench_gpu.h"
 #include "../tools/ArgParser.h"
 
+__constant__ float gpu_test;
+float cpu_test;
+
 int main(int argc, char **argv){
 	ArgParser ap;
 	ap.parseArgs(argc,argv);
@@ -22,9 +25,15 @@ int main(int argc, char **argv){
 	uint64_t n = ap.getInt("-n");
 	uint64_t d = ap.getInt("-d");
 
+//	cutil::cudaCheckErr(cudaMemcpyToSymbol(gpu_weights, bench_weights, sizeof(float)*NUM_DIMS),"copy weights");//Initialize preference vector
+//	cutil::cudaCheckErr(cudaMemcpyToSymbol(&gpu_test, &cpu_test, sizeof(float)),"copy weights");//Initialize preference vector
+
+	cudaSetDevice(1);
 	//bench_gpa(ap.getString("-f"),n,d,KKS);
 	//bench_gpam(ap.getString("-f"),n,d,K);
 	bench_bta(ap.getString("-f"),n,d,KKS);
+
+
 
 	return 0;
 }

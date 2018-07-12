@@ -12,10 +12,8 @@
 #define U32_BYTES_PER_TUPLE 8
 #define U64_BYTES_PER_TUPLE 12
 
-#define MAX_ATTRIBUTES 8
-
-__constant__ float gpu_weights[MAX_ATTRIBUTES];
-__constant__ uint32_t gpu_query[MAX_ATTRIBUTES];
+__constant__ float gpu_weights[NUM_DIMS];
+__constant__ uint32_t gpu_query[NUM_DIMS];
 
 /*
  * Tuple structure
@@ -69,7 +67,7 @@ static T find_partial_threshold(T *cscores, uint64_t n, uint64_t k){
 //	}
 
 	for(uint64_t j = 0; j < n; j+=4096){
-		for(uint64_t i = 0; i < 2048;i++){
+		for(uint64_t i = 0; i < k;i++){
 			if(q.size() < k){
 				q.push(ranked_tuple<T,Z>(i+j,cscores[i+j]));
 			}else if ( q.top().score < cscores[i+j] ){

@@ -7,10 +7,10 @@ START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=4
-KKE=4
+KKS=128
+KKE=128
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=0
+LD=1
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -53,7 +53,7 @@ fi
 ###### EXPERIMENT PARAMETERS ######
 ###################################
 #CPU:0,GPU:1
-device=1
+device=0
 #QM 0:Reverse query attribute, 1:Forward query attributes
 QM=0
 #QD Dimension interval for testing
@@ -74,6 +74,7 @@ then
     MQTHREADS=$1
 fi
 
+######CHOOSE CPU ALGORITHM######
 #TA Benchmark
 TA_B=0
 #TPAc Benchmark

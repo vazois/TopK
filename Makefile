@@ -8,7 +8,7 @@ CC_EXE_RE=reorder_run
 
 #########
 #Skyline#
-DIMS=4
+DIMS=8
 V=VERBOSE
 DT=0
 PROFILER=0

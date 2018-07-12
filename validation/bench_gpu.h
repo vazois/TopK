@@ -8,13 +8,13 @@
 #include "../gpu/GPAm.h"
 #include "../gpu/BTA.h"
 
-float weights[MAX_ATTRIBUTES] = { 1,1,1,1,1,1,1,1 };//Q0
-//float weights[MAX_ATTRIBUTES] = { 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8 };//Q1
-//float weights[MAX_ATTRIBUTES] = { 0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1 };//Q2
-//float weights[MAX_ATTRIBUTES] = { 0.1,0.2,0.3,0.4,0.4,0.3,0.2,0.1 };//Q3
-//float weights[MAX_ATTRIBUTES] = { 0.4,0.3,0.2,0.1,0.1,0.2,0.3,0.4 };//Q4
+float bench_weights[NUM_DIMS] = { 1,1,1,1,1,1,1,1 };//Q0
+//float bench_weights[NUM_DIMS] = { 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8 };//Q1
+//float bench_weights[NUM_DIMS] = { 0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1 };//Q2
+//float bench_weights[NUM_DIMS] = { 0.1,0.2,0.3,0.4,0.4,0.3,0.2,0.1 };//Q3
+//float bench_weights[NUM_DIMS] = { 0.4,0.3,0.2,0.1,0.1,0.2,0.3,0.4 };//Q4
 
-uint32_t query[MAX_ATTRIBUTES] = {0,1,2,3,4,5,6,7};
+uint32_t bench_query[NUM_DIMS] = {0,1,2,3,4,5,6,7};
 const std::string distributions[3] ={"correlated","independent","anticorrelated"};
 
 void bench_gpam(std::string fname,uint64_t n, uint64_t d, uint64_t k){
@@ -66,8 +66,8 @@ void bench_bta(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	}
 
 	std::cout << "Calculating top-k ... " << std::endl;
-	bta.init(weights,query);
-	for(uint64_t m = MAX_ATTRIBUTES ; m <= MAX_ATTRIBUTES; m++){
+	bta.init(bench_weights,bench_query);
+	for(uint64_t m = NUM_DIMS ; m <= NUM_DIMS; m++){
 		bta.findTopK(k,m);
 		bta.benchmark();
 	}
