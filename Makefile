@@ -61,12 +61,12 @@ CC_OPT_FLAGS_GNU= -O3 -march=native $(BENCH) -DKKS=$(KKS) -DKKE=$(KKE) -DGNU=0 -
 CC_OPT_FLAGS_INTEL= -O3 -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -fomit-frame-pointer -mavx -fopenmp
 
 #GPU CONFIGURATION
-GC_MAIN=gpu/main.cu input/randdataset-1.1.0/src/randdataset.cpp
+GC_MAIN=gpu/main.cu input/randdataset-1.1.0/src/randdataset.cpp gpu/tools.cpp
 GC_EXE=gpu_run
 #NVCC_FLAGS = --ptxas-options=-v -gencode arch=compute_35,code=sm_35 -rdc=true
 ARCH = -gencode arch=compute_61,code=sm_61
 #ARCH = -gencode arch=compute_35,code=sm_35
-GPU_PARAMETERS= -DKKS=$(KKS) -DKKE=$(KKE) -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
+GPU_PARAMETERS= -g -DKKS=$(KKS) -DKKE=$(KKE) -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD) -Xcompiler -fopenmp -lgomp
 
 all: cpu_cc
 

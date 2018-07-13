@@ -9,6 +9,7 @@
 #include <map>
 
 #define PSLITS 2
+#define PPART_BITS ((uint64_t)log2f(PSLITS))
 #define PREDUCE 1
 #define PI 3.1415926535
 #define PI_2 (180.0f/PI)
@@ -17,6 +18,7 @@
 #define PBLOCK_SIZE 1024
 #define PBLOCK_SHF 10
 #define PPARTITIONS (((uint64_t)pow(PSLITS,NUM_DIMS-1)))
+
 
 template<class T, class Z>
 struct pta_pair{
@@ -90,21 +92,12 @@ void PTA<T,Z>::polar(){
 	pta_pair<T,Z> *pp = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->n);
 	this->part_id = static_cast<Z*>(aligned_alloc(32,sizeof(Z)*this->n));
 
-//	omp_set_num_threads(THREADS);
-//#pragma omp parallel
-//	{
 	T _one = 1.1;
 	__m256 pi_2 = _mm256_set1_ps(PI_2);
 	__m256 abs = _mm256_set1_ps(0x7FFFFFFF);
 	__m256 one = _mm256_set1_ps(_one);
 	float angles[8] __attribute__((aligned(32)));
-//	uint32_t tid = omp_get_thread_num();
-//	uint64_t chunk = (this->n-1)/THREADS + 1;
-//	uint64_t start = chunk*(tid);
-//	uint64_t end = chunk*(tid+1);
 	for(uint64_t i = 0; i < this->n; i+=8){//Calculate hyperspherical coordinates for each point
-	//for(uint64_t i = start; i < end; i+=8){//Calculate hyperspherical coordinates for each point
-		//std::cout << "[" << i << "]" << std::endl;
 		if(i + 7 < this->n){
 			__m256 sum = _mm256_setzero_ps();
 			__m256 f = _mm256_setzero_ps();
@@ -147,16 +140,30 @@ void PTA<T,Z>::polar(){
 			}
 		}
 	}
-//}
 
-	uint64_t mod = (this->n / PSLITS);
-	uint64_t mul = 1;
+	//Part_id calculate// Old part id calculation//
+//	uint64_t mod = (this->n / PSLITS);
+//	uint64_t mul = 1;
+//	for(uint64_t i = 0; i < this->n; i++) this->part_id[i] = 0;
+//	for(uint32_t m = 0; m < this->d-1; m++){//For each hyperspherical coordinate
+//		for(uint64_t i = 0; i < this->n; i++){ pp[i].id = i; pp[i].score = pdata[m*this->n + i]; }
+//		__gnu_parallel::sort(&pp[0],(&pp[0]) + this->n,cmp_pta_pair_asc<T,Z>);//determine splitting points
+//		for(uint64_t i = 0; i < this->n; i++){ this->part_id[pp[i].id]+=(mul*(i / mod)); }// Assign partition id
+//		mul*=PSLITS;
+//	}
+
+	uint64_t chunk_size = ((this->n - 1) /PSLITS) + 1;
+	uint64_t shift = 0;
 	for(uint64_t i = 0; i < this->n; i++) this->part_id[i] = 0;
-	for(uint32_t m = 0; m < this->d-1; m++){//For each hyperspherical coordinate
+	for(uint32_t m = 0; m < this->d-1; m++){
 		for(uint64_t i = 0; i < this->n; i++){ pp[i].id = i; pp[i].score = pdata[m*this->n + i]; }
 		__gnu_parallel::sort(&pp[0],(&pp[0]) + this->n,cmp_pta_pair_asc<T,Z>);//determine splitting points
-		for(uint64_t i = 0; i < this->n; i++){ this->part_id[pp[i].id]+=(mul*(i / mod)); }// Assign partition id
-		mul*=PSLITS;
+		for(uint64_t i = 0; i < this->n; i++){
+			Z id = pp[i].id;
+			uint32_t part = i / chunk_size;
+			this->part_id[id]= this->part_id[id] | (part << shift);
+		}// Assign partition id
+		shift+=PPART_BITS;
 	}
 
 	//Count and verify number of points inside each partition//

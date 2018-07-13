@@ -5,6 +5,7 @@
  */
 
 #include "GAA.h"
+#include "tools.h"
 #define BTA_BLOCK_SIZE 256
 #define BTA_TUPLES_PER_BLOCK 4096
 
@@ -380,6 +381,7 @@ void BTA<T,Z>::alloc(){
 
 template<class T, class Z>
 void BTA<T,Z>::init(T *weights, uint32_t *query){
+	normalize_transpose<T>(this->cdata, this->n, this->d);
 	cutil::safeCopyToDevice<T,uint64_t>(this->gdata,this->cdata,sizeof(T)*this->n*this->d, " copy from cdata to gdata ");//Copy data from cpu to gpu memory
 
 	cutil::cudaCheckErr(cudaMemcpyToSymbol(gpu_weights, weights, sizeof(T)*NUM_DIMS),"copy weights");//Initialize preference vector
@@ -418,7 +420,7 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	this->tt_processing = this->t.lap();
 	cutil::safeCopyToHost<T,uint64_t>(this->cscores, this->gscores, sizeof(T)*this->n,"copy scores to host");
 	this->cpu_threshold = find_threshold<T,Z>(this->cscores,this->n,k);
-	for(uint32_t i = 0; i < 32; i++){ std::cout << this->cscores[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
+	//for(uint32_t i = 0; i < 32; i++){ std::cout << this->cscores[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
 	this->cpu_threshold = find_threshold<T,Z>(this->cscores,this->n,k);
 
 	this->t.start();
@@ -426,7 +428,7 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing local_sort2");
 	this->tt_processing = this->t.lap();
 	cutil::safeCopyToHost<T,uint64_t>(this->cscores, this->gscores, sizeof(T)*this->n,"copy scores to host");
-	for(uint32_t i = 0; i < 32; i++){ std::cout << this->cscores[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
+	//for(uint32_t i = 0; i < 32; i++){ std::cout << this->cscores[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
 	this->cpu_threshold = find_partial_threshold<T,Z>(this->cscores,this->n,k,true,0);
 
 	//Last development phase//
@@ -447,7 +449,7 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	this->tt_processing = this->t.lap();
 	std::cout << "remainder:" << remainder << std::endl;
 	cutil::safeCopyToHost<T,uint64_t>(this->cscores, this->gscores, sizeof(T)*this->n,"copy scores to host");
-	for(uint32_t i = 0; i < 32; i++){ std::cout << this->cscores[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
+	//for(uint32_t i = 0; i < 32; i++){ std::cout << this->cscores[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
 	this->cpu_threshold = find_partial_threshold<T,Z>(this->cscores,this->n,k,false,remainder);
 }
 

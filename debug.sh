@@ -10,7 +10,7 @@ DIMS=8
 KKS=128
 KKE=128
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=0
+LD=1
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -84,7 +84,7 @@ TPAr_B=0
 #VTA Benhmark
 VTA_B=0
 #PTA Benchmark
-PTA_B=0
+PTA_B=1
 #SLA Benchmark
 SLA_B=0
 #####################################################################################	
@@ -138,6 +138,7 @@ else
   			./cpu_run -f=data/$fname -n=$n -d=$DIMS
 		else
   			#nvprof ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			echo "./gpu_run -f=data/$fname -n=$n -d=$DIMS"
 			./gpu_run -f=data/$fname -n=$n -d=$DIMS
 		fi
 		

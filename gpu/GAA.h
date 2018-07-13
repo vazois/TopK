@@ -1,6 +1,7 @@
 #ifndef GAA_H
 #define GAA_H
 
+#include <omp.h>
 #include "CudaHelper.h"
 #include <inttypes.h>
 #include <vector>
@@ -106,12 +107,12 @@ class GAA{
 		};
 
 		~GAA<T,Z>(){
-			if(this->cdata != NULL) cudaFreeHost(this->cdata);
-			if(this->gdata != NULL) cudaFree(this->gdata);
-			if(this->cids != NULL) cudaFreeHost(this->cids);
-			if(this->gids != NULL) cudaFree(this->gids);
-			if(this->cscores != NULL) cudaFreeHost(this->cscores);
-			if(this->gscores != NULL) cudaFree(this->gscores);
+			if(this->cdata != NULL){ cudaFreeHost(this->cdata); this->cdata = NULL; }
+			if(this->gdata != NULL){ cudaFree(this->gdata); this->gdata = NULL; }
+			if(this->cids != NULL){ cudaFreeHost(this->cids); this->cids = NULL; }
+			if(this->gids != NULL){ cudaFree(this->gids); this->gids = NULL; }
+			if(this->cscores != NULL){ cudaFreeHost(this->cscores); this->cscores = NULL; }
+			if(this->gscores != NULL){ cudaFree(this->gscores); this->gscores = NULL; }
 		};
 
 		std::string get_algo(){ return this->algo; }
