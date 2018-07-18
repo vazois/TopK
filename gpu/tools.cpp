@@ -2,12 +2,24 @@
 #include <parallel/algorithm>
 
 template<class T, class Z>
-void psort(gpta_pair<T,Z> *curr_pcoord,uint64_t n){
-	__gnu_parallel::sort(&curr_pcoord[0],(&curr_pcoord[0])+n,cmp_gpta_pair_asc<T,Z>);
+void psort(gpta_pair<T,Z> *tpairs,uint64_t n, bool ascending){
+	if(ascending){
+		__gnu_parallel::sort(&tpairs[0],(&tpairs[0])+n,cmp_gpta_pair_asc<T,Z>);
+	}else{
+		__gnu_parallel::sort(&tpairs[0],(&tpairs[0])+n,cmp_gpta_pair_desc<T,Z>);
+	}
 }
 
-template void psort(gpta_pair<float,uint64_t> *curr_pcoord,uint64_t n);
-template void psort(gpta_pair<float,uint32_t> *curr_pcoord,uint64_t n);
+template void psort(gpta_pair<float,uint64_t> *tpairs,uint64_t n, bool ascending);
+template void psort(gpta_pair<float,uint32_t> *tpairs,uint64_t n, bool ascending);
+
+template<class Z>
+void ppsort(gpta_pos<Z> *tpos, uint64_t n){
+	__gnu_parallel::sort(&tpos[0],(&tpos[0])+n,cmp_gpta_pos_asc<Z>);
+}
+
+template void ppsort(gpta_pos<uint64_t> *tpos,uint64_t n);
+template void ppsort(gpta_pos<uint32_t> *tpos,uint64_t n);
 
 template <class T>
 void normalize_transpose(T *&cdata, uint64_t n, uint64_t d){

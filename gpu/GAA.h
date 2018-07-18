@@ -38,6 +38,27 @@ class MaxFirst{
 };
 
 template<class T, class Z>
+static T compute_threshold(T* cdata, uint64_t n, uint64_t d, uint64_t k){
+	std::priority_queue<T, std::vector<ranked_tuple<T,Z>>, MaxFirst<T,Z>> q;
+	for(uint64_t i = 0; i < n; i++){
+		T score = 0;
+		for(uint64_t m = 0; m < d; m++){
+			score+=cdata[m*n + i];
+		}
+		if(q.size() < k){
+			q.push(ranked_tuple<T,Z>(i,score));
+		}else if ( q.top().score < score ){
+			q.pop();
+			q.push(ranked_tuple<T,Z>(i,score));
+		}
+	}
+
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << "threshold: " << q.top().score << std::endl;
+	return q.top().score;
+}
+
+template<class T, class Z>
 static T find_threshold(T *cscores, uint64_t n, uint64_t k){
 	std::priority_queue<T, std::vector<ranked_tuple<T,Z>>, MaxFirst<T,Z>> q;
 	for(uint64_t i = 0; i < n; i++){
