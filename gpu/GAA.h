@@ -2,7 +2,7 @@
 #define GAA_H
 
 #include <omp.h>
-#include "CudaHelper.h"
+#include "../tools/CudaHelper.h"
 #include <inttypes.h>
 #include <vector>
 #include <queue>

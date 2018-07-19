@@ -5,13 +5,12 @@
  */
 
 #include "GAA.h"
-#include "tools.h"
+#include "../tools/tools.h"
 #define BTA_BLOCK_SIZE 256
 #define BTA_TUPLES_PER_BLOCK 4096
 
 template<class T, class Z>
 __global__ void local_sort(T *gdata, uint64_t n, uint64_t d, uint64_t k, T *gscores){
-	//__shared__ Z tuple_ids[BTA_TUPLES_PER_BLOCK];
 	__shared__ T tuple_scores[BTA_TUPLES_PER_BLOCK];
 
 	uint32_t tid = threadIdx.x;
@@ -358,6 +357,59 @@ __global__ void merge(T *gscores, uint64_t k, uint32_t remainder){
 	}
 }
 
+template<class T>
+__global__ void scores_topk(T *scores, uint64_t k, T *gscores){
+	__shared__ T tuple_scores[BTA_TUPLES_PER_BLOCK];
+
+	uint64_t goffset = blockIdx.x * BTA_TUPLES_PER_BLOCK + threadIdx.x;
+	for(uint64_t loffset = threadIdx.x; loffset < BTA_TUPLES_PER_BLOCK; loffset+=blockDim.x){
+		tuple_scores[loffset] = scores[goffset];
+		goffset+= blockDim.x;
+	}
+	__syncthreads();
+
+	uint32_t tid = threadIdx.x;
+	for(uint32_t level = 1; level < k; level = level << 1){
+		uint32_t dir = level << 1;
+		for(uint32_t step = level; step > 0; step = step >> 1){
+			int low = tid & (step - 1);
+			int i = (tid << 1) - low;
+			bool reverse = ((dir & i) == 0);
+			T v0 = tuple_scores[i];
+			T v1 = tuple_scores[i+step];
+			bool swap = reverse ^ (v0 < v1);
+			T left = swap ? v0 : v1;
+			v1 = swap ? v1 : v0;
+			v0 = left;
+			tuple_scores[i] = v0;
+			tuple_scores[i+step] = v1;
+			__syncthreads();
+		}
+	}
+	__syncthreads();
+
+	//Write-back
+	goffset = blockIdx.x * BTA_TUPLES_PER_BLOCK + tid;//global starting offset
+	for(uint64_t loffset = tid; loffset < BTA_TUPLES_PER_BLOCK; loffset+=blockDim.x){//increment local block offset
+		gscores[goffset] = tuple_scores[loffset];//write-back scores//optional//for debug purpose
+		goffset+= blockDim.x;//increase global offset
+	}
+
+//	if ((blockIdx.x & 0x1) == 0){//Write reverse
+//		goffset = blockIdx.x * k + threadIdx.x;
+//		for(uint64_t loffset = threadIdx.x; loffset < k; loffset+=blockDim.x){
+//			gscores[goffset] = tuple_scores[(loffset^(k-1))];//Write-back scores//
+//			goffset+= blockDim.x;
+//		}
+//	}else{//Write regular order
+//		goffset = blockIdx.x * k + threadIdx.x;
+//		for(uint64_t loffset = threadIdx.x; loffset < k; loffset+=blockDim.x){
+//			gscores[goffset] = tuple_scores[loffset];//Write-back scores//
+//			goffset+= blockDim.x;
+//		}
+//	}
+}
+
 template<class T, class Z>
 class BTA : public GAA<T,Z>{
 	public:
@@ -368,6 +420,10 @@ class BTA : public GAA<T,Z>{
 		void alloc();
 		void init(T *weights, uint32_t *query);
 		void findTopK(uint64_t k, uint64_t qq);
+
+	private:
+		void full_relation_test(uint64_t k, uint64_t qq);
+		void single_attribute_test(uint64_t k, uint64_t qq);
 };
 
 template<class T, class Z>
@@ -389,7 +445,7 @@ void BTA<T,Z>::init(T *weights, uint32_t *query){
 }
 
 template<class T, class Z>
-void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
+void BTA<T,Z>::full_relation_test(uint64_t k, uint64_t qq){
 	uint32_t block_size = std::max((uint64_t)BTA_BLOCK_SIZE,k);
 	dim3 lsort_block(block_size,1,1);
 	//dim3 _block(BTA_BLOCK_SIZE,1,1);
@@ -426,7 +482,7 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	this->t.start();
 	local_sort3<T,Z><<<lsort_grid,lsort_block>>>(this->gdata,this->n,qq,k,this->gscores);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing local_sort2");
-	this->tt_processing = this->t.lap();
+	this->tt_processing = this->t.lap("Sort only");
 	cutil::safeCopyToHost<T,uint64_t>(this->cscores, this->gscores, sizeof(T)*this->n,"copy scores to host");
 	//for(uint32_t i = 0; i < 32; i++){ std::cout << this->cscores[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
 	this->cpu_threshold = find_partial_threshold<T,Z>(this->cscores,this->n,k,true,0);
@@ -446,11 +502,41 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 		remainder = ((remainder-1)/BTA_TUPLES_PER_BLOCK + 1)*k;
 		//break;
 	}
-	this->tt_processing = this->t.lap();
+	this->tt_processing = this->t.lap("Full BTA");
 	std::cout << "remainder:" << remainder << std::endl;
 	cutil::safeCopyToHost<T,uint64_t>(this->cscores, this->gscores, sizeof(T)*this->n,"copy scores to host");
 	//for(uint32_t i = 0; i < 32; i++){ std::cout << this->cscores[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
 	this->cpu_threshold = find_partial_threshold<T,Z>(this->cscores,this->n,k,false,remainder);
+}
+
+template<class T, class Z>
+void BTA<T,Z>::single_attribute_test(uint64_t k, uint64_t qq){
+	uint32_t block_size = std::max((uint64_t)BTA_BLOCK_SIZE,k);
+	dim3 lsort_block(block_size,1,1);
+	dim3 lsort_grid((this->n-1)/BTA_TUPLES_PER_BLOCK + 1, 1, 1);
+
+	this->t.start();
+	local_sort<T,Z><<<lsort_grid,lsort_block>>>(this->gdata,this->n,qq,k,this->gscores);
+	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing local_sort");
+	this->t.lap("calculate and write");
+	cutil::safeCopyToHost<T,uint64_t>(this->cscores, this->gscores, sizeof(T)*this->n,"copy scores to host");
+	find_threshold<T,Z>(this->cscores,this->n,k);
+	//for(uint32_t i = 0; i < 32; i++){ std::cout << this->cscores[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
+	//std::cout << "==================================" << std::endl;
+
+	this->t.start();
+	scores_topk<T><<<lsort_grid,lsort_block>>>(this->cscores, k, this->gscores);
+	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing local_sort");
+	this->tt_processing = this->t.lap("bitonic local sort");
+	cutil::safeCopyToHost<T,uint64_t>(this->cscores, this->gscores, sizeof(T)*this->n,"copy scores to host");
+	find_threshold<T,Z>(this->cscores,this->n,k);
+	for(uint32_t i = 0; i < 32; i++){ std::cout << this->cscores[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
+}
+
+template<class T, class Z>
+void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
+	this->full_relation_test(k,qq);
+	this->single_attribute_test(k,qq);
 }
 
 

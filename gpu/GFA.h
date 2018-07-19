@@ -1,7 +1,7 @@
 #ifndef GFA_H
 #define GFA_H
 
-#include "CudaHelper.h"
+#include "../tools/CudaHelper.h"
 #include <inttypes.h>
 #include <algorithm>
 #include <vector>

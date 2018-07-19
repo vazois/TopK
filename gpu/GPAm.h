@@ -1,7 +1,7 @@
 #ifndef GPAm_H
 #define GPAm_H
 
-#include "CudaHelper.h"
+#include "../tools/CudaHelper.h"
 #include "reorder_attr.h"
 #include "init_tuples.h"
 #include "radix_select.h"

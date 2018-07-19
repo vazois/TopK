@@ -2,7 +2,7 @@
 #define RADIX_SELECT_H
 
 #include <inttypes.h>
-#include "CudaHelper.h"
+#include "../tools/CudaHelper.h"
 
 #define VALUE_PER_THREAD 32
 #define BLOCK_SIZE 512

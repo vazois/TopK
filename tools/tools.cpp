@@ -21,6 +21,15 @@ void ppsort(gpta_pos<Z> *tpos, uint64_t n){
 template void ppsort(gpta_pos<uint64_t> *tpos,uint64_t n);
 template void ppsort(gpta_pos<uint32_t> *tpos,uint64_t n);
 
+
+template<class T, class Z>
+void pnth_element(gpta_pair<T,Z> *tscore, uint64_t n, uint64_t k, bool ascending){
+	__gnu_parallel::nth_element(&tscore[0],(&tscore[k]),(&tscore[0])+n,cmp_gpta_pair_asc<T,Z>);
+}
+
+template void pnth_element(gpta_pair<float,uint32_t> *tscore, uint64_t n, uint64_t k, bool ascending);
+template void pnth_element(gpta_pair<float,uint64_t> *tscore, uint64_t n, uint64_t k, bool ascending);
+
 template <class T>
 void normalize_transpose(T *&cdata, uint64_t n, uint64_t d){
 	T *mmax = static_cast<T*>(aligned_alloc(32,sizeof(T)*d));

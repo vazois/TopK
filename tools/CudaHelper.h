@@ -24,8 +24,8 @@
 #define RAND_STATES 256 * 512
 
 namespace cutil{
-	static __device__ curandState devStates[RAND_BLOCKS*RAND_THREADS];
-	static __device__ curandState randDevStates[RAND_STATES];
+//	static __device__ curandState devStates[RAND_BLOCKS*RAND_THREADS];
+//	static __device__ curandState randDevStates[RAND_STATES];
 	static cudaError_t error = cudaSuccess;
 
 	/*
@@ -52,6 +52,8 @@ namespace cutil{
 	template<typename DATA_T, typename SIZE_T>
 	__host__ void safeMallocHost(DATA_T **addr, SIZE_T size, std::string msg);
 	template<typename DATA_T, typename SIZE_T>
+	__host__ void safeAllocHost(DATA_T **addr, SIZE_T size, unsigned int flags, std::string msg);
+	template<typename DATA_T, typename SIZE_T>
 	__host__ void safeCopyToDevice(DATA_T *to, DATA_T *from, SIZE_T size, std::string msg);
 	template<typename DATA_T, typename SIZE_T>
 	__host__ void safeCopyToHost(DATA_T *to, DATA_T *from, SIZE_T size, std::string msg);
@@ -62,45 +64,45 @@ namespace cutil{
 	 * 		cudaSetupRandStatesKernel: call directly or through cudaInitRandStates to initialize states for random number.
 	 * 		cudaInitRandStates: call from host to initialize random states.
 	 */
-	__device__ float cudaUniRand(unsigned int tid){
-		return curand_uniform(&randDevStates[tid % RAND_STATES]);
-	}
-
-
-	__global__ void cudaInitRandStatesKernel(unsigned int seed){
-		int i = threadIdx.x + blockIdx.x * blockDim.x;
-		curand_init(seed, blockIdx.x, 0, &randDevStates[i]);
-	}
-
-	__host__ void cudaInitRandStates(){
-		dim3 grid = grid_1D(RAND_STATES,RAND_BLOCK_THREADS);
-		dim3 block = block_1D(RAND_BLOCK_THREADS);
-
-		Utils<unsigned int> u;
-		cudaInitRandStatesKernel<<<grid,block>>>(u.uni(UINT_MAX));
-		cudaCheckErr(cudaDeviceSynchronize(),"Error initializing random states");
-	}
-
-	template<typename DATA_T, typename SIZE_T>
-	__global__ void cudaRandInitKernel(DATA_T *arr, SIZE_T size){
-		SIZE_T i = blockIdx.x * blockDim.x + threadIdx.x;
-
-		while(i < size){
-			arr[i] = cudaUniRand(i);
-			//arr[i] = 1;
-			i+=gridDim.x * blockDim.x;
-		}
-	}
-
-	template<typename DATA_T,typename SIZE_T>
-	__host__ void cudaRandInit(DATA_T *arr, SIZE_T size){
-		cudaInitRandStates();
-		dim3 grid = grid_1D(size, RAND_BLOCK_THREADS);
-		dim3 block = block_1D(RAND_BLOCK_THREADS);
-
-		cudaRandInitKernel<DATA_T,SIZE_T><<<grid,block>>>(arr,size);
-		cudaCheckErr(cudaDeviceSynchronize(),"Error calling cudaRandInitKernel");
-	}
+//	__device__ float cudaUniRand(unsigned int tid){
+//		return curand_uniform(&randDevStates[tid % RAND_STATES]);
+//	}
+//
+//
+//	__global__ void cudaInitRandStatesKernel(unsigned int seed){
+//		int i = threadIdx.x + blockIdx.x * blockDim.x;
+//		curand_init(seed, blockIdx.x, 0, &randDevStates[i]);
+//	}
+//
+//	__host__ void cudaInitRandStates(){
+//		dim3 grid = grid_1D(RAND_STATES,RAND_BLOCK_THREADS);
+//		dim3 block = block_1D(RAND_BLOCK_THREADS);
+//
+//		Utils<unsigned int> u;
+//		cudaInitRandStatesKernel<<<grid,block>>>(u.uni(UINT_MAX));
+//		cudaCheckErr(cudaDeviceSynchronize(),"Error initializing random states");
+//	}
+//
+//	template<typename DATA_T, typename SIZE_T>
+//	__global__ void cudaRandInitKernel(DATA_T *arr, SIZE_T size){
+//		SIZE_T i = blockIdx.x * blockDim.x + threadIdx.x;
+//
+//		while(i < size){
+//			arr[i] = cudaUniRand(i);
+//			//arr[i] = 1;
+//			i+=gridDim.x * blockDim.x;
+//		}
+//	}
+//
+//	template<typename DATA_T,typename SIZE_T>
+//	__host__ void cudaRandInit(DATA_T *arr, SIZE_T size){
+//		cudaInitRandStates();
+//		dim3 grid = grid_1D(size, RAND_BLOCK_THREADS);
+//		dim3 block = block_1D(RAND_BLOCK_THREADS);
+//
+//		cudaRandInitKernel<DATA_T,SIZE_T><<<grid,block>>>(arr,size);
+//		cudaCheckErr(cudaDeviceSynchronize(),"Error calling cudaRandInitKernel");
+//	}
 
 	/*
 	 * Allocating device memory
@@ -124,7 +126,13 @@ namespace cutil{
 	template<typename DATA_T, typename SIZE_T>
 	__host__ void safeMallocHost(DATA_T **addr, SIZE_T size, std::string msg){
 		error = cudaMallocHost(&(*addr), size);
-		cudaCheckErr(error, "Error Allocating host "+msg);
+		cudaCheckErr(error, "Error Malloc Host "+msg);
+	}
+
+	template<typename DATA_T, typename SIZE_T>
+	__host__ void safeAllocHost(DATA_T **addr, SIZE_T size, unsigned int flags, std::string msg){
+		error = cudaMallocHost(&(*addr),size,flags);
+		cudaCheckErr(error, "Error Alloc Host "+msg);
 	}
 
 	/*
@@ -250,9 +258,9 @@ namespace cutil{
 
 static __device__ curandState devStates[RAND_BLOCKS*RAND_THREADS];
 
-#define RAND_BLOCK_THREADS 256
-#define RAND_STATES 256 * 512
-static __device__ curandState randDevStates[RAND_STATES];
+//#define RAND_BLOCK_THREADS 256
+//#define RAND_STATES 256 * 512
+//static __device__ curandState randDevStates[RAND_STATES];
 
 static cudaError_t error = cudaSuccess;
 
@@ -277,10 +285,11 @@ __host__ void cudaFinalize();
 /*
  * Memory handling wrappers.
  */
-template<class V> __host__ void safeMalloc(V **addr, unsigned int size, std::string msg);
-template<class V> __host__ void safeMallocHost(V **addr, unsigned int size, std::string msg);
-template<class V> __host__ void safeCopyToDevice(V *to, V *from, unsigned int size, std::string msg);
-template<class V> __host__ void safeCopyToHost(V *to, V *from, unsigned int size, std::string msg);
+//template<class V> __host__ void safeMalloc(V **addr, unsigned int size, std::string msg);
+//template<class V> __host__ void safeMallocHost(V **addr, unsigned int size, std::string msg);
+//template<typename DATA_T, typename SIZE_T>__host__ void safeAllocHost(DATA_T **addr, SIZE_T size, unsigned int flags, std::string msg);
+//template<class V> __host__ void safeCopyToDevice(V *to, V *from, unsigned int size, std::string msg);
+//template<class V> __host__ void safeCopyToHost(V *to, V *from, unsigned int size, std::string msg);
 
 /*
  * Grid and Block dimension computation.

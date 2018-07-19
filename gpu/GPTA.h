@@ -5,8 +5,10 @@
  */
 
 #include "GAA.h"
-#include "tools.h"
+#include "../tools/tools.h"
 #include <map>
+
+#define ALPHA 1.1
 #define GPTA_PI 3.1415926535
 #define GPTA_PI_2 (180.0f/PI)
 
@@ -38,8 +40,8 @@ class GPTA : public GAA<T,Z>{
 				for(uint64_t i = 0; i < this->max_gtg_count; i++){
 					if(this->gtg_list[i].data != NULL){ cudaFreeHost(this->gtg_list[i].data); }
 					if(this->gtg_list[i].tvector != NULL){ cudaFreeHost(this->gtg_list[i].tvector); }
+					std::cout << "delete gtg_components " << i << std::endl;
 				}
-
 				free(this->gtg_list);
 			}
 		};
@@ -52,13 +54,15 @@ class GPTA : public GAA<T,Z>{
 		void polar_partition();
 		void build_gtg_list();
 
+		void polar_partition2();
+		void build_gtg_list2();
+
 		GTG<T,Z> *gtg_list;
 		Z max_gtg_count;
 		Z min_gtg_count;
 		Z max_gtg_size;
 		std::map<Z,Z> mm;
 };
-
 
 template<class T, class Z>
 void GPTA<T,Z>::polar_partition(){
@@ -147,7 +151,7 @@ void GPTA<T,Z>::polar_partition(){
 	free(psum);
 	free(part_id);
 	//DEBUG
-	compute_threshold<T,Z>(this->cdata,this->n,this->d,(uint64_t)KKS);
+	//compute_threshold<T,Z>(this->cdata,this->n,this->d,(uint64_t)KKS);
 }
 
 template<class T,class Z>
@@ -191,9 +195,110 @@ void GPTA<T,Z>::build_gtg_list(){
 	}
 	compute_threshold<T,Z>(this->cdata,this->n,this->d,(uint64_t)KKS);
 
+	this->gtg_list = (GTG<T,Z>*) malloc(sizeof(GTG<T,Z>)*this->max_gtg_count);
+	T *zero = (T*)malloc(sizeof(T)*GPTA_DATA_BLOCK_SIZE);
+	for(uint64_t i = 0; i < GPTA_DATA_BLOCK_SIZE; i++) zero[i] = 0;
+	for(uint64_t i = 0; i <this->max_gtg_count;i++){
+		cutil::safeMallocHost<T,uint64_t>(&(this->gtg_list[i].data),
+				sizeof(T)*GPTA_DATA_BLOCK_SIZE*this->d,"gtg_data"+std::to_string(i)+" alloc");
+		cutil::safeMallocHost<T,uint64_t>(&(this->gtg_list[i].tvector),
+						sizeof(T)*GPTA_PARTS*this->d,"gtg_tvector"+std::to_string(i)+" alloc");
+
+		for(uint64_t j = 0; j < GPTA_PARTS; j++){
+			Z offset = j * GPTA_DATA_BLOCK_SIZE;
+			Z size = this->mm[j];
+			Z loffset = j * GPTA_PARTS;
+			if( size > offset ){
+				size = (offset + GPTA_DATA_BLOCK_SIZE < size) ? GPTA_DATA_BLOCK_SIZE : (size - offset + 1);
+				for(uint64_t m = 0; m < this->d; m++){
+					std::memcpy(
+						&this->gtg_list[i].data[(GPTA_PARTS*GPTA_DATA_BLOCK_SIZE) + loffset],
+						&this->cdata[m*this->n + offset],
+						sizeof(T)*size
+					);
+				}
+			}else{
+				for(uint64_t m = 0; m < this->d; m++){
+					std::memcpy(
+						&this->gtg_list[i].data[(GPTA_PARTS*GPTA_DATA_BLOCK_SIZE) + loffset],
+						zero,
+						sizeof(T)*size
+					);
+				}
+			}
+		}
+	}
+
+	free(zero);
 	free(tscore);
 	free(tpos);
 	free(part_data);
+}
+
+template<class T, class Z>
+void GPTA<T,Z>::polar_partition2(){
+	T *numerators=(T*) malloc(sizeof(T)*this->n);
+	gpta_pair<T,Z> *tscores = (gpta_pair<T,Z>*) malloc(sizeof(gpta_pair<T,Z>)*this->n);
+
+	for(uint64_t i = 0; i < this->n; i++){
+		T num = fabs(this->cdata[(this->d-1)*this->n + i] - 1.1);
+		numerators[i] = num * num;
+		tscores[i].id = i;
+		tscores[i].score = 0;
+	}
+
+//	pnth_element(tscores,this->n,this->n/2,true);
+//	T middle = tscores[this->n/2].score;
+//	std::cout << "middle: " << middle << std::endl;
+//	uint32_t low = 0;
+//	uint32_t high = 0;
+//	for(uint64_t i = 0; i < this->n; i++){
+//		if(tscores[i].score <= middle){
+//			low++;
+//		}else{
+//			high++;
+//		}
+//	}
+//	std::cout << "low: " << low << std::endl;
+//	std::cout << "high: " << high << std::endl;
+
+	Z level = this->n;
+	for(uint64_t m = this->d-1; m > 0; m--){
+		for(uint64_t i = 0; i < this->n; i++){
+			Z id = tscores[i].id;
+			T next = fabs(this->cdata[(m-1)*this->n + id] - 1.1);
+			T sum = numerators[id];
+
+			tscores[i].score = atan((sqrt(sum) / next));
+			numerators[id]+=(next*next);
+		}
+
+		for(uint64_t i = 0; i < this->n; i+=level){
+			//for(uint64_t p = )
+			pnth_element(&tscores[i],level,level/2,true);
+		}
+
+		for(uint64_t i = 0; i < this->n; i+=level){
+			T middle = tscores[i + level/2].score;
+			bool print = true ;
+			for(uint64_t j = i; j < i + level; j++){
+				if( tscores[j].score > middle && print ){
+					std::cout << "i:" << j << std::endl;
+					print=false;
+				}
+			}
+		}
+		std::cout << "--------->>>>\n";
+		level=level/2;
+		break;
+	}
+	free(tscores);
+	free(numerators);
+}
+
+template<class T, class Z>
+void GPTA<T,Z>::build_gtg_list2(){
+
 }
 
 template<class T, class Z>
@@ -201,8 +306,8 @@ void GPTA<T,Z>::alloc(){
 	cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
 	//cutil::safeMalloc<T,uint64_t>(&(this->gdata),sizeof(T)*this->n*this->d,"gdata alloc");//Allocate gpu data memory
 
-	cutil::safeMallocHost<T,uint64_t>(&(this->cscores),sizeof(T)*this->n,"cscores alloc");//Allocate cpu scores memory
-	cutil::safeMalloc<T,uint64_t>(&(this->gscores),sizeof(T)*this->n,"gscores alloc");//Allocate gpu scores memory
+	//cutil::safeMallocHost<T,uint64_t>(&(this->cscores),sizeof(T)*this->n,"cscores alloc");//Allocate cpu scores memory
+	//cutil::safeMalloc<T,uint64_t>(&(this->gscores),sizeof(T)*this->n,"gscores alloc");//Allocate gpu scores memory
 }
 
 template<class T, class Z>
@@ -211,6 +316,8 @@ void GPTA<T,Z>::init(T *weights, uint32_t *query){
 	this->t.start();
 	this->polar_partition();
 	this->build_gtg_list();
+//	this->polar_partition2();
+//	this->build_gtg_list2();
 	this->tt_init=this->t.lap();
 }
 

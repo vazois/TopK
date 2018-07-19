@@ -24,6 +24,8 @@ static bool cmp_gpta_pair_desc(const gpta_pair<T,Z> &a, const gpta_pair<T,Z> &b)
 template<class Z>
 static bool cmp_gpta_pos_asc(const gpta_pos<Z> &a, const gpta_pos<Z> &b){ return a.pos < b.pos; };
 
+template<class T, class Z>
+void pnth_element(gpta_pair<T,Z> *tscore, uint64_t n, uint64_t k, bool ascending);
 
 template<class T, class Z>
 void psort(gpta_pair<T,Z> *tpairs,uint64_t n, bool ascending);

@@ -2,7 +2,7 @@
 #define PRUNE_TUPLES_H
 
 #include <cub/cub.cuh>
-#include "CudaHelper.h"
+#include "../tools/CudaHelper.h"
 
 #define BLOCK_SIZE 512
 

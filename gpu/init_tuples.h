@@ -1,7 +1,7 @@
 #ifndef INIT_TUPLES_H
 #define INIT_TUPLES_H
 
-#include "CudaHelper.h"
+#include "../tools/CudaHelper.h"
 
 template<class T>
 struct Tuple{

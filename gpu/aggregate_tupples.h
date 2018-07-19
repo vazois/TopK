@@ -1,7 +1,7 @@
 #ifndef AGGREGATE_TUPPLES_H
 #define AGGREGATE_TUPPLES_H
 
-#include "CudaHelper.h"
+#include "../tools/CudaHelper.h"
 
 
 template<class T, uint32_t block>
