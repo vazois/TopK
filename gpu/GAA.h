@@ -105,6 +105,25 @@ static T find_partial_threshold(T *cscores, uint64_t n, uint64_t k, bool type, u
 }
 
 template<class T, class Z>
+static T find_remain_threshold(T *cscores, uint64_t n, uint64_t k, uint32_t remainder){
+	std::priority_queue<T, std::vector<ranked_tuple<T,Z>>, MaxFirst<T,Z>> q;
+
+	for(uint64_t j = 0; j < n; j+=4096){
+		for(uint64_t i = 0; i < remainder;i++){
+			if(q.size() < k){
+				q.push(ranked_tuple<T,Z>(i+j,cscores[i+j]));
+			}else if ( q.top().score < cscores[i+j] ){
+				q.pop();
+				q.push(ranked_tuple<T,Z>(i+j,cscores[i+j]));
+			}
+		}
+	}
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << "remain threshold: " << q.top().score << std::endl;
+	return q.top().score;
+}
+
+template<class T, class Z>
 class GAA{
 	public:
 		GAA<T,Z>(uint64_t n, uint64_t d){
