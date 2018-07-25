@@ -7,8 +7,8 @@ START_N=$((32*1024*1024))
 END_N=$((32*1024*1024))
 DIMS=2
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=32
-KKE=32
+KKS=4
+KKE=4
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
 LD=1
 
@@ -138,7 +138,7 @@ else
   			./cpu_run -f=data/$fname -n=$n -d=$DIMS
 		else
   			#nvprof --devices 0 ./gpu_run -f=data/$fname -n=$n -d=$DIMS
-			echo "./gpu_run -f=data/$fname -n=$n -d=$DIMS"
+			#echo "./gpu_run -f=data/$fname -n=$n -d=$DIMS"
 			./gpu_run -f=data/$fname -n=$n -d=$DIMS
 		fi
 		
