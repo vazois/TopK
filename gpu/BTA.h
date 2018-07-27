@@ -1173,259 +1173,595 @@ __global__ void scores_topk7(T *ivec, T *ovec, uint64_t k){
 	vE = ivec[goffset + 3584];
 	vF = ivec[goffset + 3840];
 
-	uint32_t laneId = (threadIdx.x & 31);
-	if( k>= 2 ){//2
-		v0 = swap(v0,0x01,bfe(laneId,1)^bfe(laneId,0));
-		v1 = swap(v1,0x01,bfe(laneId,1)^bfe(laneId,0));
-		v2 = swap(v2,0x01,bfe(laneId,1)^bfe(laneId,0));
-		v3 = swap(v3,0x01,bfe(laneId,1)^bfe(laneId,0));
-		v4 = swap(v4,0x01,bfe(laneId,1)^bfe(laneId,0));
-		v5 = swap(v5,0x01,bfe(laneId,1)^bfe(laneId,0));
-		v6 = swap(v6,0x01,bfe(laneId,1)^bfe(laneId,0));
-		v7 = swap(v7,0x01,bfe(laneId,1)^bfe(laneId,0));
-		v8 = swap(v8,0x01,bfe(laneId,1)^bfe(laneId,0));
-		v9 = swap(v9,0x01,bfe(laneId,1)^bfe(laneId,0));
-		vA = swap(vA,0x01,bfe(laneId,1)^bfe(laneId,0));
-		vB = swap(vB,0x01,bfe(laneId,1)^bfe(laneId,0));
-		vC = swap(vC,0x01,bfe(laneId,1)^bfe(laneId,0));
-		vD = swap(vE,0x01,bfe(laneId,1)^bfe(laneId,0));
-		vE = swap(vD,0x01,bfe(laneId,1)^bfe(laneId,0));
-		vF = swap(vF,0x01,bfe(laneId,1)^bfe(laneId,0));
+	uint32_t laneId = threadIdx.x;
+	uint32_t level, step, dir;
+	for(level = 1; level < k; level = level << 1){
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+			v1 = swap(v1,step,dir);
+			v2 = swap(v2,step,dir);
+			v3 = swap(v3,step,dir);
+			v4 = swap(v4,step,dir);
+			v5 = swap(v5,step,dir);
+			v6 = swap(v6,step,dir);
+			v7 = swap(v7,step,dir);
+			v8 = swap(v8,step,dir);
+			v9 = swap(v9,step,dir);
+			vA = swap(vA,step,dir);
+			vB = swap(vB,step,dir);
+			vC = swap(vC,step,dir);
+			vD = swap(vD,step,dir);
+			vE = swap(vE,step,dir);
+			vF = swap(vF,step,dir);
+
+//			v0 = swap(v0,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			v1 = swap(v1,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			v2 = swap(v2,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			v3 = swap(v3,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			v4 = swap(v4,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			v5 = swap(v5,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			v6 = swap(v6,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			v7 = swap(v7,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			v8 = swap(v8,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			v9 = swap(v9,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			vA = swap(vA,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			vB = swap(vB,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			vC = swap(vC,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			vD = swap(vD,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			vE = swap(vE,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+//			vF = swap(vF,step,bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1)));
+
+//			if( step == 1 ){
+//				v0 = swap(v0,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				v1 = swap(v1,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				v2 = swap(v2,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				v3 = swap(v3,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				v4 = swap(v4,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				v5 = swap(v5,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				v6 = swap(v6,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				v7 = swap(v7,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				v8 = swap(v8,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				v9 = swap(v9,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				vA = swap(vA,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				vB = swap(vB,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				vC = swap(vC,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				vD = swap(vD,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				vE = swap(vE,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//				vF = swap(vF,step,bfe(laneId,__ffs(level))^bfe(laneId,0));
+//			}else if ( step == 2 ){
+//				v0 = swap(v0,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				v1 = swap(v1,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				v2 = swap(v2,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				v3 = swap(v3,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				v4 = swap(v4,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				v5 = swap(v5,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				v6 = swap(v6,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				v7 = swap(v7,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				v8 = swap(v8,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				v9 = swap(v9,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				vA = swap(vA,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				vB = swap(vB,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				vC = swap(vC,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				vD = swap(vD,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				vE = swap(vE,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//				vF = swap(vF,step,bfe(laneId,__ffs(level))^bfe(laneId,1));
+//			}else if ( step == 4 ){
+//				v0 = swap(v0,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				v1 = swap(v1,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				v2 = swap(v2,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				v3 = swap(v3,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				v4 = swap(v4,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				v5 = swap(v5,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				v6 = swap(v6,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				v7 = swap(v7,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				v8 = swap(v8,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				v9 = swap(v9,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				vA = swap(vA,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				vB = swap(vB,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				vC = swap(vC,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				vD = swap(vD,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				vE = swap(vE,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//				vF = swap(vF,step,bfe(laneId,__ffs(level))^bfe(laneId,2));
+//			}else if ( step == 8 ){
+//				v0 = swap(v0,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				v1 = swap(v1,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				v2 = swap(v2,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				v3 = swap(v3,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				v4 = swap(v4,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				v5 = swap(v5,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				v6 = swap(v6,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				v7 = swap(v7,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				v8 = swap(v8,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				v9 = swap(v9,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				vA = swap(vA,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				vB = swap(vB,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				vC = swap(vC,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				vD = swap(vD,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				vE = swap(vE,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//				vF = swap(vF,step,bfe(laneId,__ffs(level))^bfe(laneId,3));
+//			}else if ( step == 16 ){
+//				v0 = swap(v0,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				v1 = swap(v1,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				v2 = swap(v2,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				v3 = swap(v3,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				v4 = swap(v4,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				v5 = swap(v5,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				v6 = swap(v6,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				v7 = swap(v7,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				v8 = swap(v8,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				v9 = swap(v9,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				vA = swap(vA,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				vB = swap(vB,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				vC = swap(vC,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				vD = swap(vD,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				vE = swap(vE,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//				vF = swap(vF,step,bfe(laneId,__ffs(level))^bfe(laneId,4));
+//			}
+		}
 	}
 
-	if( k >= 4 ){//4
-		v0 = swap(v0,0x02,bfe(laneId,2)^bfe(laneId,1));
-		v0 = swap(v0,0x01,bfe(laneId,2)^bfe(laneId,0));
-		v1 = swap(v1,0x02,bfe(laneId,2)^bfe(laneId,1));
-		v1 = swap(v1,0x01,bfe(laneId,2)^bfe(laneId,0));
-		v2 = swap(v2,0x02,bfe(laneId,2)^bfe(laneId,1));
-		v2 = swap(v2,0x01,bfe(laneId,2)^bfe(laneId,0));
-		v3 = swap(v3,0x02,bfe(laneId,2)^bfe(laneId,1));
-		v3 = swap(v3,0x01,bfe(laneId,2)^bfe(laneId,0));
-		v4 = swap(v4,0x02,bfe(laneId,2)^bfe(laneId,1));
-		v4 = swap(v4,0x01,bfe(laneId,2)^bfe(laneId,0));
-		v5 = swap(v5,0x02,bfe(laneId,2)^bfe(laneId,1));
-		v5 = swap(v5,0x01,bfe(laneId,2)^bfe(laneId,0));
-		v6 = swap(v6,0x02,bfe(laneId,2)^bfe(laneId,1));
-		v6 = swap(v6,0x01,bfe(laneId,2)^bfe(laneId,0));
-		v7 = swap(v7,0x02,bfe(laneId,2)^bfe(laneId,1));
-		v7 = swap(v7,0x01,bfe(laneId,2)^bfe(laneId,0));
-		v8 = swap(v8,0x02,bfe(laneId,2)^bfe(laneId,1));
-		v8 = swap(v8,0x01,bfe(laneId,2)^bfe(laneId,0));
-		v9 = swap(v9,0x02,bfe(laneId,2)^bfe(laneId,1));
-		v9 = swap(v9,0x01,bfe(laneId,2)^bfe(laneId,0));
-		vA = swap(vA,0x02,bfe(laneId,2)^bfe(laneId,1));
-		vA = swap(vA,0x01,bfe(laneId,2)^bfe(laneId,0));
-		vB = swap(vB,0x02,bfe(laneId,2)^bfe(laneId,1));
-		vB = swap(vB,0x01,bfe(laneId,2)^bfe(laneId,0));
-		vC = swap(vC,0x02,bfe(laneId,2)^bfe(laneId,1));
-		vC = swap(vC,0x01,bfe(laneId,2)^bfe(laneId,0));
-		vD = swap(vD,0x02,bfe(laneId,2)^bfe(laneId,1));
-		vD = swap(vD,0x01,bfe(laneId,2)^bfe(laneId,0));
-		vF = swap(vF,0x02,bfe(laneId,2)^bfe(laneId,1));
-		vF = swap(vF,0x01,bfe(laneId,2)^bfe(laneId,0));
+//	uint32_t laneId = (threadIdx.x & 31);
+//	if( k>= 2 ){//2
+//		v0 = swap(v0,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		v1 = swap(v1,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		v2 = swap(v2,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		v3 = swap(v3,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		v4 = swap(v4,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		v5 = swap(v5,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		v6 = swap(v6,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		v7 = swap(v7,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		v8 = swap(v8,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		v9 = swap(v9,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		vA = swap(vA,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		vB = swap(vB,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		vC = swap(vC,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		vD = swap(vE,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		vE = swap(vD,0x01,bfe(laneId,1)^bfe(laneId,0));
+//		vF = swap(vF,0x01,bfe(laneId,1)^bfe(laneId,0));
+//	}
+//
+//	if( k >= 4 ){//4
+//		v0 = swap(v0,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		v0 = swap(v0,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		v1 = swap(v1,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		v1 = swap(v1,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		v2 = swap(v2,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		v2 = swap(v2,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		v3 = swap(v3,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		v3 = swap(v3,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		v4 = swap(v4,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		v4 = swap(v4,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		v5 = swap(v5,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		v5 = swap(v5,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		v6 = swap(v6,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		v6 = swap(v6,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		v7 = swap(v7,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		v7 = swap(v7,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		v8 = swap(v8,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		v8 = swap(v8,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		v9 = swap(v9,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		v9 = swap(v9,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		vA = swap(vA,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		vA = swap(vA,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		vB = swap(vB,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		vB = swap(vB,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		vC = swap(vC,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		vC = swap(vC,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		vD = swap(vD,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		vD = swap(vD,0x01,bfe(laneId,2)^bfe(laneId,0));
+//		vF = swap(vF,0x02,bfe(laneId,2)^bfe(laneId,1));
+//		vF = swap(vF,0x01,bfe(laneId,2)^bfe(laneId,0));
+//	}
+//
+//	if( k >= 8 ){//8
+//		v0 = swap(v0,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		v0 = swap(v0,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		v0 = swap(v0,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		v1 = swap(v1,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		v1 = swap(v1,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		v1 = swap(v1,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		v2 = swap(v2,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		v2 = swap(v2,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		v2 = swap(v2,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		v3 = swap(v3,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		v3 = swap(v3,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		v3 = swap(v3,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		v4 = swap(v4,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		v4 = swap(v4,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		v4 = swap(v4,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		v5 = swap(v5,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		v5 = swap(v5,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		v5 = swap(v5,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		v6 = swap(v6,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		v6 = swap(v6,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		v6 = swap(v6,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		v7 = swap(v7,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		v7 = swap(v7,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		v7 = swap(v7,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		v8 = swap(v8,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		v8 = swap(v8,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		v8 = swap(v8,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		v9 = swap(v9,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		v9 = swap(v9,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		v9 = swap(v9,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		vA = swap(vA,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		vA = swap(vA,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		vA = swap(vA,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		vB = swap(vB,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		vB = swap(vB,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		vB = swap(vB,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		vC = swap(vC,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		vC = swap(vC,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		vC = swap(vC,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		vD = swap(vD,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		vD = swap(vD,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		vD = swap(vD,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		vE = swap(vE,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		vE = swap(vE,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		vE = swap(vE,0x01,bfe(laneId,3)^bfe(laneId,0));
+//		vF = swap(vF,0x04,bfe(laneId,3)^bfe(laneId,2));
+//		vF = swap(vF,0x02,bfe(laneId,3)^bfe(laneId,1));
+//		vF = swap(vF,0x01,bfe(laneId,3)^bfe(laneId,0));
+//	}
+//
+//	if( k >= 16 ){
+//		v0 = swap(v0,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		v0 = swap(v0,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		v0 = swap(v0,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		v0 = swap(v0,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		v1 = swap(v1,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		v1 = swap(v1,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		v1 = swap(v1,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		v1 = swap(v1,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		v2 = swap(v2,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		v2 = swap(v2,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		v2 = swap(v2,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		v2 = swap(v2,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		v3 = swap(v3,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		v3 = swap(v3,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		v3 = swap(v3,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		v3 = swap(v3,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		v4 = swap(v4,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		v4 = swap(v4,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		v4 = swap(v4,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		v4 = swap(v4,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		v5 = swap(v5,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		v5 = swap(v5,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		v5 = swap(v5,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		v5 = swap(v5,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		v6 = swap(v6,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		v6 = swap(v6,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		v6 = swap(v6,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		v6 = swap(v6,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		v7 = swap(v7,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		v7 = swap(v7,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		v7 = swap(v7,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		v7 = swap(v7,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		v8 = swap(v8,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		v8 = swap(v8,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		v8 = swap(v8,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		v8 = swap(v8,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		v9 = swap(v9,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		v9 = swap(v9,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		v9 = swap(v9,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		v9 = swap(v9,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		vA = swap(vA,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		vA = swap(vA,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		vA = swap(vA,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		vA = swap(vA,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		vB = swap(vB,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		vB = swap(vB,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		vB = swap(vB,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		vB = swap(vB,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		vC = swap(vC,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		vC = swap(vC,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		vC = swap(vC,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		vC = swap(vC,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		vD = swap(vD,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		vD = swap(vD,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		vD = swap(vD,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		vD = swap(vD,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		vE = swap(vE,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		vE = swap(vE,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		vE = swap(vE,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		vE = swap(vE,0x01,bfe(laneId,4)^bfe(laneId,0));
+//		vF = swap(vF,0x08,bfe(laneId,4)^bfe(laneId,3));
+//		vF = swap(vF,0x04,bfe(laneId,4)^bfe(laneId,2));
+//		vF = swap(vF,0x02,bfe(laneId,4)^bfe(laneId,1));
+//		vF = swap(vF,0x01,bfe(laneId,4)^bfe(laneId,0));
+//	}
+//
+//	laneId = threadIdx.x;
+//	if( k >= 32 ){
+//		v0 = swap(v0,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		v0 = swap(v0,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		v0 = swap(v0,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		v0 = swap(v0,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		v0 = swap(v0,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		v1 = swap(v1,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		v1 = swap(v1,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		v1 = swap(v1,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		v1 = swap(v1,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		v1 = swap(v1,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		v2 = swap(v2,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		v2 = swap(v2,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		v2 = swap(v2,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		v2 = swap(v2,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		v2 = swap(v2,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		v3 = swap(v3,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		v3 = swap(v3,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		v3 = swap(v3,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		v3 = swap(v3,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		v3 = swap(v3,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		v4 = swap(v4,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		v4 = swap(v4,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		v4 = swap(v4,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		v4 = swap(v4,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		v4 = swap(v4,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		v5 = swap(v5,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		v5 = swap(v5,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		v5 = swap(v5,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		v5 = swap(v5,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		v5 = swap(v5,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		v6 = swap(v6,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		v6 = swap(v6,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		v6 = swap(v6,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		v6 = swap(v6,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		v6 = swap(v6,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		v7 = swap(v7,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		v7 = swap(v7,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		v7 = swap(v7,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		v7 = swap(v7,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		v7 = swap(v7,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		v8 = swap(v8,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		v8 = swap(v8,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		v8 = swap(v8,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		v8 = swap(v8,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		v8 = swap(v8,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		v9 = swap(v9,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		v9 = swap(v9,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		v9 = swap(v9,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		v9 = swap(v9,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		v9 = swap(v9,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		vA = swap(vA,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		vA = swap(vA,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		vA = swap(vA,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		vA = swap(vA,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		vA = swap(vA,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		vB = swap(vB,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		vB = swap(vB,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		vB = swap(vB,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		vB = swap(vB,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		vB = swap(vB,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		vC = swap(vC,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		vC = swap(vC,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		vC = swap(vC,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		vC = swap(vC,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		vC = swap(vC,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		vD = swap(vD,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		vD = swap(vD,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		vD = swap(vD,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		vD = swap(vD,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		vD = swap(vD,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		vE = swap(vE,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		vE = swap(vE,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		vE = swap(vE,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		vE = swap(vE,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		vE = swap(vE,0x01,bfe(laneId,5)^bfe(laneId,0));
+//		vF = swap(vF,0x10,bfe(laneId,5)^bfe(laneId,4));
+//		vF = swap(vF,0x08,bfe(laneId,5)^bfe(laneId,3));
+//		vF = swap(vF,0x04,bfe(laneId,5)^bfe(laneId,2));
+//		vF = swap(vF,0x02,bfe(laneId,5)^bfe(laneId,1));
+//		vF = swap(vF,0x01,bfe(laneId,5)^bfe(laneId,0));
+//	}
+
+	sm_vals[threadIdx.x] = v0;
+	sm_vals[threadIdx.x + 256] = v1;
+	sm_vals[threadIdx.x + 512] = v2;
+	sm_vals[threadIdx.x + 768] = v3;
+	sm_vals[threadIdx.x + 1024] = v4;
+	sm_vals[threadIdx.x + 1280] = v5;
+	sm_vals[threadIdx.x + 1536] = v6;
+	sm_vals[threadIdx.x + 1792] = v7;
+	sm_vals[threadIdx.x + 2048] = v8;
+	sm_vals[threadIdx.x + 2304] = v9;
+	sm_vals[threadIdx.x + 2560] = vA;
+	sm_vals[threadIdx.x + 2816] = vB;
+	sm_vals[threadIdx.x + 3072] = vC;
+	sm_vals[threadIdx.x + 3328] = vD;
+	sm_vals[threadIdx.x + 3584] = vE;
+	sm_vals[threadIdx.x + 3840] = vF;
+	__syncthreads();
+//
+	uint32_t i;
+	uint32_t rw = 256;
+	laneId = threadIdx.x & 31;
+	for(uint32_t size = 2048; size > 128; size = size >> 1){//
+		if(threadIdx.x == 0 && blockIdx.x == 0){
+			uint32_t ffs = __ffs(1);
+			printf("Hello(%d)<%d> <%d>\n",rw,size,ffs);
+		}
+		if ( threadIdx.x < rw ){
+			if ( k <= 16 ){
+				i = threadIdx.x;
+				v0 = sm_vals[i]; i += rw;
+				v1 = sm_vals[i]; i += rw;
+				v2 = sm_vals[i]; i += rw;
+				v3 = sm_vals[i]; i += rw;
+				v4 = sm_vals[i]; i += rw;
+				v5 = sm_vals[i]; i += rw;
+				v6 = sm_vals[i]; i += rw;
+				v7 = sm_vals[i]; i += rw;
+				v8 = sm_vals[i]; i += rw;
+				v9 = sm_vals[i]; i += rw;
+				vA = sm_vals[i]; i += rw;
+				vB = sm_vals[i]; i += rw;
+				vC = sm_vals[i]; i += rw;
+				vD = sm_vals[i]; i += rw;
+				vE = sm_vals[i]; i += rw;
+				vF = sm_vals[i];
+
+				v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+				v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+				v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+				v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+				v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+				v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
+				v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+				v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
+				v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+				v9 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v9, k),v9);
+				vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
+				vB = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vB, k),vB);
+				vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
+				vD = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vD, k),vD);
+				vE = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vE, k),vE);
+				vF = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vF, k),vF);
+
+				v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+				v2 = (threadIdx.x & k) == 0 ? v2 : v3;
+				v4 = (threadIdx.x & k) == 0 ? v4 : v5;
+				v6 = (threadIdx.x & k) == 0 ? v6 : v7;
+				v8 = (threadIdx.x & k) == 0 ? v8 : v9;
+				vA = (threadIdx.x & k) == 0 ? vA : vB;
+				vC = (threadIdx.x & k) == 0 ? vC : vD;
+				vE = (threadIdx.x & k) == 0 ? vE : vF;
+
+				i = threadIdx.x;
+				sm_vals[i] = v0; i += rw;
+				sm_vals[i] = v2; i += rw;
+				sm_vals[i] = v4; i += rw;
+				sm_vals[i] = v6; i += rw;
+				sm_vals[i] = v8; i += rw;
+				sm_vals[i] = vA; i += rw;
+				sm_vals[i] = vC; i += rw;
+				sm_vals[i] = vE;
+			}
+		}
+		__syncthreads();
+
+		rw = rw >> 1;
+		if (threadIdx.x < rw){
+			i = threadIdx.x;
+			v0 = sm_vals[i]; i += rw;
+			v1 = sm_vals[i]; i += rw;
+			v2 = sm_vals[i]; i += rw;
+			v3 = sm_vals[i]; i += rw;
+			v4 = sm_vals[i]; i += rw;
+			v5 = sm_vals[i]; i += rw;
+			v6 = sm_vals[i]; i += rw;
+			v7 = sm_vals[i]; i += rw;
+			v8 = sm_vals[i]; i += rw;
+			v9 = sm_vals[i]; i += rw;
+			vA = sm_vals[i]; i += rw;
+			vB = sm_vals[i]; i += rw;
+			vC = sm_vals[i]; i += rw;
+			vD = sm_vals[i]; i += rw;
+			vE = sm_vals[i]; i += rw;
+			vF = sm_vals[i];
+
+			laneId = threadIdx.x;
+			level = k >> 1;
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+				v1 = swap(v1,step,dir);
+				v2 = swap(v2,step,dir);
+				v3 = swap(v3,step,dir);
+				v4 = swap(v4,step,dir);
+				v5 = swap(v5,step,dir);
+				v6 = swap(v6,step,dir);
+				v7 = swap(v7,step,dir);
+				v8 = swap(v8,step,dir);
+				v9 = swap(v9,step,dir);
+				vA = swap(vA,step,dir);
+				vB = swap(vB,step,dir);
+				vC = swap(vC,step,dir);
+				vD = swap(vD,step,dir);
+				vE = swap(vE,step,dir);
+				vF = swap(vF,step,dir);
+			}
+
+			i = threadIdx.x;
+			sm_vals[i] = v0; i += rw;
+			sm_vals[i] = v1; i += rw;
+			sm_vals[i] = v2; i += rw;
+			sm_vals[i] = v3; i += rw;
+			sm_vals[i] = v4; i += rw;
+			sm_vals[i] = v5; i += rw;
+			sm_vals[i] = v6; i += rw;
+			sm_vals[i] = v7; i += rw;
+			sm_vals[i] = v8; i += rw;
+			sm_vals[i] = v9; i += rw;
+			sm_vals[i] = vA; i += rw;
+			sm_vals[i] = vB; i += rw;
+			sm_vals[i] = vC; i += rw;
+			sm_vals[i] = vD; i += rw;
+			sm_vals[i] = vE; i += rw;
+			sm_vals[i] = vF;
+		}
+		__syncthreads();
 	}
 
-	if( k >= 8 ){//8
-		v0 = swap(v0,0x04,bfe(laneId,3)^bfe(laneId,2));
-		v0 = swap(v0,0x02,bfe(laneId,3)^bfe(laneId,1));
-		v0 = swap(v0,0x01,bfe(laneId,3)^bfe(laneId,0));
-		v1 = swap(v1,0x04,bfe(laneId,3)^bfe(laneId,2));
-		v1 = swap(v1,0x02,bfe(laneId,3)^bfe(laneId,1));
-		v1 = swap(v1,0x01,bfe(laneId,3)^bfe(laneId,0));
-		v2 = swap(v2,0x04,bfe(laneId,3)^bfe(laneId,2));
-		v2 = swap(v2,0x02,bfe(laneId,3)^bfe(laneId,1));
-		v2 = swap(v2,0x01,bfe(laneId,3)^bfe(laneId,0));
-		v3 = swap(v3,0x04,bfe(laneId,3)^bfe(laneId,2));
-		v3 = swap(v3,0x02,bfe(laneId,3)^bfe(laneId,1));
-		v3 = swap(v3,0x01,bfe(laneId,3)^bfe(laneId,0));
-		v4 = swap(v4,0x04,bfe(laneId,3)^bfe(laneId,2));
-		v4 = swap(v4,0x02,bfe(laneId,3)^bfe(laneId,1));
-		v4 = swap(v4,0x01,bfe(laneId,3)^bfe(laneId,0));
-		v5 = swap(v5,0x04,bfe(laneId,3)^bfe(laneId,2));
-		v5 = swap(v5,0x02,bfe(laneId,3)^bfe(laneId,1));
-		v5 = swap(v5,0x01,bfe(laneId,3)^bfe(laneId,0));
-		v6 = swap(v6,0x04,bfe(laneId,3)^bfe(laneId,2));
-		v6 = swap(v6,0x02,bfe(laneId,3)^bfe(laneId,1));
-		v6 = swap(v6,0x01,bfe(laneId,3)^bfe(laneId,0));
-		v7 = swap(v7,0x04,bfe(laneId,3)^bfe(laneId,2));
-		v7 = swap(v7,0x02,bfe(laneId,3)^bfe(laneId,1));
-		v7 = swap(v7,0x01,bfe(laneId,3)^bfe(laneId,0));
-		v8 = swap(v8,0x04,bfe(laneId,3)^bfe(laneId,2));
-		v8 = swap(v8,0x02,bfe(laneId,3)^bfe(laneId,1));
-		v8 = swap(v8,0x01,bfe(laneId,3)^bfe(laneId,0));
-		v9 = swap(v9,0x04,bfe(laneId,3)^bfe(laneId,2));
-		v9 = swap(v9,0x02,bfe(laneId,3)^bfe(laneId,1));
-		v9 = swap(v9,0x01,bfe(laneId,3)^bfe(laneId,0));
-		vA = swap(vA,0x04,bfe(laneId,3)^bfe(laneId,2));
-		vA = swap(vA,0x02,bfe(laneId,3)^bfe(laneId,1));
-		vA = swap(vA,0x01,bfe(laneId,3)^bfe(laneId,0));
-		vB = swap(vB,0x04,bfe(laneId,3)^bfe(laneId,2));
-		vB = swap(vB,0x02,bfe(laneId,3)^bfe(laneId,1));
-		vB = swap(vB,0x01,bfe(laneId,3)^bfe(laneId,0));
-		vC = swap(vC,0x04,bfe(laneId,3)^bfe(laneId,2));
-		vC = swap(vC,0x02,bfe(laneId,3)^bfe(laneId,1));
-		vC = swap(vC,0x01,bfe(laneId,3)^bfe(laneId,0));
-		vD = swap(vD,0x04,bfe(laneId,3)^bfe(laneId,2));
-		vD = swap(vD,0x02,bfe(laneId,3)^bfe(laneId,1));
-		vD = swap(vD,0x01,bfe(laneId,3)^bfe(laneId,0));
-		vE = swap(vE,0x04,bfe(laneId,3)^bfe(laneId,2));
-		vE = swap(vE,0x02,bfe(laneId,3)^bfe(laneId,1));
-		vE = swap(vE,0x01,bfe(laneId,3)^bfe(laneId,0));
-		vF = swap(vF,0x04,bfe(laneId,3)^bfe(laneId,2));
-		vF = swap(vF,0x02,bfe(laneId,3)^bfe(laneId,1));
-		vF = swap(vF,0x01,bfe(laneId,3)^bfe(laneId,0));
-	}
+	ovec[goffset] = sm_vals[threadIdx.x];
+//	ovec[goffset + 256] = sm_vals[threadIdx.x + 256];
+//	ovec[goffset + 512] = sm_vals[threadIdx.x + 512];
+//	ovec[goffset + 768] = sm_vals[threadIdx.x + 768];
+//	ovec[goffset + 1024] = sm_vals[threadIdx.x + 1024];
+//	ovec[goffset + 1280] = sm_vals[threadIdx.x + 1280];
+//	ovec[goffset + 1536] = sm_vals[threadIdx.x + 1536];
+//	ovec[goffset + 1792] = sm_vals[threadIdx.x + 1792];
+}
 
-	if( k >= 16 ){
-		v0 = swap(v0,0x08,bfe(laneId,4)^bfe(laneId,3));
-		v0 = swap(v0,0x04,bfe(laneId,4)^bfe(laneId,2));
-		v0 = swap(v0,0x02,bfe(laneId,4)^bfe(laneId,1));
-		v0 = swap(v0,0x01,bfe(laneId,4)^bfe(laneId,0));
-		v1 = swap(v1,0x08,bfe(laneId,4)^bfe(laneId,3));
-		v1 = swap(v1,0x04,bfe(laneId,4)^bfe(laneId,2));
-		v1 = swap(v1,0x02,bfe(laneId,4)^bfe(laneId,1));
-		v1 = swap(v1,0x01,bfe(laneId,4)^bfe(laneId,0));
-		v2 = swap(v2,0x08,bfe(laneId,4)^bfe(laneId,3));
-		v2 = swap(v2,0x04,bfe(laneId,4)^bfe(laneId,2));
-		v2 = swap(v2,0x02,bfe(laneId,4)^bfe(laneId,1));
-		v2 = swap(v2,0x01,bfe(laneId,4)^bfe(laneId,0));
-		v3 = swap(v3,0x08,bfe(laneId,4)^bfe(laneId,3));
-		v3 = swap(v3,0x04,bfe(laneId,4)^bfe(laneId,2));
-		v3 = swap(v3,0x02,bfe(laneId,4)^bfe(laneId,1));
-		v3 = swap(v3,0x01,bfe(laneId,4)^bfe(laneId,0));
-		v4 = swap(v4,0x08,bfe(laneId,4)^bfe(laneId,3));
-		v4 = swap(v4,0x04,bfe(laneId,4)^bfe(laneId,2));
-		v4 = swap(v4,0x02,bfe(laneId,4)^bfe(laneId,1));
-		v4 = swap(v4,0x01,bfe(laneId,4)^bfe(laneId,0));
-		v5 = swap(v5,0x08,bfe(laneId,4)^bfe(laneId,3));
-		v5 = swap(v5,0x04,bfe(laneId,4)^bfe(laneId,2));
-		v5 = swap(v5,0x02,bfe(laneId,4)^bfe(laneId,1));
-		v5 = swap(v5,0x01,bfe(laneId,4)^bfe(laneId,0));
-		v6 = swap(v6,0x08,bfe(laneId,4)^bfe(laneId,3));
-		v6 = swap(v6,0x04,bfe(laneId,4)^bfe(laneId,2));
-		v6 = swap(v6,0x02,bfe(laneId,4)^bfe(laneId,1));
-		v6 = swap(v6,0x01,bfe(laneId,4)^bfe(laneId,0));
-		v7 = swap(v7,0x08,bfe(laneId,4)^bfe(laneId,3));
-		v7 = swap(v7,0x04,bfe(laneId,4)^bfe(laneId,2));
-		v7 = swap(v7,0x02,bfe(laneId,4)^bfe(laneId,1));
-		v7 = swap(v7,0x01,bfe(laneId,4)^bfe(laneId,0));
-		v8 = swap(v8,0x08,bfe(laneId,4)^bfe(laneId,3));
-		v8 = swap(v8,0x04,bfe(laneId,4)^bfe(laneId,2));
-		v8 = swap(v8,0x02,bfe(laneId,4)^bfe(laneId,1));
-		v8 = swap(v8,0x01,bfe(laneId,4)^bfe(laneId,0));
-		v9 = swap(v9,0x08,bfe(laneId,4)^bfe(laneId,3));
-		v9 = swap(v9,0x04,bfe(laneId,4)^bfe(laneId,2));
-		v9 = swap(v9,0x02,bfe(laneId,4)^bfe(laneId,1));
-		v9 = swap(v9,0x01,bfe(laneId,4)^bfe(laneId,0));
-		vA = swap(vA,0x08,bfe(laneId,4)^bfe(laneId,3));
-		vA = swap(vA,0x04,bfe(laneId,4)^bfe(laneId,2));
-		vA = swap(vA,0x02,bfe(laneId,4)^bfe(laneId,1));
-		vA = swap(vA,0x01,bfe(laneId,4)^bfe(laneId,0));
-		vB = swap(vB,0x08,bfe(laneId,4)^bfe(laneId,3));
-		vB = swap(vB,0x04,bfe(laneId,4)^bfe(laneId,2));
-		vB = swap(vB,0x02,bfe(laneId,4)^bfe(laneId,1));
-		vB = swap(vB,0x01,bfe(laneId,4)^bfe(laneId,0));
-		vC = swap(vC,0x08,bfe(laneId,4)^bfe(laneId,3));
-		vC = swap(vC,0x04,bfe(laneId,4)^bfe(laneId,2));
-		vC = swap(vC,0x02,bfe(laneId,4)^bfe(laneId,1));
-		vC = swap(vC,0x01,bfe(laneId,4)^bfe(laneId,0));
-		vD = swap(vD,0x08,bfe(laneId,4)^bfe(laneId,3));
-		vD = swap(vD,0x04,bfe(laneId,4)^bfe(laneId,2));
-		vD = swap(vD,0x02,bfe(laneId,4)^bfe(laneId,1));
-		vD = swap(vD,0x01,bfe(laneId,4)^bfe(laneId,0));
-		vE = swap(vE,0x08,bfe(laneId,4)^bfe(laneId,3));
-		vE = swap(vE,0x04,bfe(laneId,4)^bfe(laneId,2));
-		vE = swap(vE,0x02,bfe(laneId,4)^bfe(laneId,1));
-		vE = swap(vE,0x01,bfe(laneId,4)^bfe(laneId,0));
-		vF = swap(vF,0x08,bfe(laneId,4)^bfe(laneId,3));
-		vF = swap(vF,0x04,bfe(laneId,4)^bfe(laneId,2));
-		vF = swap(vF,0x02,bfe(laneId,4)^bfe(laneId,1));
-		vF = swap(vF,0x01,bfe(laneId,4)^bfe(laneId,0));
-	}
-	laneId = threadIdx.x;
+template<class T, uint32_t bsize>
+__global__ void scores_topk8(T *ivec, T *ovec, uint64_t k){
+	__shared__ T sm_vals[4096];
+	uint32_t goffset;
+	T v0, v1, v2, v3, v4, v5, v6, v7;
+	T v8, v9, vA, vB, vC, vD, vE, vF;
+	if(threadIdx.x == 0 && blockIdx.x == 0) printf("scores_topk8\n");
 
-	if( k >= 32 ){
-		v0 = swap(v0,0x10,bfe(laneId,5)^bfe(laneId,4));
-		v0 = swap(v0,0x08,bfe(laneId,5)^bfe(laneId,3));
-		v0 = swap(v0,0x04,bfe(laneId,5)^bfe(laneId,2));
-		v0 = swap(v0,0x02,bfe(laneId,5)^bfe(laneId,1));
-		v0 = swap(v0,0x01,bfe(laneId,5)^bfe(laneId,0));
-		v1 = swap(v1,0x10,bfe(laneId,5)^bfe(laneId,4));
-		v1 = swap(v1,0x08,bfe(laneId,5)^bfe(laneId,3));
-		v1 = swap(v1,0x04,bfe(laneId,5)^bfe(laneId,2));
-		v1 = swap(v1,0x02,bfe(laneId,5)^bfe(laneId,1));
-		v1 = swap(v1,0x01,bfe(laneId,5)^bfe(laneId,0));
-		v2 = swap(v2,0x10,bfe(laneId,5)^bfe(laneId,4));
-		v2 = swap(v2,0x08,bfe(laneId,5)^bfe(laneId,3));
-		v2 = swap(v2,0x04,bfe(laneId,5)^bfe(laneId,2));
-		v2 = swap(v2,0x02,bfe(laneId,5)^bfe(laneId,1));
-		v2 = swap(v2,0x01,bfe(laneId,5)^bfe(laneId,0));
-		v3 = swap(v3,0x10,bfe(laneId,5)^bfe(laneId,4));
-		v3 = swap(v3,0x08,bfe(laneId,5)^bfe(laneId,3));
-		v3 = swap(v3,0x04,bfe(laneId,5)^bfe(laneId,2));
-		v3 = swap(v3,0x02,bfe(laneId,5)^bfe(laneId,1));
-		v3 = swap(v3,0x01,bfe(laneId,5)^bfe(laneId,0));
-		v4 = swap(v4,0x10,bfe(laneId,5)^bfe(laneId,4));
-		v4 = swap(v4,0x08,bfe(laneId,5)^bfe(laneId,3));
-		v4 = swap(v4,0x04,bfe(laneId,5)^bfe(laneId,2));
-		v4 = swap(v4,0x02,bfe(laneId,5)^bfe(laneId,1));
-		v4 = swap(v4,0x01,bfe(laneId,5)^bfe(laneId,0));
-		v5 = swap(v5,0x10,bfe(laneId,5)^bfe(laneId,4));
-		v5 = swap(v5,0x08,bfe(laneId,5)^bfe(laneId,3));
-		v5 = swap(v5,0x04,bfe(laneId,5)^bfe(laneId,2));
-		v5 = swap(v5,0x02,bfe(laneId,5)^bfe(laneId,1));
-		v5 = swap(v5,0x01,bfe(laneId,5)^bfe(laneId,0));
-		v6 = swap(v6,0x10,bfe(laneId,5)^bfe(laneId,4));
-		v6 = swap(v6,0x08,bfe(laneId,5)^bfe(laneId,3));
-		v6 = swap(v6,0x04,bfe(laneId,5)^bfe(laneId,2));
-		v6 = swap(v6,0x02,bfe(laneId,5)^bfe(laneId,1));
-		v6 = swap(v6,0x01,bfe(laneId,5)^bfe(laneId,0));
-		v7 = swap(v7,0x10,bfe(laneId,5)^bfe(laneId,4));
-		v7 = swap(v7,0x08,bfe(laneId,5)^bfe(laneId,3));
-		v7 = swap(v7,0x04,bfe(laneId,5)^bfe(laneId,2));
-		v7 = swap(v7,0x02,bfe(laneId,5)^bfe(laneId,1));
-		v7 = swap(v7,0x01,bfe(laneId,5)^bfe(laneId,0));
-		v8 = swap(v8,0x10,bfe(laneId,5)^bfe(laneId,4));
-		v8 = swap(v8,0x08,bfe(laneId,5)^bfe(laneId,3));
-		v8 = swap(v8,0x04,bfe(laneId,5)^bfe(laneId,2));
-		v8 = swap(v8,0x02,bfe(laneId,5)^bfe(laneId,1));
-		v8 = swap(v8,0x01,bfe(laneId,5)^bfe(laneId,0));
-		v9 = swap(v9,0x10,bfe(laneId,5)^bfe(laneId,4));
-		v9 = swap(v9,0x08,bfe(laneId,5)^bfe(laneId,3));
-		v9 = swap(v9,0x04,bfe(laneId,5)^bfe(laneId,2));
-		v9 = swap(v9,0x02,bfe(laneId,5)^bfe(laneId,1));
-		v9 = swap(v9,0x01,bfe(laneId,5)^bfe(laneId,0));
-		vA = swap(vA,0x10,bfe(laneId,5)^bfe(laneId,4));
-		vA = swap(vA,0x08,bfe(laneId,5)^bfe(laneId,3));
-		vA = swap(vA,0x04,bfe(laneId,5)^bfe(laneId,2));
-		vA = swap(vA,0x02,bfe(laneId,5)^bfe(laneId,1));
-		vA = swap(vA,0x01,bfe(laneId,5)^bfe(laneId,0));
-		vB = swap(vB,0x10,bfe(laneId,5)^bfe(laneId,4));
-		vB = swap(vB,0x08,bfe(laneId,5)^bfe(laneId,3));
-		vB = swap(vB,0x04,bfe(laneId,5)^bfe(laneId,2));
-		vB = swap(vB,0x02,bfe(laneId,5)^bfe(laneId,1));
-		vB = swap(vB,0x01,bfe(laneId,5)^bfe(laneId,0));
-		vC = swap(vC,0x10,bfe(laneId,5)^bfe(laneId,4));
-		vC = swap(vC,0x08,bfe(laneId,5)^bfe(laneId,3));
-		vC = swap(vC,0x04,bfe(laneId,5)^bfe(laneId,2));
-		vC = swap(vC,0x02,bfe(laneId,5)^bfe(laneId,1));
-		vC = swap(vC,0x01,bfe(laneId,5)^bfe(laneId,0));
-		vD = swap(vD,0x10,bfe(laneId,5)^bfe(laneId,4));
-		vD = swap(vD,0x08,bfe(laneId,5)^bfe(laneId,3));
-		vD = swap(vD,0x04,bfe(laneId,5)^bfe(laneId,2));
-		vD = swap(vD,0x02,bfe(laneId,5)^bfe(laneId,1));
-		vD = swap(vD,0x01,bfe(laneId,5)^bfe(laneId,0));
-		vE = swap(vE,0x10,bfe(laneId,5)^bfe(laneId,4));
-		vE = swap(vE,0x08,bfe(laneId,5)^bfe(laneId,3));
-		vE = swap(vE,0x04,bfe(laneId,5)^bfe(laneId,2));
-		vE = swap(vE,0x02,bfe(laneId,5)^bfe(laneId,1));
-		vE = swap(vE,0x01,bfe(laneId,5)^bfe(laneId,0));
-		vF = swap(vF,0x10,bfe(laneId,5)^bfe(laneId,4));
-		vF = swap(vF,0x08,bfe(laneId,5)^bfe(laneId,3));
-		vF = swap(vF,0x04,bfe(laneId,5)^bfe(laneId,2));
-		vF = swap(vF,0x02,bfe(laneId,5)^bfe(laneId,1));
-		vF = swap(vF,0x01,bfe(laneId,5)^bfe(laneId,0));
+	goffset = (blockIdx.x << 12) + threadIdx.x;
+	v0 = ivec[goffset];
+	v1 = ivec[goffset + 256];
+	v2 = ivec[goffset + 512];
+	v3 = ivec[goffset + 768];
+	v4 = ivec[goffset + 1024];
+	v5 = ivec[goffset + 1280];
+	v6 = ivec[goffset + 1536];
+	v7 = ivec[goffset + 1792];
+	v8 = ivec[goffset + 2048];
+	v9 = ivec[goffset + 2304];
+	vA = ivec[goffset + 2560];
+	vB = ivec[goffset + 2816];
+	vC = ivec[goffset + 3072];
+	vD = ivec[goffset + 3328];
+	vE = ivec[goffset + 3584];
+	vF = ivec[goffset + 3840];
+
+	uint32_t laneId = threadIdx.x;
+	uint32_t level, step, dir;
+	for(level = 1; level < k; level = level << 1){
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+			v1 = swap(v1,step,dir);
+			v2 = swap(v2,step,dir);
+			v3 = swap(v3,step,dir);
+			v4 = swap(v4,step,dir);
+			v5 = swap(v5,step,dir);
+			v6 = swap(v6,step,dir);
+			v7 = swap(v7,step,dir);
+			v8 = swap(v8,step,dir);
+			v9 = swap(v9,step,dir);
+			vA = swap(vA,step,dir);
+			vB = swap(vB,step,dir);
+			vC = swap(vC,step,dir);
+			vD = swap(vD,step,dir);
+			vE = swap(vE,step,dir);
+			vF = swap(vF,step,dir);
+		}
 	}
 
 	sm_vals[threadIdx.x] = v0;
@@ -1445,8 +1781,324 @@ __global__ void scores_topk7(T *ivec, T *ovec, uint64_t k){
 	sm_vals[threadIdx.x + 3584] = vE;
 	sm_vals[threadIdx.x + 3840] = vF;
 	__syncthreads();
+//
 
+	//merge-rebuild//
+	uint32_t i;
+	uint32_t rw = 256;
+	laneId = threadIdx.x & 31;
+	for(uint32_t size = 2048; size > 128; size = size >> 1){//
+		if(threadIdx.x == 0 && blockIdx.x == 0){
+			uint32_t ffs = __ffs(1);
+			printf("Hello(%d)<%d> <%d>\n",rw,size,ffs);
+		}
+		if ( threadIdx.x < rw ){
+			if ( k <= 16 ){
+				i = threadIdx.x;
+				v0 = sm_vals[i]; i += rw;
+				v1 = sm_vals[i]; i += rw;
+				v2 = sm_vals[i]; i += rw;
+				v3 = sm_vals[i]; i += rw;
+				v4 = sm_vals[i]; i += rw;
+				v5 = sm_vals[i]; i += rw;
+				v6 = sm_vals[i]; i += rw;
+				v7 = sm_vals[i]; i += rw;
+				v8 = sm_vals[i]; i += rw;
+				v9 = sm_vals[i]; i += rw;
+				vA = sm_vals[i]; i += rw;
+				vB = sm_vals[i]; i += rw;
+				vC = sm_vals[i]; i += rw;
+				vD = sm_vals[i]; i += rw;
+				vE = sm_vals[i]; i += rw;
+				vF = sm_vals[i];
 
+				v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+				v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+				v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+				v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+				v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+				v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
+				v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+				v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
+				v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+				v9 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v9, k),v9);
+				vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
+				vB = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vB, k),vB);
+				vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
+				vD = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vD, k),vD);
+				vE = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vE, k),vE);
+				vF = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vF, k),vF);
+
+				v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+				v2 = (threadIdx.x & k) == 0 ? v2 : v3;
+				v4 = (threadIdx.x & k) == 0 ? v4 : v5;
+				v6 = (threadIdx.x & k) == 0 ? v6 : v7;
+				v8 = (threadIdx.x & k) == 0 ? v8 : v9;
+				vA = (threadIdx.x & k) == 0 ? vA : vB;
+				vC = (threadIdx.x & k) == 0 ? vC : vD;
+				vE = (threadIdx.x & k) == 0 ? vE : vF;
+
+				i = threadIdx.x;
+				sm_vals[i] = v0; i += rw;
+				sm_vals[i] = v2; i += rw;
+				sm_vals[i] = v4; i += rw;
+				sm_vals[i] = v6; i += rw;
+				sm_vals[i] = v8; i += rw;
+				sm_vals[i] = vA; i += rw;
+				sm_vals[i] = vC; i += rw;
+				sm_vals[i] = vE;
+			}
+		}
+		__syncthreads();
+
+		rw = rw >> 1;
+		if (threadIdx.x < rw){
+			i = threadIdx.x;
+			v0 = sm_vals[i]; i += rw;
+			v1 = sm_vals[i]; i += rw;
+			v2 = sm_vals[i]; i += rw;
+			v3 = sm_vals[i]; i += rw;
+			v4 = sm_vals[i]; i += rw;
+			v5 = sm_vals[i]; i += rw;
+			v6 = sm_vals[i]; i += rw;
+			v7 = sm_vals[i]; i += rw;
+			v8 = sm_vals[i]; i += rw;
+			v9 = sm_vals[i]; i += rw;
+			vA = sm_vals[i]; i += rw;
+			vB = sm_vals[i]; i += rw;
+			vC = sm_vals[i]; i += rw;
+			vD = sm_vals[i]; i += rw;
+			vE = sm_vals[i]; i += rw;
+			vF = sm_vals[i];
+
+			laneId = threadIdx.x;
+			level = k >> 1;
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+				v1 = swap(v1,step,dir);
+				v2 = swap(v2,step,dir);
+				v3 = swap(v3,step,dir);
+				v4 = swap(v4,step,dir);
+				v5 = swap(v5,step,dir);
+				v6 = swap(v6,step,dir);
+				v7 = swap(v7,step,dir);
+				v8 = swap(v8,step,dir);
+				v9 = swap(v9,step,dir);
+				vA = swap(vA,step,dir);
+				vB = swap(vB,step,dir);
+				vC = swap(vC,step,dir);
+				vD = swap(vD,step,dir);
+				vE = swap(vE,step,dir);
+				vF = swap(vF,step,dir);
+			}
+
+			i = threadIdx.x;
+			sm_vals[i] = v0; i += rw;
+			sm_vals[i] = v1; i += rw;
+			sm_vals[i] = v2; i += rw;
+			sm_vals[i] = v3; i += rw;
+			sm_vals[i] = v4; i += rw;
+			sm_vals[i] = v5; i += rw;
+			sm_vals[i] = v6; i += rw;
+			sm_vals[i] = v7; i += rw;
+			sm_vals[i] = v8; i += rw;
+			sm_vals[i] = v9; i += rw;
+			sm_vals[i] = vA; i += rw;
+			sm_vals[i] = vB; i += rw;
+			sm_vals[i] = vC; i += rw;
+			sm_vals[i] = vD; i += rw;
+			sm_vals[i] = vE; i += rw;
+			sm_vals[i] = vF;
+		}
+		__syncthreads();
+	}
+
+//	if( threadIdx.x < 32 ){
+//		v0 = sm_vals[threadIdx.x];
+//		v1 = sm_vals[threadIdx.x+32];
+//		v2 = sm_vals[threadIdx.x+64];
+//		v3 = sm_vals[threadIdx.x+96];
+//		v4 = sm_vals[threadIdx.x+128];
+//		v5 = sm_vals[threadIdx.x+160];
+//		v6 = sm_vals[threadIdx.x+192];
+//		v7 = sm_vals[threadIdx.x+224];
+//
+//		if( k <= 16 ){
+//			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+//			v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+//			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+//			v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+//			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+//			v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
+//			v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+//			v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
+//
+//			v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+//			v2 = (threadIdx.x & k) == 0 ? v2 : v3;
+//			v4 = (threadIdx.x & k) == 0 ? v4 : v5;
+//			v6 = (threadIdx.x & k) == 0 ? v6 : v7;
+//
+//			sm_vals[threadIdx.x] = v0;
+//			sm_vals[threadIdx.x+32] = v2;
+//			sm_vals[threadIdx.x+64] = v4;
+//			sm_vals[threadIdx.x+96] = v6;
+//		}
+//	}
+	__syncthreads();
+	//if(threadIdx.x < 128) ovec[goffset] = sm_vals[threadIdx.x];
+	ovec[goffset] = sm_vals[threadIdx.x];
+}
+
+template<class T, uint32_t bsize>
+__global__ void scores_topk9(T *ivec, T *ovec, uint64_t k){
+	__shared__ T sm_vals[4096];
+	uint32_t goffset;
+	T v0, v1, v2, v3, v4, v5, v6, v7;
+	T v8, v9, vA, vB, vC, vD, vE, vF;
+	T tt;
+	if(threadIdx.x == 0 && blockIdx.x == 0) printf("scores_topk9\n");
+
+	goffset = (blockIdx.x << 12) + threadIdx.x;
+	v0 = ivec[goffset];
+	v1 = ivec[goffset + 256];
+	v2 = ivec[goffset + 512];
+	v3 = ivec[goffset + 768];
+	v4 = ivec[goffset + 1024];
+	v5 = ivec[goffset + 1280];
+	v6 = ivec[goffset + 1536];
+	v7 = ivec[goffset + 1792];
+	v8 = ivec[goffset + 2048];
+	v9 = ivec[goffset + 2304];
+	vA = ivec[goffset + 2560];
+	vB = ivec[goffset + 2816];
+	vC = ivec[goffset + 3072];
+	vD = ivec[goffset + 3328];
+	vE = ivec[goffset + 3584];
+	vF = ivec[goffset + 3840];
+
+	uint32_t laneId = threadIdx.x;
+	uint32_t level, step;
+	int dir;
+	for(level = 1; level < min((uint64_t)32,k); level = level << 1){
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+			v1 = swap(v1,step,dir);
+			v2 = swap(v2,step,dir);
+			v3 = swap(v3,step,dir);
+			v4 = swap(v4,step,dir);
+			v5 = swap(v5,step,dir);
+			v6 = swap(v6,step,dir);
+			v7 = swap(v7,step,dir);
+			v8 = swap(v8,step,dir);
+			v9 = swap(v9,step,dir);
+			vA = swap(vA,step,dir);
+			vB = swap(vB,step,dir);
+			vC = swap(vC,step,dir);
+			vD = swap(vD,step,dir);
+			vE = swap(vE,step,dir);
+			vF = swap(vF,step,dir);
+		}
+	}
+
+	sm_vals[threadIdx.x] = v0;
+	sm_vals[threadIdx.x + 256] = v1;
+	sm_vals[threadIdx.x + 512] = v2;
+	sm_vals[threadIdx.x + 768] = v3;
+	sm_vals[threadIdx.x + 1024] = v4;
+	sm_vals[threadIdx.x + 1280] = v5;
+	sm_vals[threadIdx.x + 1536] = v6;
+	sm_vals[threadIdx.x + 1792] = v7;
+	sm_vals[threadIdx.x + 2048] = v8;
+	sm_vals[threadIdx.x + 2304] = v9;
+	sm_vals[threadIdx.x + 2560] = vA;
+	sm_vals[threadIdx.x + 2816] = vB;
+	sm_vals[threadIdx.x + 3072] = vC;
+	sm_vals[threadIdx.x + 3328] = vD;
+	sm_vals[threadIdx.x + 3584] = vE;
+	sm_vals[threadIdx.x + 3840] = vF;
+	__syncthreads();
+///////////////////////////////////////
+	uint32_t low;
+	uint32_t i, loffset;
+	bool reverse, sp;
+	for(level = 32; level < k; level = level << 1){
+		if(level == 128) break;
+		dir = level << 1;
+		//////////////
+		//up to 128//
+		for(step = level; step > 16; step = step >> 1){
+			low = threadIdx.x & (step - 1);
+			i = (threadIdx.x << 1) - low;
+			reverse = ((dir & i) == 0);
+			for(loffset = 0; loffset < 4096; loffset+=512){
+				v0 = sm_vals[loffset+i];
+				v1 = sm_vals[loffset+i+step];
+				sp = reverse ^ (v0 < v1);
+				tt = sp ? v1 : v0; v1 = sp ? v0 : v1; v0 = tt;
+				sm_vals[loffset+i] = v0;
+				sm_vals[loffset+i+step] = v1;
+			}
+			__syncthreads();
+		}
+//
+//		break;
+		v0 = sm_vals[threadIdx.x];
+		v1 = sm_vals[threadIdx.x + 256];
+		v2 = sm_vals[threadIdx.x + 512];
+		v3 = sm_vals[threadIdx.x + 768];
+		v4 = sm_vals[threadIdx.x + 1024];
+		v5 = sm_vals[threadIdx.x + 1280];
+		v6 = sm_vals[threadIdx.x + 1536];
+		v7 = sm_vals[threadIdx.x + 1792];
+		v8 = sm_vals[threadIdx.x + 2048];
+		v9 = sm_vals[threadIdx.x + 2304];
+		vA = sm_vals[threadIdx.x + 2560];
+		vB = sm_vals[threadIdx.x + 2816];
+		vC = sm_vals[threadIdx.x + 3072];
+		vD = sm_vals[threadIdx.x + 3328];
+		vE = sm_vals[threadIdx.x + 3584];
+		vF = sm_vals[threadIdx.x + 3840];
+
+		for(step = 16; step > 0; step = step >> 1){
+			dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+			v1 = swap(v1,step,dir);
+			v2 = swap(v2,step,dir);
+			v3 = swap(v3,step,dir);
+			v4 = swap(v4,step,dir);
+			v5 = swap(v5,step,dir);
+			v6 = swap(v6,step,dir);
+			v7 = swap(v7,step,dir);
+			v8 = swap(v8,step,dir);
+			v9 = swap(v9,step,dir);
+			vA = swap(vA,step,dir);
+			vB = swap(vB,step,dir);
+			vC = swap(vC,step,dir);
+			vD = swap(vD,step,dir);
+			vE = swap(vE,step,dir);
+			vF = swap(vF,step,dir);
+		}
+//
+		sm_vals[threadIdx.x] = v0;
+		sm_vals[threadIdx.x + 256] = v1;
+		sm_vals[threadIdx.x + 512] = v2;
+		sm_vals[threadIdx.x + 768] = v3;
+		sm_vals[threadIdx.x + 1024] = v4;
+		sm_vals[threadIdx.x + 1280] = v5;
+		sm_vals[threadIdx.x + 1536] = v6;
+		sm_vals[threadIdx.x + 1792] = v7;
+		sm_vals[threadIdx.x + 2048] = v8;
+		sm_vals[threadIdx.x + 2304] = v9;
+		sm_vals[threadIdx.x + 2560] = vA;
+		sm_vals[threadIdx.x + 2816] = vB;
+		sm_vals[threadIdx.x + 3072] = vC;
+		sm_vals[threadIdx.x + 3328] = vD;
+		sm_vals[threadIdx.x + 3584] = vE;
+		sm_vals[threadIdx.x + 3840] = vF;
+		__syncthreads();
+	}
 
 	ovec[goffset] = sm_vals[threadIdx.x];
 	ovec[goffset + 256] = sm_vals[threadIdx.x + 256];
@@ -1456,6 +2108,14 @@ __global__ void scores_topk7(T *ivec, T *ovec, uint64_t k){
 	ovec[goffset + 1280] = sm_vals[threadIdx.x + 1280];
 	ovec[goffset + 1536] = sm_vals[threadIdx.x + 1536];
 	ovec[goffset + 1792] = sm_vals[threadIdx.x + 1792];
+	ovec[goffset + 2048] = sm_vals[threadIdx.x + 2048];
+	ovec[goffset + 2304] = sm_vals[threadIdx.x + 2304];
+	ovec[goffset + 2560] = sm_vals[threadIdx.x + 2560];
+	ovec[goffset + 2816] = sm_vals[threadIdx.x + 2816];
+	ovec[goffset + 3072] = sm_vals[threadIdx.x + 3072];
+	ovec[goffset + 3328] = sm_vals[threadIdx.x + 3328];
+	ovec[goffset + 3584] = sm_vals[threadIdx.x + 3584];
+	ovec[goffset + 3840] = sm_vals[threadIdx.x + 3840];
 }
 
 __global__ void zcopy (const float* __restrict__ src, float* __restrict__ dst, uint64_t len)
@@ -1642,14 +2302,32 @@ void BTA<T,Z>::single_attribute_test(uint64_t k, uint64_t qq){
 	dim3 lsort_block2(block_size2,1,1);
 	dim3 lsort_grid2((this->n-1)/BTA_TUPLES_PER_BLOCK + 1, 1, 1);
 	this->t.start();
-	scores_topk7<T,256><<<lsort_grid2,lsort_block2>>>(this->g_ivec, this->g_ovec,k);
+	scores_topk9<T,256><<<lsort_grid2,lsort_block2>>>(this->g_ivec, this->g_ovec,k);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing local_sort7");
 	this->tt_processing = this->t.lap();
 	cutil::safeCopyToHost<T,uint64_t>(this->c_ovec, this->g_ovec, sizeof(T)*this->n,"copy scores to host");
-	for(uint32_t i = 0; i < 64; i++){ std::cout << this->c_ovec[i] << std::endl; if((i+1)%k ==0 ){ std::cout << "-----" <<std::endl;}}
-	find_remain_threshold<T,Z>(this->c_ovec,this->n,k,16);
-	std::cout << "local_sort6: " << this->tt_processing << std::endl;
-	std::cout << "local_sort6 (GB/s):" << ((this->n * 4 + ((this->n/4096)*k))/(this->tt_processing/1000))/(1024*1024*1204) << std::endl;
+	for(uint32_t i = 0; i < 4096; i+=k*2){
+//		for(uint32_t j = 0; j < k*2; j++){
+//			std::cout << this->c_ovec[i+j] << std::endl; if((i+j+1)%k ==0 ){ std::cout << "-----" <<std::endl;}
+//		}
+		for(uint32_t j = 0; j < k; j++){
+			std::cout << this->c_ovec[i+j] << " --- " << this->c_ovec[i+j+k] << std::endl;
+		}
+		bool s0 = std::is_sorted(&this->c_ovec[i],&this->c_ovec[i+k]);
+		bool s1 = std::is_sorted(&this->c_ovec[i+k],&this->c_ovec[i+k*2],std::greater<T>());
+		std::cout << "is_sorted: " << s0 << "," << s1 << std::endl;
+		do{ std::cout << '\n' << "Press a key to continue..."; } while (std::cin.get() != '\n');
+	}
+//	for(uint32_t i = 0; i <4096 ;i+=(k*2)){
+//		bool s0 = std::is_sorted(&this->c_ovec[i],&this->c_ovec[i+k]);
+//		bool s1 = std::is_sorted(&this->c_ovec[i+k],&this->c_ovec[i+k*2],std::greater<T>());
+//		std::cout << "is_sorted: " << s0 << "," << s1 << std::endl;
+//		//do{ std::cout << '\n' << "Press a key to continue..."; } while (std::cin.get() != '\n');
+//	}
+	//for(uint32_t i = 0; i < 128; i++){ std::cout << this->c_ovec[i] << " "; if((i+1)%k ==0 ){ std::cout << std::endl;  } }
+	find_remain_threshold<T,Z>(this->c_ovec,this->n,k,2048);
+	std::cout << "local_sort8: " << this->tt_processing << std::endl;
+	std::cout << "local_sort8 (GB/s):" << ((2*this->n * 4 + ((this->n/4096)*k))/(this->tt_processing/1000))/(1024*1024*1204) << std::endl;
 }
 
 template<class T, class Z>
