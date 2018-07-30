@@ -66,7 +66,7 @@ CC_OPT_FLAGS_INTEL= -O3 -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(
 GC_MAIN=gpu/main.cu input/randdataset-1.1.0/src/randdataset.cpp tools/tools.cpp
 GC_EXE=gpu_run
 #NVCC_FLAGS = --ptxas-options=-v -gencode arch=compute_35,code=sm_35 -rdc=true
-GPU_FLAGS=-O3 --use_fast_math --gpu-architecture=compute_61 --gpu-code=sm_61
+GPU_FLAGS=-O3 #--use_fast_math --gpu-architecture=compute_70 --gpu-code=sm_70
 #ARCH = -gencode arch=compute_35,code=sm_35
 GPU_PARAMETERS=-DKKS=$(KKS) -DKKE=$(KKE) -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD) -Xcompiler -fopenmp -lgomp
 

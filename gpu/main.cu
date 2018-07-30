@@ -28,7 +28,7 @@ int main(int argc, char **argv){
 //	cutil::cudaCheckErr(cudaMemcpyToSymbol(gpu_weights, bench_weights, sizeof(float)*NUM_DIMS),"copy weights");//Initialize preference vector
 //	cutil::cudaCheckErr(cudaMemcpyToSymbol(&gpu_test, &cpu_test, sizeof(float)),"copy weights");//Initialize preference vector
 
-	cudaSetDevice(1);
+	cudaSetDevice(0);
 	//bench_gpa(ap.getString("-f"),n,d,KKS);
 	//bench_gpam(ap.getString("-f"),n,d,K);
 	bench_bta(ap.getString("-f"),n,d,KKS);
