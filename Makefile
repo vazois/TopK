@@ -53,12 +53,18 @@ KKE=16
 
 BENCH= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
 
-#CPU CONFIGURATION
+#CPU CONFIGURATION TOP-K SELECTION
 CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp input/randdataset-1.1.0/src/randdataset.c
 CC_FLAGS=-std=c++11 -g
 CC_EXE=cpu_run
 CC_OPT_FLAGS_GNU= -O3 -march=native $(BENCH) -DKKS=$(KKS) -DKKE=$(KKE) -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -msse -msse2 -msse3 -msse4.1 -mbmi2 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64 -fopenmp
 CC_OPT_FLAGS_INTEL= -O3 -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -fomit-frame-pointer -mavx -fopenmp
+
+#CPU CONFIGURATION RANK JOIN
+CC_RJ_MAIN=cpu_rj/main.cpp input/randdataset-1.1.0/src/randdataset.c
+CC_RJ_FLAGS=-std=c++11 -g
+CC_RJ_EXE=cpu_rj_run
+CC_RJ_OPT_FLAGS_GNU=-O3 -march=native
 
 #GPU CONFIGURATION
 GC_MAIN=gpu/main.cu input/randdataset-1.1.0/src/randdataset.cpp
@@ -77,6 +83,9 @@ else
 	$(CC) $(CC_FLAGS) $(CC_OPT_FLAGS_INTEL) $(CC_MAIN) -o $(CC_EXE)
 endif
 
+cpu_rj_cc:
+	$(CC) $(CC_RJ_FLAGS) $(CC_RJ_OPT_FLAGS_GNU) $(CC_RJ_MAIN) -o $(CC_RJ_EXE)
+
 reorder_cc:
 	$(CC) $(CC_FLAGS) $(CC_OPT_FLAGS) $(CC_REORDER) -o $(CC_EXE_RE)
 
@@ -84,6 +93,7 @@ gpu_cc:
 	$(NVCC) -std=c++11 $(GPU_PARAMETERS) $(ARCH) $(GC_MAIN) -o $(GC_EXE) -I cub-1.7.4/
 	
 clean:
+	rm -rf $(CC_RJ_EXE)
 	rm -rf $(CC_EXE)
 	rm -rf $(GC_EXE) 
 	rm -rf $(CC_EXE_RE) 
