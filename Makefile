@@ -27,7 +27,9 @@ ITER=1
 LD=0
 #DISTR c:correlated i:independent a:anticorrelated
 DISTR=1
-#Multiple thread count
+#Single query thread count
+THREADS=16
+#Multiple queries thread count
 MQTHREADS=32
 #Gather object evaluation statistics
 STATS_EFF=true
@@ -51,20 +53,20 @@ SLA_B=1
 KKS=16
 KKE=16
 
-BENCH= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
-
 #CPU CONFIGURATION TOP-K SELECTION
+BENCH_ARGS= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
 CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp input/randdataset-1.1.0/src/randdataset.c
 CC_FLAGS=-std=c++11 -g
 CC_EXE=cpu_run
-CC_OPT_FLAGS_GNU= -O3 -march=native $(BENCH) -DKKS=$(KKS) -DKKE=$(KKE) -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -msse -msse2 -msse3 -msse4.1 -mbmi2 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64 -fopenmp
+CC_OPT_FLAGS_GNU= -O3 -march=native $(BENCH_ARGS) -DTHREADS=$(THREADS) -DKKS=$(KKS) -DKKE=$(KKE) -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -msse -msse2 -msse3 -msse4.1 -mbmi2 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64 -fopenmp
 CC_OPT_FLAGS_INTEL= -O3 -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -fomit-frame-pointer -mavx -fopenmp
 
 #CPU CONFIGURATION RANK JOIN
+BENCH_ARGS_RJ= -DTHREADS=$(THREADS)
 CC_RJ_MAIN=cpu_rj/main.cpp input/randdataset-1.1.0/src/randdataset.c
 CC_RJ_FLAGS=-std=c++11 -g
 CC_RJ_EXE=cpu_rj_run
-CC_RJ_OPT_FLAGS_GNU=-O3 -march=native
+CC_RJ_OPT_FLAGS_GNU=-O3 -march=native $(BENCH_ARGS_RJ)
 
 #GPU CONFIGURATION
 GC_MAIN=gpu/main.cu input/randdataset-1.1.0/src/randdataset.cpp

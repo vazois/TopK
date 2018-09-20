@@ -16,10 +16,33 @@
 #endif
 
 //#define MQTHREADS 1
-#define THREADS 16
+//#define THREADS 16
 #define ITHREADS 32 //INITIALIZATION THREADS
-//#define STATS_EFF true
-//#define WORKLOAD 1024*128
+
+//////////////
+//JOIN TOOLS//
+#ifndef NEXT_POW_2
+/**
+ *  compute the next number, greater than or equal to 32-bit unsigned v.
+ *  taken from "bit twiddling hacks":
+ *  http://graphics.stanford.edu/~seander/bithacks.html
+ */
+#define NEXT_POW_2(V)                           \
+    do {                                        \
+        V--;                                    \
+        V |= V >> 1;                            \
+        V |= V >> 2;                            \
+        V |= V >> 4;                            \
+        V |= V >> 8;                            \
+        V |= V >> 16;                           \
+        V++;                                    \
+    } while(0)
+#endif
+
+#ifndef HASH
+#define HASH(X, MASK, SKIP) (((X) & MASK) >> SKIP)
+#endif
+//////////////////////////////////////////////////////////////////////////
 
 #include <parallel/algorithm>
 #include <omp.h>

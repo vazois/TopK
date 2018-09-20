@@ -2,11 +2,11 @@
 #define AA_H
 
 #include "../common/common.h"
-#include <boost/heap/priority_queue.hpp>
-#include <boost/heap/binomial_heap.hpp>
-#include <boost/heap/fibonacci_heap.hpp>
-#include <boost/heap/pairing_heap.hpp>
-#include <boost/heap/skew_heap.hpp>
+//#include <boost/heap/priority_queue.hpp>
+//#include <boost/heap/binomial_heap.hpp>
+//#include <boost/heap/fibonacci_heap.hpp>
+//#include <boost/heap/pairing_heap.hpp>
+//#include <boost/heap/skew_heap.hpp>
 
 #define QATTR 1
 #define FIRST(d,qq) ( (QATTR == 0) ? 0 : d - qq)
