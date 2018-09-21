@@ -64,9 +64,9 @@ CC_OPT_FLAGS_INTEL= -O3 -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(
 #CPU CONFIGURATION RANK JOIN
 BENCH_ARGS_RJ= -DTHREADS=$(THREADS)
 CC_RJ_MAIN=cpu_rj/main.cpp input/randdataset-1.1.0/src/randdataset.c
-CC_RJ_FLAGS=-std=c++11 -g
+CC_RJ_FLAGS=-std=c++11 -g $(BENCH_ARGS_RJ)
 CC_RJ_EXE=cpu_rj_run
-CC_RJ_OPT_FLAGS_GNU=-O3 -march=native $(BENCH_ARGS_RJ)
+CC_RJ_OPT_FLAGS_GNU=-O3 -march=native -ffast-math -funroll-loops -msse -msse2 -msse3 -msse4.1 -mbmi2 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64 -fopenmp
 
 #GPU CONFIGURATION
 GC_MAIN=gpu/main.cu input/randdataset-1.1.0/src/randdataset.cpp

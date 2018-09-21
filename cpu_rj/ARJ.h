@@ -3,7 +3,7 @@
 
 #include "../common/common.h"
 #include "../time/Time.h"
-#include<limits>
+#include <limits>
 #include <stdio.h>
 #include <cstdint>
 #include <stdio.h>
@@ -102,6 +102,7 @@ class GenData{
 	public:
 		GenData(RankJoinInstance<Z,T> *rj_inst, uint8_t key_distr=0, uint8_t score_distr=0) :
 			def_eng(std::chrono::system_clock::now().time_since_epoch().count())
+			//def_eng(1234)
 		{
 			this->populate(rj_inst->getR(),rj_inst->getS());
 			this->key_distr = key_distr;
@@ -121,11 +122,23 @@ class GenData{
 
 template<class Z,class T>
 void GenData<Z,T>::populate(TABLE<Z,T> *R, TABLE<Z,T> *S){
+	std::cout << "Populating tables ... " << std::endl;
+	float progress = 0.0;
+	uint64_t step = 1024;
+	uint64_t ii = 0;
+
 	for(uint64_t i = 0; i < R->n; i++){
 		R->ids[i] = i;
 		for(uint64_t j =0; j < R->d; j++){
 			R->scores[j*R->n + i] = this->gen_score();//column-wise initialization//
 		}
+
+		if((ii & (step - 1)) == 0){
+			std::cout << "Progress: [" << int(progress * 100.0) << "] %\r";
+			std::cout.flush();
+			progress += ((float)step)/(R->n + S->n); // for demonstration only
+		}
+		ii++;
 	}
 
 	for(uint64_t i = 0; i < S->n; i++){
@@ -133,7 +146,16 @@ void GenData<Z,T>::populate(TABLE<Z,T> *R, TABLE<Z,T> *S){
 		for(uint64_t j = 0; j < S->d; j++){
 			S->scores[j*S->n + i] = this->gen_score();
 		}
+
+		if((ii & (step - 1)) == 0){
+			std::cout << "Progress: [" << int(progress * 100.0) << "] %\r";
+			std::cout.flush();
+			progress += ((float)step)/(R->n + S->n); // for demonstration only
+		}
+		ii++;
 	}
+	std::cout << "Progress: [" << 100 << "] %\r";
+	std::cout.flush();
 }
 
 template<class Z, class T>
@@ -162,6 +184,7 @@ class AARankJoin{
 		AARankJoin(RankJoinInstance<Z,T> *rj_inst){
 			this->rj_inst = rj_inst;
 			this->reset_metrics();
+			this->reset_aux_struct();
 		};
 
 		~AARankJoin(){
@@ -177,8 +200,39 @@ class AARankJoin{
 			this->tuple_count = 0;
 			for(uint32_t i = 0; i < THREADS; i++) this->ttuple_count[i] = 0;
 		}
+
+		void reset_aux_struct(){
+			this->q = std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>>();
+			for(uint32_t i = 0; i < THREADS; i++) this->tq[i] = std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>>();
+
+			this->htR.clear();
+			this->htS.clear();
+		}
+
+		void merge_qs(){
+			Z k = this->rj_inst->getK();
+			for(uint32_t i = 0; i < THREADS; i++){
+				while(!this->tq[i].empty()){
+					if(this->q.size() < k){
+						this->q.push(this->tq[i].top());
+					}else if(this->q.top().score < this->tq[i].top().score){
+						this->q.pop();
+						this->q.push(this->tq[i].top());
+					}
+					this->tq[i].pop();
+				}
+			}
+		}
+
+		void benchmark();
 	protected:
+		void set_algo(std::string algo){ this->algo = algo; }
+		std::string algo;
 		RankJoinInstance<Z,T> *rj_inst;
+		std::unordered_multimap<Z,T> htR;
+		std::unordered_multimap<Z,T> htS;
+		std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>> q;
+		std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>> tq[THREADS];
 
 		Time<msecs> t;
 		Time<msecs> tt[THREADS];
@@ -189,4 +243,13 @@ class AARankJoin{
 		double tuple_count;
 		double ttuple_count[THREADS];
 };
+
+template<class Z, class T>
+void AARankJoin<Z,T>::benchmark(){
+	std::cout << "<<< " << this->algo << " >>>" << std::endl;
+	std::cout << "join elapsed(ms): " << this->tt_join << std::endl;
+	std::cout << "threshold: " << std::fixed << std::setprecision(4) << this->q.top().score << std::endl;
+	std::cout << "----------------------------" << std::endl;
+}
+
 #endif
