@@ -25,6 +25,7 @@ void bench_no_part_hjr(){
 	//rj_inst.sample();
 	hjr.can_hash_join(); hjr.benchmark();
 	hjr.nop_hash_join(); hjr.benchmark();
+	hjr.prt_hash_join(); hjr.benchmark();
 }
 #endif
 
