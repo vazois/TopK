@@ -18,11 +18,14 @@
 
 #include <unordered_map>
 #include <queue>
+#include <mutex>
+#include <thread>
 
 static uint8_t UNIFORM_KEY=0;
 static uint8_t UNIFORM_SCORE=0;
 
-#define PNUM 4
+#define BATCH 1024
+#define PNUM 128
 #define MASK (PNUM-1)
 #define PHASH(X) (X & MASK)
 
@@ -230,8 +233,10 @@ class AARankJoin{
 					this->phtR[i].clear();
 					this->phtS[i].clear();
 				}
-				this->part_sizeR[i] = 0;
-				this->part_sizeS[i] = 0;
+			}
+			for(uint32_t j = 0; j < THREADS*(PNUM+1); j++){
+				this->part_sizeR[j] = 0;
+				this->part_sizeS[j] = 0;
 			}
 		}
 
@@ -262,8 +267,11 @@ class AARankJoin{
 		//Partitionjoin structures structures//
 		std::unordered_multimap<Z,T> phtR[PNUM];
 		std::unordered_multimap<Z,T> phtS[PNUM];
-		Z part_sizeR[PNUM+1];
-		Z part_sizeS[PNUM+1];
+//		Z part_sizeR[THREADS][PNUM+1];
+//		Z part_sizeS[THREADS][PNUM+1];
+		Z part_sizeR[THREADS*(PNUM+1)];
+		Z part_sizeS[THREADS*(PNUM+1)];
+		std::mutex part_mtx[PNUM];
 		rrTABLE<Z,T> rrR;
 		rrTABLE<Z,T> rrS;
 

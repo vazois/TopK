@@ -9,11 +9,12 @@ class HJR : public AARankJoin<Z,T>{
 		HJR(RankJoinInstance<Z,T> *rj_inst) : AARankJoin<Z,T>(rj_inst){ };
 		~HJR(){};
 
-		void can_hash_join();
-		void nop_hash_join();
-		void prt_hash_join();
-	private:
+		void snop_hash_join();
+		void pnop_hash_join();
+		void sprt_hash_join();
+		void pprt_hash_join();
 
+	private:
 		void pshift(Z *arr, Z arr_n){
 			for(uint32_t i = arr_n-1; i > 0; i--){ arr[i] = arr[i-1]; }
 			arr[0] = 0;
@@ -30,8 +31,8 @@ class HJR : public AARankJoin<Z,T>{
 };
 
 template<class Z, class T>
-void HJR<Z,T>::can_hash_join(){
-	this->set_algo("canonical hash join");
+void HJR<Z,T>::snop_hash_join(){
+	this->set_algo("single-thread no partition hash join");
 	this->reset_metrics();
 	this->reset_aux_struct();
 
@@ -74,17 +75,16 @@ void HJR<Z,T>::can_hash_join(){
 }
 
 template<class Z, class T>
-void HJR<Z,T>::nop_hash_join(){
-	this->set_algo("no partitition hash join (" + std::to_string(THREADS) + ")");
+void HJR<Z,T>::pnop_hash_join(){
+	this->set_algo("multi-thread no partitition hash join (" + std::to_string(THREADS) + ")");
 	this->reset_metrics();
 	this->reset_aux_struct();
-
 	TABLE<Z,T> *R = this->rj_inst->getR();
 	TABLE<Z,T> *S = this->rj_inst->getS();
 	Z k = this->rj_inst->getK();
 
 	omp_set_num_threads(THREADS);
-	uint32_t stride = 1024;
+	uint32_t stride = BATCH;
 	this->t.start();
 	#pragma omp parallel
 	{
@@ -139,8 +139,8 @@ void HJR<Z,T>::nop_hash_join(){
 }
 
 template<class Z, class T>
-void HJR<Z,T>::prt_hash_join(){
-	this->set_algo("partitioned hash join");
+void HJR<Z,T>::sprt_hash_join(){
+	this->set_algo("single-thread partitioned hash join");
 	this->reset_metrics();
 	this->reset_aux_struct();
 	TABLE<Z,T> *R = this->rj_inst->getR();
@@ -158,7 +158,7 @@ void HJR<Z,T>::prt_hash_join(){
 	}
 //
 	psum(this->part_sizeR,PNUM);
-	//for(uint32_t i = 0;i < PNUM+1; i++) std::cout << this->part_sizeR[i] << std::endl;
+	//for(uint32_t i = 0;i < PNUM+1; i++) std::cout << this->part_sizeR[0][i] << std::endl;
 //
 	for(uint64_t i = 0; i < R->n; i++){
 		Z primary_key = R->keys[i];
@@ -182,8 +182,7 @@ void HJR<Z,T>::prt_hash_join(){
 	}
 //
 	psum(this->part_sizeS,PNUM);
-	//std::cout <<"---\n"; for(uint32_t i = 0;i < PNUM+1; i++) std::cout << this->part_sizeS[i] << std::endl;
-	//std::cout <<"--->\n";
+	//std::cout <<"---\n"; for(uint32_t i = 0;i < PNUM+1; i++) std::cout << this->part_sizeS[0][i] << std::endl;
 //
 	for(uint64_t i = 0; i < S->n; i++){
 		Z foreign_key = S->keys[i];
@@ -233,6 +232,47 @@ void HJR<Z,T>::prt_hash_join(){
 				}
 			}
 		}
+	}
+	this->tt_join = this->t.lap();
+}
+
+template<class Z, class T>
+void HJR<Z,T>::pprt_hash_join(){
+	this->set_algo("multi-thread partitioned hash join");
+	this->reset_metrics();
+	this->reset_aux_struct();
+	TABLE<Z,T> *R = this->rj_inst->getR();
+	TABLE<Z,T> *S = this->rj_inst->getS();
+	Z k = this->rj_inst->getK();
+
+	omp_set_num_threads(THREADS);
+	this->t.start();
+	#pragma omp parallel
+	{
+		uint32_t tid = omp_get_thread_num();
+		uint32_t offset = tid * BATCH;
+		uint32_t stride = THREADS * BATCH;
+
+		Z *h = &this->part_sizeR[tid*(PNUM+1)];
+		for(uint64_t i = offset; i < R->n; i+=stride){
+			for(uint64_t j = i; j < i + BATCH; j++){
+				Z primary_key = R->keys[j];
+				Z p = PHASH(primary_key);
+				h[p]++;
+			}
+		}
+		psum(h,PNUM);
+		h = &this->part_sizeS[tid*(PNUM+1)];
+		for(uint64_t i = offset; i < S->n; i+=stride){
+			for(uint64_t j = i; j < i + BATCH; j++){
+				Z foreign_key = S->keys[j];
+				Z p = PHASH(foreign_key);
+				h[p]++;
+			}
+		}
+		psum(h,PNUM);
+		#pragma omp barier
+
 	}
 
 	this->tt_join = this->t.lap();
