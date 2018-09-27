@@ -28,7 +28,7 @@ LD=0
 #DISTR c:correlated i:independent a:anticorrelated
 DISTR=1
 #Single query thread count
-THREADS=16
+THREADS=32
 #Multiple queries thread count
 MQTHREADS=32
 #Gather object evaluation statistics
@@ -64,7 +64,7 @@ CC_OPT_FLAGS_INTEL= -O3 -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(
 #CPU CONFIGURATION RANK JOIN
 BENCH_ARGS_RJ= -DTHREADS=$(THREADS)
 CC_RJ_MAIN=cpu_rj/main.cpp input/randdataset-1.1.0/src/randdataset.c
-CC_RJ_FLAGS=-std=c++11 -g $(BENCH_ARGS_RJ)
+CC_RJ_FLAGS=-std=c++11 -g -pthread $(BENCH_ARGS_RJ)
 CC_RJ_EXE=cpu_rj_run
 CC_RJ_OPT_FLAGS_GNU=-O3 -march=native -ffast-math -funroll-loops -msse -msse2 -msse3 -msse4.1 -mbmi2 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64 -fopenmp
 
