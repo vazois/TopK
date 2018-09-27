@@ -39,7 +39,6 @@ class AARankJoin{
 		std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>> q[THREADS];
 
 		Time<msecs> t;
-
 		double t_init;
 		double t_join;
 		uint64_t tuple_count;
@@ -89,9 +88,11 @@ void AARankJoin<Z,T>::merge_qs(){
 template<class Z, class T>
 void AARankJoin<Z,T>::merge_metrics()
 {
+	this->t_init = this->tt_init[0];
+	this->t_join = this->tt_join[0];
 	for(uint32_t i = 0; i < THREADS; i++){
-		this->t_init+=this->tt_init[i];
-		this->t_join+=this->tt_join[i];
+		this->t_init = std::max(this->t_init,this->tt_init[i]);
+		this->t_join = std::max(this->t_join,this->tt_join[i]);
 		this->tuple_count+=this->ttuple_count[i];
 	}
 }
