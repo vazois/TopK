@@ -72,7 +72,8 @@ void HJR<Z,T>::snop_hash_join(){
 
 	//Probe phase
 	for(uint64_t i =0; i< S->n; i++){
-		Z id = S->ids[i];
+		//Z id = S->ids[i];
+		Z id = i;
 		Z foreign_key = S->keys[i];
 		auto range = this->htR.equal_range(foreign_key);
 		if( range.first != range.second ){ // If probe match
@@ -106,7 +107,7 @@ void HJR<Z,T>::st_nop_hash_rank_join(){
 	Z k = this->rj_inst->getK();
 
 	S_HashTable<Z,T> htR;
-	htR.initialize(((R->n - 1) / S_HASHT_BUCKET_SIZE) + 1);
+	htR.alloc(((R->n - 1) / S_HASHT_BUCKET_SIZE) + 1);
 
 	this->t.start();
 	htR.build_st(R);
@@ -148,7 +149,7 @@ void HJR<Z,T>::mt_nop_hash_rank_join(){
 	TABLE<Z,T> *S = this->rj_inst->getS();
 	Z k = this->rj_inst->getK();
 	S_HashTable<Z,T> htR;
-	htR.initialize(((R->n - 1) / S_HASHT_BUCKET_SIZE) + 1);
+	htR.alloc(((R->n - 1) / S_HASHT_BUCKET_SIZE) + 1);
 
 	pthread_t threads[THREADS];
 	pthread_barrier_t barrier;
@@ -197,8 +198,6 @@ void HJR<Z,T>::mt_nop_hash_rank_join(){
 	this->merge_metrics();
 	this->merge_qs();
 }
-
-
 
 
 #endif

@@ -47,7 +47,7 @@ template<class Z, class T>
 struct TABLE{
 	Z n;//cardinality
 	Z d;//dimensionality
-	Z *ids = NULL;
+	//Z *ids = NULL;
 	Z *keys = NULL;//tuple ids
 	T *scores = NULL;//tuple scores
 };
@@ -67,19 +67,21 @@ class RankJoinInstance{
 	public:
 		RankJoinInstance(Z n0, Z d0, Z n1, Z d1, Z k){
 			this->R.n = n0; this->R.d = d0;
-			this->R.ids = static_cast<Z*>(aligned_alloc(CACHE_LINE_SIZE,sizeof(Z)*n0));
+			//this->R.ids = static_cast<Z*>(aligned_alloc(CACHE_LINE_SIZE,sizeof(Z)*n0));
 			this->R.keys = static_cast<Z*>(aligned_alloc(CACHE_LINE_SIZE,sizeof(Z)*n0));
 			this->R.scores = static_cast<T*>(aligned_alloc(CACHE_LINE_SIZE,sizeof(T)*n0*d0));
 			this->S.n = n1; this->S.d = d1;
-			this->S.ids = static_cast<Z*>(aligned_alloc(CACHE_LINE_SIZE,sizeof(Z)*n1));
+			//this->S.ids = static_cast<Z*>(aligned_alloc(CACHE_LINE_SIZE,sizeof(Z)*n1));
 			this->S.keys = static_cast<Z*>(aligned_alloc(CACHE_LINE_SIZE,sizeof(Z)*n1));
 			this->S.scores = static_cast<T*>(aligned_alloc(CACHE_LINE_SIZE,sizeof(T)*n1*d1));
 			this->k = k;
 		};
 
 		~RankJoinInstance(){
-			if(this->R.ids != NULL) free(this->R.ids); if(this->R.keys != NULL) free(this->R.keys); if(this->R.scores != NULL) free(this->R.scores);
-			if(this->S.ids != NULL) free(this->S.ids); if(this->S.keys != NULL) free(this->S.keys); if(this->S.scores != NULL) free(this->S.scores);
+			//if(this->R.ids != NULL) free(this->R.ids);
+			if(this->R.keys != NULL) free(this->R.keys); if(this->R.scores != NULL) free(this->R.scores);
+			//if(this->S.ids != NULL) free(this->S.ids);
+			if(this->S.keys != NULL) free(this->S.keys); if(this->S.scores != NULL) free(this->S.scores);
 		};
 
 		TABLE<Z,T>* getR(){ return &(this->R); }
@@ -114,8 +116,8 @@ template<class Z, class T>
 class GenData{
 	public:
 		GenData(RankJoinInstance<Z,T> *rj_inst, uint8_t key_distr=0, uint8_t score_distr=0) :
-			def_eng(std::chrono::system_clock::now().time_since_epoch().count())
-			//def_eng(1234)
+			//def_eng(std::chrono::system_clock::now().time_since_epoch().count())
+			def_eng(1234)
 		{
 			this->populate(rj_inst->getR(),rj_inst->getS());
 			this->key_distr = key_distr;
@@ -141,7 +143,7 @@ void GenData<Z,T>::populate(TABLE<Z,T> *R, TABLE<Z,T> *S){
 	uint64_t ii = 0;
 
 	for(uint64_t i = 0; i < R->n; i++){
-		R->ids[i] = i;
+		//R->ids[i] = i;
 		R->keys[i] = i;
 		for(uint64_t j =0; j < R->d; j++){
 			R->scores[j*R->n + i] = this->gen_score();//column-wise initialization//
@@ -156,7 +158,7 @@ void GenData<Z,T>::populate(TABLE<Z,T> *R, TABLE<Z,T> *S){
 	}
 
 	for(uint64_t i = 0; i < S->n; i++){
-		S->ids[i] = i;
+		//S->ids[i] = i;
 		S->keys[i] = this->gen_key(R->n-1);
 		for(uint64_t j = 0; j < S->d; j++){
 			S->scores[j*S->n + i] = this->gen_score();

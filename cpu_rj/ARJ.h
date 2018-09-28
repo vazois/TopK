@@ -100,8 +100,9 @@ void AARankJoin<Z,T>::merge_metrics()
 template<class Z, class T>
 void AARankJoin<Z,T>::benchmark(){
 	std::cout << "<<< " << this->algo << " >>>" << std::endl;
-	std::cout << "tuple_count: " << this->tuple_count << std::endl;
-	std::cout << "join elapsed(ms): " << this->t_join << std::endl;
+	if(this->tuple_count != 0) std::cout << "tuple_count: " << this->tuple_count << std::endl;
+	if(this->t_init != 0) std::cout << "init elapsed (ms): " << this->t_init << std::endl;
+	if(this->t_join != 0) std::cout << "join elapsed (ms): " << this->t_join << std::endl;
 	if(this->q[0].size() > 0) std::cout << "threshold (" << this->q[0].size() <<"): " << std::fixed << std::setprecision(4) << this->q[0].top().score << std::endl;
 	std::cout << "----------------------------" << std::endl;
 }

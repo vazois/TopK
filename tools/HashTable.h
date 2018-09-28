@@ -40,7 +40,7 @@ class S_HashTable{
 			if(this->buckets != NULL) free(this->buckets);
 		}
 
-		void initialize(Z num_buckets);
+		void alloc(Z num_buckets);
 		void build_st(TABLE<Z,T> *rel);
 		uint64_t probe_st(TABLE<Z,T> *rel, std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>> *q,Z k);
 
@@ -53,7 +53,7 @@ class S_HashTable{
 		Z mask = 0;
 		Z bits = 0;
 
-		inline Z __hash(Z key){ return (key & this->mask); }
+		inline Z __hash(Z key)__attribute__((always_inline)){ return (key & this->mask); }
 		/*
 		 * Bit Twiddling hacks (http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2)
 		 */
@@ -75,7 +75,7 @@ inline Z S_HashTable<Z,T>::next_power_2(Z v)
 }
 
 template<class Z, class T>
-void S_HashTable<Z,T>::initialize(Z num_buckets){
+void S_HashTable<Z,T>::alloc(Z num_buckets){
 	this->num_buckets = this->next_power_2(num_buckets);
 	//std::cout << "num_buckets: " <<num_buckets << "," << this->num_buckets << std::endl;
 	this->buckets =  static_cast<bucket_t<Z,T>*>(aligned_alloc(CACHE_LINE_SIZE,sizeof(bucket_t<Z,T>)*this->num_buckets));
@@ -201,6 +201,30 @@ uint64_t S_HashTable<Z,T>::probe_mt(TABLE<Z,T> *rel, Z sRel, Z eRel, std::priori
 		}while(curr);
 	}
 	return count;
+}
+
+template<class Z, class T>
+class PB_HashTable{
+	public:
+		PB_HashTable(){}
+		~PB_HashTable(){
+			if(this->buckets != NULL) free(this->buckets);
+		}
+
+		void initialize(Z num_buckets);
+	private:
+		bucket_t<Z,T> *buckets = NULL;
+		Z num_buckets = 0;
+		Z mask = 0;
+		Z bits = 0;
+
+		inline Z __hash(Z key)__attribute__((always_inline)){ return (key & this->mask); }
+};
+
+template<class Z, class T>
+void PB_HashTable<Z,T>::initialize(Z num_buckets)
+{
+
 }
 
 #endif

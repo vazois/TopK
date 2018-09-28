@@ -8,7 +8,7 @@ CC_EXE_RE=reorder_run
 
 #########
 #Skyline#
-DIMS=8
+DIMS=1
 V=VERBOSE
 DT=0
 PROFILER=0
@@ -53,6 +53,12 @@ SLA_B=1
 KKS=16
 KKE=16
 
+#Rank-Join
+RSIZE=1048576
+RDIMS=1
+SSIZE=33554432
+SDIMS=1
+
 #CPU CONFIGURATION TOP-K SELECTION
 BENCH_ARGS= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
 CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp input/randdataset-1.1.0/src/randdataset.c
@@ -62,7 +68,7 @@ CC_OPT_FLAGS_GNU= -O3 -march=native $(BENCH_ARGS) -DTHREADS=$(THREADS) -DKKS=$(K
 CC_OPT_FLAGS_INTEL= -O3 -DNUM_DIMS=$(DIMS) -D$(V) -DCOUNT_DT=$(DT) -DPROFILER=$(PROFILER) -ffast-math -funroll-loops -fomit-frame-pointer -mavx -fopenmp
 
 #CPU CONFIGURATION RANK JOIN
-BENCH_ARGS_RJ= -DTHREADS=$(THREADS)
+BENCH_ARGS_RJ= -DTHREADS=$(THREADS) -DDIMS=$(RDIMS) -DRSIZE=$(RSIZE) -DRDIMS=$(RDIMS) -DSDIMS=$(SDIMS) -DSSIZE=$(SSIZE) 
 CC_RJ_MAIN=cpu_rj/main.cpp input/randdataset-1.1.0/src/randdataset.c
 CC_RJ_FLAGS=-std=c++11 -g -pthread $(BENCH_ARGS_RJ)
 CC_RJ_EXE=cpu_rj_run
