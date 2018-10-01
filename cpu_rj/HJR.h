@@ -20,7 +20,8 @@ struct npo_args_t{
 	double *tt_init;
 	double *tt_join;
 	Time<msecs> *tt;
-	uint64_t *ttuple_count;
+	uint64_t *tjoin_count;
+	uint64_t *tpull_count;
 };
 
 template<class Z, class T>
@@ -32,6 +33,8 @@ class HJR : public AARankJoin<Z,T>{
 		void snop_hash_join();
 		void st_nop_hash_rank_join();
 		void mt_nop_hash_rank_join();
+
+		void st_prt_hash_rank_join();
 
 	private:
 		static void* mt_nop_thread(void *args);
@@ -65,31 +68,31 @@ void HJR<Z,T>::snop_hash_join(){
 	this->t.start();
 	for(uint64_t i = 0; i < R->n; i++){
 		Z primary_key = R->keys[i];
-		T score = 0;
-		for(uint8_t j = 0; j < R->d; j++){ score+= R->scores[j*R->n + i]; }
+		T score = R->scores[i];
+		//T score = 0;
+		//for(uint8_t j = 0; j < R->d; j++){ score+= R->scores[j*R->n + i]; }
+
 		this->htR.emplace(primary_key,score);
+		this->pull_count++;
 	}
 
 	//Probe phase
 	for(uint64_t i =0; i< S->n; i++){
-		//Z id = S->ids[i];
-		Z id = i;
 		Z foreign_key = S->keys[i];
+		T score = S->scores[i];
+//		T score = 0;
+//		for(uint8_t j = 0; j < S->d; j++){ score+= S->scores[j*S->n + i]; }
+
+		this->pull_count++;
 		auto range = this->htR.equal_range(foreign_key);
-		if( range.first != range.second ){ // If probe match
-			T score = 0;
-			for(uint8_t j = 0; j < S->d; j++){ score+= S->scores[j*S->n + i]; }
-			//TODO: Check if can score higher than threshold, break otherwise ?
-			for(auto it = range.first; it != range.second; ++it){
-				T combined_score = score + it->second;
-				//std::cout << key << " = combined: " << score << "," << it->second << "," << combined_score << std::endl;
-				this->tuple_count++;
-				if(this->q[0].size() < k){
-					this->q[0].push(_tuple<Z,T>(id,combined_score));
-				}else if(this->q[0].top().score < combined_score){
-					this->q[0].pop();
-					this->q[0].push(_tuple<Z,T>(id,combined_score));
-				}
+		for(auto it = range.first; it != range.second; ++it){
+			this->join_count++;
+			T combined_score = score + it->second;
+			if(this->q[0].size() < k){
+				this->q[0].push(_tuple<Z,T>(foreign_key,combined_score));
+			}else if(this->q[0].top().score < combined_score){
+				this->q[0].pop();
+				this->q[0].push(_tuple<Z,T>(foreign_key,combined_score));
 			}
 		}
 	}
@@ -110,8 +113,8 @@ void HJR<Z,T>::st_nop_hash_rank_join(){
 	htR.alloc(((R->n - 1) / S_HASHT_BUCKET_SIZE) + 1);
 
 	this->t.start();
-	htR.build_st(R);
-	this->tuple_count = htR.probe_st(S,&this->q[0],k);
+	this->pull_count = htR.build_st(R) + S->n;
+	this->join_count = htR.probe_st(S,&this->q[0],k);
 	this->t_join += this->t.lap();
 }
 
@@ -119,23 +122,12 @@ template<class Z, class T>
 void* HJR<Z,T>::mt_nop_thread(void *args)
 {
 	npo_args_t<Z,T> *a = (npo_args_t<Z,T>*) args;
-
-//	std::string msg = "thread " + std::to_string(a->tid) + " says hello!\n";
-//	std::cout << msg;
-//	pthread_barrier_wait(a->barrier);
-//	msg = "thread " + std::to_string(a->tid) + " passed the barrier!\n";
-//	std::cout << msg;
-//	a->q[0].push(_tuple<Z,T>(a->tid,13.5));
-
 	uint32_t tid = a->tid;
+
 	a->tt[tid].start();
-	(*(a->htR)).build_mt(a->R,a->sR,a->eR);
+	a->tpull_count[tid] = (*(a->htR)).build_mt(a->R,a->sR,a->eR) + (a->eS - a->sS);
 	pthread_barrier_wait(a->barrier);
-	//if(tid == 0){  a->ttuple_count[tid] = (*(a->htR)).probe_st(a->S,a->q,a->k); }
-	//uint64_t count = (*(a->htR)).probe_mt(a->S,a->sS,a->eS,a->q,a->k);
-	//std::string msg =  std::to_string(a->sS) + "," + std::to_string(a->eS) + "," + std::to_string(a->tid) + "," + std::to_string(count) + "\n";
-	//std::cout << msg;
-	a->ttuple_count[tid] = (*(a->htR)).probe_mt(a->S,a->sS,a->eS,a->q,a->k);
+	a->tjoin_count[tid] = (*(a->htR)).probe_mt(a->S,a->sS,a->eS,a->q,a->k);
 	a->tt_join[tid] = a->tt[tid].lap();
 }
 
@@ -175,7 +167,8 @@ void HJR<Z,T>::mt_nop_hash_rank_join(){
 		args[i].tt_init = this->tt_init;
 		args[i].tt_join = this->tt_join;
 		args[i].tt = this->tt;
-		args[i].ttuple_count = this->ttuple_count;
+		args[i].tjoin_count = this->tjoin_count;
+		args[i].tpull_count = this->tpull_count;
 
 		///std::cout << i << "," << args[i].sS << "," << args[i].eS << std::endl;
 
@@ -199,5 +192,17 @@ void HJR<Z,T>::mt_nop_hash_rank_join(){
 	this->merge_qs();
 }
 
+template<class Z, class T>
+void HJR<Z,T>::st_prt_hash_rank_join()
+{
+	this->set_algo("st_nop_hash_rank_join");
+	this->reset_metrics();
+	this->reset_aux_struct();
+
+	TABLE<Z,T> *R = this->rj_inst->getR();
+	TABLE<Z,T> *S = this->rj_inst->getS();
+	Z k = this->rj_inst->getK();
+
+}
 
 #endif

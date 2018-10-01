@@ -3,9 +3,9 @@
 int main(int argc, char **argv){
 	std::cout << "RankJoin Main" << std::endl;
 
-	uint32_t n0 = RSIZE, d0 = DIMS;
-	uint32_t n1 = SSIZE, d1 = DIMS;
-	uint32_t k = 10;
+	uint32_t n0 = RSIZE, d0 = 1;
+	uint32_t n1 = SSIZE, d1 = 1;
+	uint32_t k = 16;
 
 	if(n0 > n1){
 		perror("RSIZE should be always greater than SSIZE\n");

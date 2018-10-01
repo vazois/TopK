@@ -41,24 +41,28 @@ class AARankJoin{
 		Time<msecs> t;
 		double t_init;
 		double t_join;
-		uint64_t tuple_count;
+		uint64_t join_count;
+		uint64_t pull_count;
 
 		double tt_init[THREADS];
 		double tt_join[THREADS];
 		Time<msecs> tt[THREADS];
-		uint64_t ttuple_count[THREADS];
+		uint64_t tjoin_count[THREADS];
+		uint64_t tpull_count[THREADS];
 };
 
 template<class Z, class T>
 void AARankJoin<Z,T>::reset_metrics(){
 	this->t_init = 0;
 	this->t_join = 0;
-	this->tuple_count = 0;
+	this->join_count = 0;
+	this->pull_count = 0;
 
 	for(uint32_t i = 0; i < THREADS; i++){
 		this->tt_init[i] = 0;
 		this->tt_join[i] = 0;
-		this->ttuple_count[i] = 0;
+		this->tjoin_count[i] = 0;
+		this->tpull_count[i] = 0;
 	}
 }
 
@@ -93,14 +97,16 @@ void AARankJoin<Z,T>::merge_metrics()
 	for(uint32_t i = 0; i < THREADS; i++){
 		this->t_init = std::max(this->t_init,this->tt_init[i]);
 		this->t_join = std::max(this->t_join,this->tt_join[i]);
-		this->tuple_count+=this->ttuple_count[i];
+		this->join_count+=this->tjoin_count[i];
+		this->pull_count+=this->tpull_count[i];
 	}
 }
 
 template<class Z, class T>
 void AARankJoin<Z,T>::benchmark(){
 	std::cout << "<<< " << this->algo << " >>>" << std::endl;
-	if(this->tuple_count != 0) std::cout << "tuple_count: " << this->tuple_count << std::endl;
+	if(this->pull_count != 0) std::cout << "pull_count: " << this->pull_count << std::endl;
+	if(this->join_count != 0) std::cout << "join_count: " << this->join_count << std::endl;
 	if(this->t_init != 0) std::cout << "init elapsed (ms): " << this->t_init << std::endl;
 	if(this->t_join != 0) std::cout << "join elapsed (ms): " << this->t_join << std::endl;
 	if(this->q[0].size() > 0) std::cout << "threshold (" << this->q[0].size() <<"): " << std::fixed << std::setprecision(4) << this->q[0].top().score << std::endl;

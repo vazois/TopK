@@ -7,12 +7,11 @@ template<class Z, class T>
 struct tuple_t
 {
 	Z key;
-	T value;
-	T scores[DIMS];
+	T score;
 };
 
 template<class Z,class T>
-static bool descending(const tuple_t<Z,T> &a, const tuple_t<Z,T> &b){ return a.value > b.value; };
+static bool descending(const tuple_t<Z,T> &a, const tuple_t<Z,T> &b){ return a.score > b.score; };
 
 /*
  * Pull/Bound Rank Join
@@ -27,6 +26,8 @@ class PBRJ : public AARankJoin<Z,T>{
 
 	private:
 		static void sort(TABLE<Z,T> *rel);
+		static void sort_fast(TABLE<Z,T> *rel);
+		inline void updateQ(std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>> *q, Z key, T score, Z k);
 };
 
 template<class Z, class T>
@@ -35,27 +36,28 @@ void PBRJ<Z,T>::sort(TABLE<Z,T> *rel)
 	tuple_t<Z,T> *data = (tuple_t<Z,T>*) malloc(sizeof(tuple_t<Z,T>) * rel->n);
 	for(uint64_t i = 0; i < rel->n; i++)
 	{
-		T score = 0;
-		for(uint8_t m = 0; m < rel->d; m++) score=std::max(score, rel->scores[m*rel->n + i]);
 		data[i].key = rel->keys[i];
-		data[i].value = score;
-		for(uint64_t j = 0; j < rel->d; j++) data[i].scores[j] = rel->scores[j*rel->n + i];
+		data[i].score = rel->scores[i];
 	}
 	//std::sort(&data[0],(&data[0]) + rel->n, descending<Z,T>);
 	__gnu_parallel::sort(&data[0],(&data[0]) + rel->n, descending<Z,T>);
 	for(uint64_t i = 0; i < rel->n; i++)
 	{
 		rel->keys[i] = data[i].key;
-		for(uint64_t j = 0; j < rel->d; j++) rel->scores[j*rel->n + i] = data[i].scores[j];
+		rel->scores[i] = data[i].score;
 	}
-//
-//	for(uint64_t i = 0; i < 10; i++)
-//	{
-//		std::cout << rel->keys[i] << ":";
-//		for(uint64_t j = 0; j < rel->d; j++) std::cout << " " << rel->scores[j*rel->n + i];
-//		std::cout << std::endl;
-//	}
 	free(data);
+}
+
+template<class Z, class T>
+inline void PBRJ<Z,T>::updateQ(std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>> *q, Z key, T score, Z k)
+{
+	if(q[0].size() < k){
+		q[0].push(_tuple<Z,T>(key,score));
+	}else if(this->q[0].top().score < score){
+		q[0].pop();
+		q[0].push(_tuple<Z,T>(key,score));
+	}
 }
 
 template<class Z, class T>
@@ -74,46 +76,75 @@ void PBRJ<Z,T>::st_nop_pbrj_rr()
 	PBRJ<Z,T>::sort(S);
 	this->t_init=this->t.lap();
 
-	uint64_t idxR = 0, idxS = 0;
-	T maxR = 0, maxS = 0;
-	for(uint8_t m = 0; m < R->d; m++) maxR += R->scores[m*R->n];
-	for(uint8_t m = 0; m < S->d; m++) maxR += S->scores[m*S->n];
-	T scrR = 0, scrS = 0;
-	do{
+	this->t.start();
+	uint64_t idxR = 1, idxS = 1;
+	Z pkey = 0, fkey = 0;
+	T maxR = MAX_SCORE, maxS = MAX_SCORE;
+	T minR = MAX_SCORE, minS = MAX_SCORE;
+	T threshold = 0;
+
+	while(idxR < R->n || idxS < S->n)
+	{
 		Z pkey, fkey;
 		T pscore = 0, fscore = 0;
 
 		if(idxR < R->n)
 		{
+			this->pull_count++;
 			pkey = R->keys[idxR];
-			for(uint8_t m = 0; m < R->d; m++) pscore += R->scores[m*R->n + idxR];
-			this->htR.emplace(pkey,pscore);
-			scrR = pscore;
+			pscore = R->scores[idxR];
+			//for(uint8_t m = 0; m < R->d; m++) pscore += R->scores[m*R->n + idxR];
 			idxR++;
 		}
 
 		if(idxS < S->n)
 		{
+			this->pull_count++;
 			fkey = S->keys[idxS];
-			auto range = this->htR.equal_range(fkey);
-			if( range.first != range.second ){
-				for(uint8_t m = 0; m < S->d; m++) fscore += S->scores[m*S->n + idxS];
-				for(auto it = range.first; it != range.second; ++it){
-					T combined_score = fscore + it->second;
-					this->tuple_count++;
-					if(this->q[0].size() < k){
-						this->q[0].push(_tuple<Z,T>(idxS,combined_score));
-					}else if(this->q[0].top().score < combined_score){
-						this->q[0].pop();
-						this->q[0].push(_tuple<Z,T>(idxS,combined_score));
-					}
-				}
-			}
+			fscore = S->scores[idxS];
+			//for(uint8_t m = 0; m < S->d; m++) fscore += S->scores[m*S->n + idxS];
 			idxS++;
-			scrS = fscore;
 		}
 
-	}while(idxR < R->n || idxS < S->n);
+		//Join new objects
+		T combined_score = 0;
+		if(pkey == fkey)
+		{
+			this->join_count++;
+			combined_score = pscore + fscore;
+			this->updateQ(&this->q[0],pkey,combined_score,k);
+		}
+
+		//Join fkey to previous objects
+		auto prange = this->htR.equal_range(fkey);
+		for(auto it = prange.first; it != prange.second; ++it)
+		{
+			this->join_count++;
+			combined_score = fscore + it->second;
+			this->updateQ(&this->q[0],fkey,combined_score,k);
+		}
+
+		//Join pkey to previous objects
+		auto frange = this->htS.equal_range(pkey);
+		for(auto it = frange.first; it != frange.second; ++it)
+		{
+			this->join_count++;
+			combined_score = pscore + it->second;
+			this->updateQ(&this->q[0],pkey,combined_score,k);
+		}
+
+		this->htR.emplace(pkey,pscore);
+		this->htS.emplace(fkey,fscore);
+		minR = std::min(minR,pscore);
+		minS = std::min(minS,fscore);
+
+		threshold = std::max(maxR + minS, minR + maxS);
+		if( this->q[0].size() == k && this->q[0].top().score >= threshold){
+			break;
+		}
+	}
+	this->t_join += this->t.lap();
+
 }
 
 #endif

@@ -41,10 +41,10 @@ class S_HashTable{
 		}
 
 		void alloc(Z num_buckets);
-		void build_st(TABLE<Z,T> *rel);
+		uint64_t build_st(TABLE<Z,T> *rel);
 		uint64_t probe_st(TABLE<Z,T> *rel, std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>> *q,Z k);
 
-		void build_mt(TABLE<Z,T> *rel, Z sRel, Z eRel);
+		uint64_t build_mt(TABLE<Z,T> *rel, Z sRel, Z eRel);
 		uint64_t probe_mt(TABLE<Z,T> *rel, Z sRel, Z eRel, std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>> *q,Z k);
 
 	private:
@@ -84,16 +84,18 @@ void S_HashTable<Z,T>::alloc(Z num_buckets){
 }
 
 template<class Z, class T>
-void S_HashTable<Z,T>::build_st(TABLE<Z,T> *rel){
-
+uint64_t S_HashTable<Z,T>::build_st(TABLE<Z,T> *rel){
+	uint64_t count = 0;
 	for(uint64_t i = 0; i < rel->n; i++)
 	{
-		T score = 0;//Calculate score//
-		for(uint8_t m =0; m < rel->d; m++) score+= rel->scores[m*rel->n + i];
-
+		count++;//Pull
 		bucket_t<Z,T> *curr;
 		Z key = rel->keys[i];
+		T score = rel->scores[i];
+//		T score = 0;//Calculate score//
+//		for(uint8_t m =0; m < rel->d; m++) score+= rel->scores[m*rel->n + i];
 		Z idx = this->__hash(key);
+
 		curr = this->buckets + idx;//Find bucket
 		while(curr->len == S_HASHT_BUCKET_SIZE){//If bucket is full
 			if(curr->next == NULL){//Check if next bucket has been initialized
@@ -107,31 +109,33 @@ void S_HashTable<Z,T>::build_st(TABLE<Z,T> *rel){
 		curr->pairs[curr->len].value = score;
 		curr->len++;
 	}
+	return count;
 }
 
 template<class Z, class T>
 uint64_t S_HashTable<Z,T>::probe_st(TABLE<Z,T> *rel, std::priority_queue<T, std::vector<_tuple<Z,T>>, pq_descending<Z,T>> *q, Z k){
 	uint64_t count = 0;
 	for(uint64_t i = 0; i < rel->n; i++){
-		T score = 0;//Calculate score//
-		for(uint8_t m =0; m < rel->d; m++) score+= rel->scores[m*rel->n + i];
-
 		bucket_t<Z,T> *curr;
 		Z key = rel->keys[i];
+		T score = rel->scores[i];
+//		T score = 0;//Calculate score//
+//		for(uint8_t m =0; m < rel->d; m++) score+= rel->scores[m*rel->n + i];
 		Z idx = this->__hash(key);
+
 		curr = this->buckets + idx;
 		do{
 			for(uint8_t j = 0; j < curr->len; j++)
 			{
 				if(curr->pairs[j].key == key){
+					count++;//Join Count//
 					T combined_score = score + curr->pairs[j].value;
 					if(q[0].size() < k){
-						q[0].push(_tuple<Z,T>(i,combined_score));
+						q[0].push(_tuple<Z,T>(key,combined_score));
 					}else if(q[0].top().score < combined_score){
 						q[0].pop();
-						q[0].push(_tuple<Z,T>(i,combined_score));
+						q[0].push(_tuple<Z,T>(key,combined_score));
 					}
-					count++;
 				}
 			}
 			curr = curr->next;
@@ -141,16 +145,19 @@ uint64_t S_HashTable<Z,T>::probe_st(TABLE<Z,T> *rel, std::priority_queue<T, std:
 }
 
 template<class Z, class T>
-void S_HashTable<Z,T>::build_mt(TABLE<Z,T> *rel, Z sRel, Z eRel)
+uint64_t S_HashTable<Z,T>::build_mt(TABLE<Z,T> *rel, Z sRel, Z eRel)
 {
+	uint64_t count = 0;
 	for(uint64_t i = sRel; i < eRel; i++)
 	{
+		count++;
 		bucket_t<Z,T> *curr, *head;
 		Z key = rel->keys[i];
+		T score = rel->scores[i];
+//		T score = 0;
+//		for(uint8_t m =0; m < rel->d; m++) score+= rel->scores[m*rel->n + i];
 		Z idx = this->__hash(key);
 
-		T score = 0;
-		for(uint8_t m =0; m < rel->d; m++) score+= rel->scores[m*rel->n + i];
 		head = this->buckets + idx;
 		curr = head;
 		__lock(&head->lock);
@@ -167,6 +174,7 @@ void S_HashTable<Z,T>::build_mt(TABLE<Z,T> *rel, Z sRel, Z eRel)
 		curr->len++;
 		__unlock(&head->lock);
 	}
+	return count;
 }
 
 template<class Z, class T>
@@ -175,11 +183,11 @@ uint64_t S_HashTable<Z,T>::probe_mt(TABLE<Z,T> *rel, Z sRel, Z eRel, std::priori
 	uint64_t count = 0;
 	for(uint64_t i = sRel; i < eRel; i++)
 	{
-		T score = 0;
-		for(uint8_t m =0; m < rel->d; m++) score+= rel->scores[m*rel->n + i];
-
 		bucket_t<Z,T> *curr;
 		Z key = rel->keys[i];
+		T score = rel->scores[i];
+//		T score = 0;
+//		for(uint8_t m =0; m < rel->d; m++) score+= rel->scores[m*rel->n + i];
 		Z idx = this->__hash(key);
 		curr = this->buckets + idx;
 
@@ -189,10 +197,10 @@ uint64_t S_HashTable<Z,T>::probe_mt(TABLE<Z,T> *rel, Z sRel, Z eRel, std::priori
 				if(curr->pairs[j].key == key){
 					T combined_score = score + curr->pairs[j].value;
 					if(q[0].size() < k){
-						q[0].push(_tuple<Z,T>(i,combined_score));
+						q[0].push(_tuple<Z,T>(key,combined_score));
 					}else if(q[0].top().score < combined_score){
 						q[0].pop();
-						q[0].push(_tuple<Z,T>(i,combined_score));
+						q[0].push(_tuple<Z,T>(key,combined_score));
 					}
 					count++;
 				}
@@ -203,15 +211,17 @@ uint64_t S_HashTable<Z,T>::probe_mt(TABLE<Z,T> *rel, Z sRel, Z eRel, std::priori
 	return count;
 }
 
+
 template<class Z, class T>
-class PB_HashTable{
+class P_HashTable{
 	public:
-		PB_HashTable(){}
-		~PB_HashTable(){
+		P_HashTable(){}
+		~P_HashTable(){
 			if(this->buckets != NULL) free(this->buckets);
 		}
 
 		void initialize(Z num_buckets);
+		uint64_t build_st(TABLE<Z,T> *rel);
 	private:
 		bucket_t<Z,T> *buckets = NULL;
 		Z num_buckets = 0;
@@ -219,10 +229,17 @@ class PB_HashTable{
 		Z bits = 0;
 
 		inline Z __hash(Z key)__attribute__((always_inline)){ return (key & this->mask); }
+		inline Z __hash_to_prt(Z key) __attribute__((always_inline)){}
 };
 
 template<class Z, class T>
-void PB_HashTable<Z,T>::initialize(Z num_buckets)
+void P_HashTable<Z,T>::initialize(Z num_buckets)
+{
+
+}
+
+template<class Z, class T>
+uint64_t P_HashTable<Z,T>::build_st(TABLE<Z,T> *rel)
 {
 
 }

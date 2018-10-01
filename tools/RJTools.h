@@ -32,6 +32,8 @@ static uint8_t UNIFORM_SCORE=0;
 #define MASK (PNUM-1)
 #define PHASH(X) (X & MASK)
 
+#define MAX_SCORE (1.0f)
+
 template<class Z, class T>
 struct _tuple{
 	_tuple(){}
@@ -189,7 +191,7 @@ template<class Z, class T>
 T GenData<Z,T>::gen_score(){
 	switch(this->score_distr){
 		case 0:
-			return std::uniform_real_distribution<T>{0, 1}(this->def_eng);
+			return std::uniform_real_distribution<T>{0, MAX_SCORE}(this->def_eng);
 		default:
 			return 0.0f;
 	}
