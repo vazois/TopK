@@ -15,6 +15,9 @@
 #include "../cpu/VTA.h"
 #include "../cpu/PTA.h"
 #include "../cpu/SLA.h"
+#include "../cpu/HLi.h"
+#include "../cpu/T2S.h"
+#include "../cpu/LARA.h"
 
 float weights[8] = { 1,1,1,1,1,1,1,1 };//Q0
 //float weights[8] = { 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8 };//Q1
@@ -106,6 +109,67 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke
 				ta.findTopK(k,i,weights,attr[i-q]);
 			}
 			ta.benchmark();
+		}
+	}
+}
+
+void bench_hli(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
+	File<float> f(fname,false,n,d);
+	HLi<float,uint64_t> hli(f.rows(),f.items());
+	//f.set_transpose(true);
+
+	if (LD != 1){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(hli.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(hli.get_cdata(),DISTR);
+	}
+
+	hli.init();
+	hli.set_iter(ITER);
+	uint8_t q = 2;
+	for(uint64_t k = ks; k <= ke; k*=2){
+		for(uint8_t i = q; i <= f.items();i+=QD){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+			//Warm up
+			hli.findTopK(k,i,weights,attr[i-q]);
+			hli.reset_clocks();
+			//Benchmark
+			for(uint8_t m = 0; m < ITER;m++){
+				hli.findTopK(k,i,weights,attr[i-q]);
+			}
+			hli.benchmark();
+		}
+	}
+}
+
+void bench_lara(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
+	File<float> f(fname,false,n,d);
+	LARA<float,uint64_t> lara(f.rows(),f.items());
+
+	if (LD != 1){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(lara.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(lara.get_cdata(),DISTR);
+	}
+
+	lara.init();
+	lara.set_iter(ITER);
+	uint8_t q = 2;
+	for(uint64_t k = ks; k <= ke; k*=2){
+		for(uint8_t i = q; i <= f.items();i+=QD){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+			//Warm up
+			lara.findTopK(k,i,weights,attr[i-q]);
+			lara.reset_clocks();
+			//Benchmark
+			for(uint8_t m = 0; m < ITER;m++){
+				lara.findTopK(k,i,weights,attr[i-q]);
+			}
+			lara.benchmark();
 		}
 	}
 }
@@ -472,6 +536,5 @@ void bench_lsa(std::string fname,uint64_t n, uint64_t d, uint64_t k){
 	for(uint8_t m = 0; m < ITER;m++) lsa.findTopKscalar(k);
 	lsa.benchmark();
 }
-
 
 #endif

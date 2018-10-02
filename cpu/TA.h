@@ -70,14 +70,14 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	this->t.start();
 	for(uint64_t i = 0; i < this->n;i++){
 		T threshold=0;
-		for(uint8_t m = 0; m < qq; m++){
-			pred<T,Z> p = this->alists[attr[m]][i];
-			T weight = weights[attr[m]];
+		for(uint8_t mm = 0; mm < qq; mm++){
+			pred<T,Z> p = this->alists[attr[mm]][i];
+			T weight = weights[attr[mm]];
 			threshold+=p.attr*weight;
 
 			if(eset.find(p.tid) == eset.end()){
 				T score00 = 0;
-				for(uint8_t m = 0; m < qq; m++){ score00+=this->cdata[p.tid * this->d + attr[m]] * weight; }
+				for(uint8_t m = 0; m < qq; m++){ score00+=this->cdata[p.tid * this->d + attr[m]] * weights[attr[m]]; }
 
 				if(STATS_EFF) this->pred_count+=this->d;
 				if(STATS_EFF) this->tuple_count+=1;

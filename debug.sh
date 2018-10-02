@@ -5,12 +5,12 @@
 #############################
 START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
-DIMS=8
+DIMS=4
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
 KKE=128
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=1
+LD=0
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -65,7 +65,7 @@ ITER=10
 #Multiple Thread Count
 MQTHREADS=16
 #Gather object evaluation statistics
-STATS_EFF=false
+STATS_EFF=true
 #Choose workload for multi-query evaluation
 WORKLOAD=$((1024*128))
 
@@ -77,8 +77,12 @@ fi
 ######CHOOSE CPU ALGORITHM######
 #TA Benchmark
 TA_B=0
+#HL Index
+HLi_B=0
+#LARA Benchnmark
+LARA_B=1
 #TPAc Benchmark
-TPAc_B=0
+TPAc_B=1
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
@@ -94,7 +98,7 @@ SLA_B=0
 ####################################
 if [ $device -eq 0 ]
 then
-	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
+	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B HLi_B=$HLi_B LARA_B=$LARA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 else
 	make gpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR KKS=$KKS KKE=$KKE STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 fi

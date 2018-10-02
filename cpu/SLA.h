@@ -343,7 +343,6 @@ void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 	}
-
 	this->tt_processing += this->t.lap();
 
 	T threshold = q.top().score;

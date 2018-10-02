@@ -42,6 +42,8 @@ int main(int argc, char **argv){
 //	}
 
 	if (TA_B == 1){ bench_ta(ap.getString("-f"),n,d,KKS,KKE); }
+	if (HLi_B == 1){ bench_hli(ap.getString("-f"),n,d,KKS,KKE); }
+	if (LARA_B == 1){ bench_lara(ap.getString("-f"),n,d,KKS,KKE); }
 	if (TPAr_B == 1){ bench_tpar(ap.getString("-f"),n,d,KKS,KKE); }
 	if (TPAc_B == 1){ bench_tpac(ap.getString("-f"),n,d,KKS,KKE);	}
 	if (VTA_B == 1){ bench_vta(ap.getString("-f"),n,d,KKS,KKE); }
