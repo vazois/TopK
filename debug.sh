@@ -61,7 +61,7 @@ QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
 IMP=1
 #ITER Testing iterations
-ITER=10
+ITER=1
 #Multiple Thread Count
 MQTHREADS=16
 #Gather object evaluation statistics
@@ -76,13 +76,13 @@ fi
 
 ######CHOOSE CPU ALGORITHM######
 #TA Benchmark
-TA_B=0
+TA_B=1
 #HL Index
 HLi_B=0
 #LARA Benchnmark
 LARA_B=1
 #TPAc Benchmark
-TPAc_B=1
+TPAc_B=0
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
