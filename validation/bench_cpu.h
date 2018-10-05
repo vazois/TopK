@@ -18,6 +18,7 @@
 #include "../cpu/HLi.h"
 #include "../cpu/T2S.h"
 #include "../cpu/LARA.h"
+#include "../cpu/DL.h"
 
 float weights[8] = { 1,1,1,1,1,1,1,1 };//Q0
 //float weights[8] = { 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8 };//Q1
@@ -170,6 +171,36 @@ void bench_lara(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 				lara.findTopK(k,i,weights,attr[i-q]);
 			}
 			lara.benchmark();
+		}
+	}
+}
+
+void bench_dl(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
+	File<float> f(fname,false,n,d);
+	DL<float,uint64_t> dl(f.rows(),f.items());
+
+	if (LD != 1){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(dl.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(dl.get_cdata(),DISTR);
+	}
+
+	dl.init();
+	dl.set_iter(ITER);
+	uint8_t q = 2;
+	for(uint64_t k = ks; k <= ke; k*=2){
+		for(uint8_t i = q; i <= f.items();i+=QD){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+			//Warm up
+			dl.findTopK(k,i,weights,attr[i-q]);
+			dl.reset_clocks();
+			//Benchmark
+			for(uint8_t m = 0; m < ITER;m++){
+				dl.findTopK(k,i,weights,attr[i-q]);
+			}
+			dl.benchmark();
 		}
 	}
 }
