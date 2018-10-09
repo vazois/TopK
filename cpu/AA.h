@@ -52,6 +52,109 @@ struct MaxCMP{
 	}
 };
 
+template<class T, class Z>
+struct qpair
+{
+	Z id;
+	T score;
+};
+
+template<class T,class Z>
+struct pqueue_desc{
+	bool operator()(qpair<T,Z>& a,qpair<T,Z>& b) const{ return a.score>b.score; }
+};
+
+template<class T,class Z>
+struct pqueue_asc{
+	bool operator()(qpair<T,Z>& a,qpair<T,Z>& b) const{ return a.score<b.score; }
+};
+
+template<class T, class Z, class CMP>
+class pqueue{
+	public:
+		pqueue()
+		{
+
+		}
+
+		pqueue(uint32_t max_capacity)
+		{
+			this->queue.resize(max_capacity);
+			this->max_capacity = max_capacity;
+		}
+		~pqueue(){}
+
+		void push(qpair<T,Z> t);
+		void update(qpair<T,Z> t);
+		void remove(qpair<T,Z> t);
+		void pop();
+		void pop_back();
+
+		uint64_t size(){return this->queue.size();}
+		bool empty(){ return (this->queue.size() > 0);}
+		const qpair<T,Z>& top();
+		const qpair<T,Z>& bottom();
+
+	private:
+		std::vector<qpair<T,Z>> queue;
+		uint32_t max_capacity;
+};
+
+template<class T,class Z, class CMP>
+void pqueue<T,Z,CMP>::push(qpair<T,Z> t)
+{
+	this->queue.push_back(t);
+	std::push_heap(this->queue.begin(),this->queue.end(),CMP());
+}
+
+template<class T,class Z, class CMP>
+void pqueue<T,Z,CMP>::pop()
+{
+	std::pop_heap(this->queue.begin(),this->queue.end(),CMP());
+	this->queue.pop_back();
+}
+
+template<class T,class Z, class CMP>
+void pqueue<T,Z,CMP>::pop_back()
+{
+	this->queue.pop_back();
+}
+
+template<class T,class Z, class CMP>
+const qpair<T,Z>& pqueue<T,Z,CMP>::top()
+{
+	return this->queue.front();
+}
+
+template<class T,class Z, class CMP>
+const qpair<T,Z>& pqueue<T,Z,CMP>::bottom()
+{
+	return this->queue.back();
+}
+
+template<class T, class Z, class CMP>
+void pqueue<T,Z,CMP>::update(qpair<T,Z> t)
+{
+	auto it = this->queue.begin();
+	while (it != this->queue.end())
+	{
+		if(it->id == t.id){ it->score = t.score; break;}
+		++it;
+	}
+	std::make_heap(this->queue.begin(),this->queue.end(), CMP());
+}
+
+template<class T, class Z, class CMP>
+void pqueue<T,Z,CMP>::remove(qpair<T,Z> t)
+{
+	auto it = this->queue.begin();
+	while (it != this->queue.end())
+	{
+		if(it->id == t.id){ this->queue.erase(it); break;}
+		++it;
+	}
+}
+
 /*
  * Base class for aggregation algorithm
  */

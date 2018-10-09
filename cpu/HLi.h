@@ -111,8 +111,10 @@ void HLi<T,Z>::init()
 	T **cdata = NULL;
 	cdata = this->sky_data(cdata);
 
+	this->t.start();
 	this->create_layers(cdata);//Assign tuples to different layers
 	for(uint64_t i = 0; i < this->n; i++) free(cdata[i]);
+	this->tt_init += this->t.lap();
 	free(cdata);
 
 	this->t.start();
@@ -134,7 +136,7 @@ void HLi<T,Z>::init()
 		this->llists.push_back(lists);//push back initialized list
 		this->llsize.push_back(nn);// push back initialized size
 	}
-	this->tt_init = this->t.lap();
+	this->tt_init += this->t.lap();
 }
 
 template<class T,class Z>
