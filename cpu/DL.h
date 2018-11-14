@@ -167,21 +167,24 @@ void DL<T,Z>::build_edges()
 		//std::cout << "layer (" << i << ")" << std::endl;
 		//Forward edges
 		for(uint64_t j = 0; j < this->layer_blocks[i].size; j++){
-			layer_map.emplace(offset+j,i);
-			this->fwd[i].emplace(offset+j,std::vector<Z>());
+			layer_map.emplace(offset+j,i);//id, layer
+			this->fwd[i].emplace(offset+j,std::vector<Z>());//initialize forward edge for layer i
 		}
-		this->layer_blocks[i].offset = offset;
+		this->layer_blocks[i].offset = offset;// increase offset to keep track of id
 		offset += this->layer_blocks[i].size;
 		//Backward edges
-		for(uint64_t j = 0; j < this->layer_blocks[i+1].size; j++) this->bwd[i+1].emplace(offset+j,std::vector<Z>());
+		for(uint64_t j = 0; j < this->layer_blocks[i+1].size; j++) this->bwd[i+1].emplace(offset+j,std::vector<Z>());//initialize backward edges for next layer
+		this->layer_blocks[i+1].offset = offset;
 
 		for(auto it = this->fwd[i].begin(); it != this->fwd[i].end(); ++it)
 		{
-			T *p = &this->layer_blocks[i].data[it->first * this->d];
+			Z offset01 = it->first - this->layer_blocks[i].offset;
+			T *p = &this->layer_blocks[i].data[offset01 * this->d];//for everyone in layer i
 			for(auto it2 = this->bwd[i+1].begin(); it2 != this->bwd[i+1].end(); ++it2)
 			{
-				T *q = &this->layer_blocks[i+1].data[it2->first * this->d];
-				if(DT(p,q))
+				Z offset02 = it2->first - this->layer_blocks[i+1].offset;
+				T *q = &this->layer_blocks[i+1].data[offset02 * this->d];// for everyone in layer i+1
+				if(DT(p,q))//insert fwd and bwd edge if p dominates q
 				{
 					it->second.push_back(it2->first);
 					it2->second.push_back(it->first);
@@ -196,14 +199,14 @@ bool DL<T,Z>::DT(T *p, T *q)
 {
 	//pb = ( p[i] < q[i] ) | pb;//At least one dimension better
 	//qb = ( q[i] < p[i] ) | qb;//No dimensions better
-	bool g;
-	bool gq;
+	bool g0;
+	bool g1;
 	switch(this->d)
 	{
 		case 8:
-			g = (p[0] > q[0]) | (p[1] > q[1]) | (p[2] > q[2]) | (p[3] > q[3]) | (p[4] > q[4]) | (p[5] > q[5]) | (p[6] > q[6]) | (p[7] > q[7]);
-			gq = (p[0] < q[0]) | (p[1] < q[1]) | (p[2] < q[2]) | (p[3] < q[3]) | (p[4] < q[4]) | (p[5] < q[5]) | (p[6] < q[6]) | (p[7] < q[7]);
-			return (~gq & g);
+			g0 = (p[0] > q[0]) | (p[1] > q[1]) | (p[2] > q[2]) | (p[3] > q[3]) | (p[4] > q[4]) | (p[5] > q[5]) | (p[6] > q[6]) | (p[7] > q[7]);
+			g1 = (p[0] < q[0]) | (p[1] < q[1]) | (p[2] < q[2]) | (p[3] < q[3]) | (p[4] < q[4]) | (p[5] < q[5]) | (p[6] < q[6]) | (p[7] < q[7]);
+			return (~g1 & g0);
 		default:
 			perror("Dimension size not supported!!!");//TODO
 			exit(1);
@@ -217,6 +220,7 @@ void DL<T,Z>::init()
 	T **cdata = NULL;
 	cdata = this->sky_data(cdata);
 
+	std::cout << "START_INIT\n";
 	this->t.start();
 	this->create_layers(cdata);//Assign tuples to different layers
 	for(uint64_t i = 0; i < this->n; i++) free(cdata[i]);
@@ -235,19 +239,24 @@ void DL<T,Z>::init()
 	this->fwd = new std::unordered_map<Z,std::vector<Z>>[this->layers.size()];
 	this->bwd = new std::unordered_map<Z,std::vector<Z>>[this->layers.size()];
 
-	this->t.start();
-	this->make_blocks();
-	this->build_edges();
-	this->tt_init = this->t.lap();
 
+	this->t.start();
+	std::cout << "MAKE BLOCKS\n";
+	this->make_blocks();
+	std::cout << "FINISH BLOCKS\n";
+	this->layers.clear();
 	free(this->cdata);
 	this->cdata = NULL;
-	this->layers.clear();
+	std::cout << "MAKE EDGES\n";
+	this->build_edges();
+	std::cout << "FINISH EDGES\n";
+	this->tt_init = this->t.lap();
 }
 
 template<class T,class Z>
 void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 {
+	std::cout << "START TOPK\n";
 	std::cout << this->algo << " find top-" << k << " (" << (int)qq << "D) ...";
 	std::vector<std::unordered_set<Z>> eset_vec;
 	if(this->res.size() > 0) this->res.clear();
@@ -269,7 +278,7 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			uint8_t aa = attr[mm];
 			score += weights[aa] * this->layer_blocks[0].data[j*this->d + aa];
 		}
-
+		if(STATS_EFF) this->tuple_count++;
 		qpair<T,Z> p;
 		p.id = j;
 		p.score = score;
@@ -292,50 +301,93 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 		p.id=cl.top().id;
 		p.score=cl.top().score;
 		cl.pop_back();
-		q.push(p);
+		q.push(p);// Get first object from cl queue
 
 		//std::cout << p.id << "," << p.score << std::endl;
-		rs.insert(p.id);
-		continue;
-		for(auto it=rs.begin(); it!= rs.end(); ++it)
+		rs.insert(p.id);// object from cl now in rs
+		for(auto it=rs.begin(); it!= rs.end(); ++it)// For every object in rs
 		{
-			Z l = layer_map.find(*it)->second + 1;
-			//std::cout << layer_num << "," << l << std::endl;
-			if(l >= this->layer_num) continue;
-			for(uint64_t j = 0; j < this->layer_blocks[l].size; j++)
+			auto plm = layer_map.find(*it);//find which layer i belong to//
+			if(plm == layer_map.end()) continue;
+			auto clist = this->fwd[plm->second].find(plm->first);
+			if(clist == this->fwd[plm->second].end()) continue;
+			for(auto child = clist->second.begin(); child!= clist->second.end(); ++child)
 			{
-				Z id = this->layer_blocks[l].offset + j;
-				if(rs.find(id) != rs.end()) continue;
-				auto it = this->bwd[l].find(id);
-//				if( it->second.size() < q.size() )
-//				{
-					bool parents  = true;
-					for(uint64_t jj = 0; jj < it->second.size(); jj++)
-					{
-						parents &= (rs.find(it->second[jj]) != rs.end());//Check if all parents of child are in rs
+				Z child_id = *child;
+				if(rs.find(child_id) != rs.end()) continue;
+				auto clm = layer_map.find(child_id);
+				if(clm == layer_map.end()) continue;
+				auto plist = this->bwd[clm->second].find(clm->first);
+				if(plist == this->bwd[clm->second].end()) continue;
+				if(plist->second.size() > k) break;
+
+				bool parents  = true;
+				for(auto parent = plist->second.begin(); parent != plist->second.end(); ++parent)
+				{
+					parents &= (rs.find(*parent) != rs.end());
+				}
+
+				if(parents)
+				{
+					Z offset = child_id - this->layer_blocks[clm->second].offset;//local offset in DL_BLOCK
+					T score = 0;
+					for(uint8_t mm = 0; mm < qq; mm++){
+						uint8_t aa = attr[mm];
+						score += weights[aa] * this->layer_blocks[clm->second].data[offset*this->d + aa];
 					}
 
-					if(parents)// If all parents of child in rs
-					{
-						T score = 0;
-						for(uint8_t mm = 0; mm < qq; mm++){
-							uint8_t aa = attr[mm];
-							score += weights[aa] * this->layer_blocks[l].data[j*this->d + aa];
-						}
+					if(STATS_EFF) this->tuple_count++;
 
-						qpair<T,Z> pp;
-						pp.id = id;
-						pp.score = score;
-						if(cl.size() < k)
-						{
-							cl.push(pp);
-						}else if(cl.top().score<pp.score){
-							cl.pop();
-							cl.push(pp);
-						}
+					qpair<T,Z> pp;
+					pp.id = child_id;
+					pp.score = score;
+					if(cl.size() < k)
+					{
+						cl.push(pp);
+					}else if(cl.top().score<pp.score){
+						cl.pop();
+						cl.push(pp);
 					}
-				//}
+				}
 			}
+
+			//std::cout << layer_num << "," << l << std::endl;
+//			if(l >= this->layer_num) continue;
+//			for(uint64_t j = 0; j < this->layer_blocks[l].size; j++)
+//			{
+//				Z id = this->layer_blocks[l].offset + j;
+//				//if(rs.find(id) != rs.end()) continue;
+//				auto it = this->bwd[l].find(id);
+////				if( it->second.size() < q.size() )
+////				{
+//					bool parents  = true;
+//					for(uint64_t jj = 0; jj < it->second.size(); jj++)
+//					{
+//						parents &= (rs.find(it->second[jj]) != rs.end());//Check if all parents of child are in rs
+//					}
+//
+//					if(parents)// If all parents of child in rs
+//					{
+//						T score = 0;
+//						for(uint8_t mm = 0; mm < qq; mm++){
+//							uint8_t aa = attr[mm];
+//							score += weights[aa] * this->layer_blocks[l].data[j*this->d + aa];
+//						}
+//
+//						qpair<T,Z> pp;
+//						pp.id = id;
+//						pp.score = score;
+//						if(cl.size() < k)
+//						{
+//							cl.push(pp);
+//						}else if(cl.top().score<pp.score){
+//							cl.pop();
+//							cl.push(pp);
+//						}
+//					}
+//				//}
+//			}
+
 		}
 	}
 	this->tt_processing += this->t.lap();
@@ -352,6 +404,8 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
+
+	std::cout << "FINISH TOPK\n";
 }
 
 #endif

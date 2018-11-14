@@ -377,7 +377,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 		if(IMP==3){
 			random_workload();
 			omp_set_num_threads(MQTHREADS);
-			std::cout << "<<<Random Attribute Multiple Queries PTA - ("<<MQTHREADS<< ") threads >>>" << std::endl;
+			std::cout << "<<<Random Attribute Multiple Queries VTA - ("<<MQTHREADS<< ") threads >>>" << std::endl;
 			for(uint64_t k = ks; k <= ke; k*=2){
 				std::cout << "Benchmark <<<-------------" << f.rows() << "," << f.items() << "," << k << "------------->>> " << std::endl;
 				#pragma omp parallel
