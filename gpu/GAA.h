@@ -54,7 +54,7 @@ static T compute_threshold(T* cdata, uint64_t n, uint64_t d, uint64_t k){
 	}
 
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << "threshold: " << q.top().score << std::endl;
+	//std::cout << "threshold: " << q.top().score << std::endl;
 	return q.top().score;
 }
 
@@ -70,7 +70,7 @@ static T find_threshold(T *cscores, uint64_t n, uint64_t k){
 		}
 	}
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << "threshold: " << q.top().score << std::endl;
+	//std::cout << "threshold: " << q.top().score << std::endl;
 	return q.top().score;
 }
 
@@ -100,7 +100,7 @@ static T find_partial_threshold(T *cscores, uint64_t n, uint64_t k, bool type, u
 		}
 	}
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << "partial threshold: " << q.top().score << std::endl;
+	//std::cout << "partial threshold: " << q.top().score << std::endl;
 	return q.top().score;
 }
 
@@ -119,7 +119,7 @@ static T find_remain_threshold(T *cscores, uint64_t n, uint64_t k, uint32_t rema
 		}
 	}
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << "remain threshold: " << q.top().score << std::endl;
+	//std::cout << "remain threshold: " << q.top().score << std::endl;
 	return q.top().score;
 }
 
