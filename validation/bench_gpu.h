@@ -117,6 +117,4 @@ void bench_gpta(std::string fname, uint64_t n, uint64_t d, uint64_t k){
 	gpta.benchmark();
 }
 
-
-
 #endif
