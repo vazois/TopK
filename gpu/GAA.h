@@ -27,7 +27,6 @@ template<class Z>
 __global__ void init_rvlocal(Z *dkeys_in, uint64_t n)
 {
 	uint64_t i = blockIdx.x * blockDim.x + threadIdx.x;
-
 	if( i < n ){ dkeys_in[i] = i; }
 }
 
@@ -50,7 +49,8 @@ __global__ void max_rvglobal(Z *rvector, Z *dkeys_in, uint64_t n)
 {
 	uint64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 	if( i < n ){
-		rvector[i] = max(rvector[i],dkeys_in[i]);
+		Z obj_id = dkeys_in[i];
+		rvector[obj_id] = min(rvector[obj_id],i);
 	}
 
 }

@@ -3,11 +3,11 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((1*1024*1024))
-END_N=$((1*1024*1024))
-DIMS=2
+START_N=$((1*512))
+END_N=$((1*512))
+DIMS=4
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=2
+KKS=16
 KKE=16
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
 LD=1
