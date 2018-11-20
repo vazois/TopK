@@ -16,10 +16,10 @@ class  TPAc : public AA<T,Z>{
 		}
 
 		void init();
-		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
-		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
-		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
-		void findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr, uint32_t tid);
+		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);
+		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);
+		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);
+		void findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint32_t *attr, uint32_t tid);
 	private:
 		T *scores;
 };
@@ -32,7 +32,7 @@ void TPAc<T,Z>::init(){
 }
 
 template<class T, class Z>
-void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
+void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -115,7 +115,7 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 }
 
 template<class T, class Z>
-void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
+void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -207,7 +207,7 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 }
 
 template<class T, class Z>
-void TPAc<T,Z>::findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr, uint32_t tid){
+void TPAc<T,Z>::findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint32_t *attr, uint32_t tid){
 	Time<msecs> t;
 	//std::cout << this->algo << " find top-" << k << " simdMQ (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
@@ -254,7 +254,7 @@ void TPAc<T,Z>::findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr,
 }
 
 template<class T, class Z>
-void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
+void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 	std::cout << this->algo << " find top-" << k << " threads (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;

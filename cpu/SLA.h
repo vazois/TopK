@@ -65,10 +65,10 @@ class SLA : public AA<T,Z>{
 		};
 
 		void init();
-		void findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
-		void findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
-		void findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
-		void findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint32_t *attr);
+		void findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint32_t *attr);
+		void findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint32_t *attr);
+		void findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint32_t *attr);
 
 	private:
 		std::vector<std::vector<Z>> layers;
@@ -282,7 +282,7 @@ void SLA<T,Z>::init(){
 }
 
 template<class T, class Z>
-void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
+void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint32_t *attr){
 	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -353,7 +353,7 @@ void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 }
 
 template<class T, class Z>
-void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
+void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint32_t *attr){
 	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -414,7 +414,7 @@ void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 }
 
 template<class T, class Z>
-void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
+void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint32_t *attr){
 	uint32_t threads = THREADS;
 	Z tt_count[threads];
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> _q[threads];
@@ -508,7 +508,7 @@ void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 }
 
 template<class T, class Z>
-void SLA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
+void SLA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint32_t *attr){
 	uint32_t threads = THREADS;
 	Z tt_count[threads];
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> _q[threads];

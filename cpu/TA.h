@@ -31,7 +31,7 @@ class TA : public AA<T,Z>{
 		}
 
 		void init();
-		void findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopK(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);
 
 	private:
 		pred<T,Z> **alists;
@@ -58,7 +58,7 @@ void TA<T,Z>::init(){
 }
 
 template<class T,class Z>
-void TA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
+void TA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 	std::cout << this->algo << " find top-" << k << " (" << (int)qq << "D) ...";
 	std::unordered_set<Z> eset;
 	if(this->res.size() > 0) this->res.clear();

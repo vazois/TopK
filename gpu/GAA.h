@@ -1,12 +1,16 @@
 #ifndef GAA_H
 #define GAA_H
 
+/*
+ * GPU Aggregation Abstract Header
+ */
 #include <omp.h>
 #include "../tools/CudaHelper.h"
 #include <inttypes.h>
 #include <vector>
 #include <queue>
 #include <algorithm>
+#include <cub/cub.cuh>
 
 #define SHARED_MEM_BYTES 49152
 #define THREADS_PER_BLOCK 256
@@ -15,6 +19,41 @@
 
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];
+
+/*
+ * initialize global rearrange vector
+ */
+template<class Z>
+__global__ void init_rvlocal(Z *dkeys_in, uint64_t n)
+{
+	uint64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if( i < n ){ dkeys_in[i] = i; }
+}
+
+/*
+ * initialize global rearrange vector
+ */
+
+template<class Z>
+__global__ void init_rvglobal(Z *rvector, uint64_t n)
+{
+	uint64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+	if( i < n ){ rvector[i] = n; }
+}
+
+/*
+ * find max rearrange value
+ */
+template<class Z>
+__global__ void max_rvglobal(Z *rvector, Z *dkeys_in, uint64_t n)
+{
+	uint64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+	if( i < n ){
+		rvector[i] = max(rvector[i],dkeys_in[i]);
+	}
+
+}
 
 /*
  * Tuple structure
@@ -38,12 +77,13 @@ class MaxFirst{
 };
 
 template<class T, class Z>
-static T compute_threshold(T* cdata, uint64_t n, uint64_t d, uint64_t k){
+static T compute_threshold(T* cdata, uint64_t n, uint64_t d, T *weights, uint32_t *query, uint64_t k){
 	std::priority_queue<T, std::vector<ranked_tuple<T,Z>>, MaxFirst<T,Z>> q;
 	for(uint64_t i = 0; i < n; i++){
 		T score = 0;
 		for(uint64_t m = 0; m < d; m++){
-			score+=cdata[m*n + i];
+			uint32_t a = query[m];
+			score+=cdata[a*n + i] * weights[a];
 		}
 		if(q.size() < k){
 			q.push(ranked_tuple<T,Z>(i,score));
@@ -173,7 +213,7 @@ class GAA{
 			std::cout << "tuple_count: " << this->tuple_count << std::endl;
 			std::cout << "cpu_threshold: " << this->cpu_threshold << std::endl;
 			std::cout << "gpu_threshold: " << this->gpu_threshold << std::endl;
-			std::cout << "< ---------------------------------------------- >" << std::endl;
+			//std::cout << "< ---------------------------------------------- >" << std::endl;
 			this->reset_stats();
 		}
 
@@ -197,6 +237,9 @@ class GAA{
 		T *gscores;
 		T cpu_threshold;
 		T gpu_threshold;
+
+		T *weights;
+		uint32_t *query;
 
 		uint64_t iter;//experiment count
 		double tt_init;

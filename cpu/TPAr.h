@@ -16,9 +16,9 @@ class  TPAr : public AA<T,Z>{
 		}
 
 		void init();
-		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
-		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
-		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);
+		void findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);
+		void findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);
 
 	private:
 		T *scores;
@@ -33,7 +33,7 @@ void TPAr<T,Z>::init(){
 }
 
 template<class T, class Z>
-void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
+void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 	std::cout << this->algo << " find top-" << k << " scalar (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -101,7 +101,7 @@ void TPAr<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 }
 
 template<class T, class Z>
-void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
+void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
@@ -216,7 +216,7 @@ void TPAr<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 }
 
 template<class T, class Z>
-void TPAr<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
+void TPAr<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 	std::cout << this->algo << " find top-" << k << " threads (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
