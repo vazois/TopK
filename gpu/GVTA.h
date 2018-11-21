@@ -153,27 +153,32 @@ void GVTA<T,Z>::layer_data()
 //		}
 
 		//h: final data rearrangement using hkeys
-//		cutil::safeCopyToHost<Z,uint64_t>(hkeys,dkeys_out,sizeof(Z)*psize, " copy from dkeys_out to hkeys for final reordering");
-//		std::cout << std::fixed << std::setprecision(4);
-//		for(uint64_t j = 0; j < psize; j++)//DEBUG//
-//		{
-//			uint64_t id = offset + hkeys[j];
-//			T mx = 0;
-//			for(uint64_t m = 0; m < this->d; m++){
-//				if( i < 1 )//DEBUG//
-//				{
-//					mx = std::max(mx, this->cdata[this->n * m+ id]);
-//					std::cout << this->cdata[this->n * m+ id] << " ";
-//				}
-//			}
-//
-//			if(i < 1)//DEBUG//
-//			{
-//				std::cout << "(" << mx << ")" << std::endl;
-//				if((j+1) % this->d == 0) std::cout << "-------" << std::endl;
-//				if((j+1) % GVTA_BLOCK_SIZE == 0) std::cout << "_________________________________________________" << std::endl;
-//			}
-//		}
+		cutil::safeCopyToHost<Z,uint64_t>(hkeys,dkeys_out,sizeof(Z)*psize, " copy from dkeys_out to hkeys for final reordering");
+		std::cout << std::fixed << std::setprecision(4);
+		int count = 0;
+		for(uint64_t j = 0; j < psize; j++)//DEBUG//
+		{
+			uint64_t id = offset + hkeys[j];
+			T mx = 0;
+			for(uint64_t m = 0; m < this->d; m++){
+				if( i == 1 )//DEBUG//
+				{
+					mx = std::max(mx, this->cdata[this->n * m+ id]);
+					std::cout << this->cdata[this->n * m+ id] << " ";
+				}
+			}
+
+			if(i == 1)//DEBUG//
+			{
+				std::cout << "(" << mx << ")" << std::endl;
+				if((j+1) % this->d == 0) std::cout << "-------" << std::endl;
+				if((j+1) % GVTA_BLOCK_SIZE == 0){
+					count ++;
+					std::cout << "_________________________________________________" << std::endl;
+					if(count == 2) break;
+				}
+			}
+		}
 
 		//h: final data rearrangement using hkeys
 		cutil::safeCopyToHost<Z,uint64_t>(hkeys,dkeys_out,sizeof(Z)*psize, " copy from dkeys_out to hkeys for final reordering");
@@ -190,7 +195,6 @@ void GVTA<T,Z>::layer_data()
 					for(uint64_t m = 0; m < this->d; m++)
 					{
 						T v = this->cdata[this->n * m + id];
-						//this->blocks[bi].data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + (jj + offset)] = v;
 						this->blocks[bi].data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + (i *GVTA_BLOCK_SIZE + jj)] = v;
 						tvector[m] = std::max(tvector[m],v);
 					}
@@ -201,7 +205,7 @@ void GVTA<T,Z>::layer_data()
 					}
 				}
 			}
-			if(bi > 0) std::memcpy(&this->blocks[bi-1].tvector[this->d * i], tvector,sizeof(T)*this->d);
+			if(bi > 0){ std::memcpy(&this->blocks[bi-1].tvector[this->d * i], tvector,sizeof(T)*this->d); }
 			bi++;
 		}
 		//
@@ -216,16 +220,21 @@ void GVTA<T,Z>::layer_data()
 
 		for(uint64_t m = 0; m < this->d; m++)
 		{
+			uint64_t poff = 0;
 			for(uint64_t j = 0; j < GVTA_BLOCK_SIZE * GVTA_PARTITIONS; j++)
 			{
 				std::cout << data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + j] << " ";
-				if((j+1) % GVTA_BLOCK_SIZE == 0) std::cout << " | ";
+				if((j+1) % GVTA_BLOCK_SIZE == 0){
+					//std::cout << "(" << tvector[ (j % GVTA_BLOCK_SIZE)   +  (j / (GVTA_BLOCK_SIZE * GVTA_PARTITIONS))] <<")";
+					std::cout << "(" << tvector[poff + m] <<")";
+					//std::cout << "(0)";
+					std::cout << " | ";
+					poff+=this->d;
+				}
 			}
 			std::cout << std::endl;
 		}
-
-
-		std::cout << "______________________________________________________________________________________________________________________________________________________________\n";
+		std::cout << "____________________________________________________________________________________________________________________________\n";
 	}
 
 	/////////////////////////
@@ -241,7 +250,6 @@ void GVTA<T,Z>::layer_data()
 	free(hkeys);
 	free(hvalues);
 	free(hrvector);
-
 }
 
 template<class T, class Z>

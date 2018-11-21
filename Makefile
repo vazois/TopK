@@ -1,8 +1,8 @@
 CC=g++
 #CC=icpc
-NVCC=/usr/local/cuda-9.0/bin/nvcc
-NVCC_INCLUDE=-I/home/vzois/cub-1.8.0/ -I/usr/local/cuda/include/
-NVCC_LIBS=-L/usr/local/cuda-9.0/lib64/
+NVCC=/usr/local/cuda-9.1/bin/nvcc
+NVCC_INCLUDE=-Icub-1.8.0/ -I/usr/local/cuda/include/
+NVCC_LIBS=-L/usr/local/cuda-9.1/lib64/
 
 #REORDER APP
 CC_REORDER=input/main.cpp
