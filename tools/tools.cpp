@@ -64,3 +64,99 @@ void normalize_transpose(T *&cdata, uint64_t n, uint64_t d){
 }
 
 template void normalize_transpose(float *&cdata, uint64_t n, uint64_t d);
+
+template<class T, class Z>
+T findTopKtpac(T *cdata, Z n, Z d, uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
+//	if(this->cdata == NULL){ perror("cdata not initialized"); }
+
+	int THREADS = 16;
+	omp_set_num_threads(THREADS);
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, Desc<T,Z>> q[THREADS];
+	#pragma omp parallel
+	{
+		uint32_t thread_id = omp_get_thread_num();
+		float score[16] __attribute__((aligned(32)));
+		uint64_t start = ((uint64_t)thread_id)*(n)/THREADS;
+		uint64_t end = ((uint64_t)(thread_id+1))*(n)/THREADS;
+
+		for(uint64_t i = start; i < end; i+=16)
+		{
+			__m256 score00 = _mm256_setzero_ps();
+			__m256 score01 = _mm256_setzero_ps();
+			for(uint8_t m = 0; m < qq; m++){
+				uint64_t offset00 = attr[m] * n + i;
+				uint64_t offset01 = attr[m] * n + i + 8;
+				T weight = weights[attr[m]];
+
+				__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+				__m256 load00 = _mm256_load_ps(&cdata[offset00]);
+				__m256 load01 = _mm256_load_ps(&cdata[offset01]);
+
+				load00 = _mm256_mul_ps(load00,_weight);
+				load01 = _mm256_mul_ps(load01,_weight);
+				score00 = _mm256_add_ps(score00,load00);
+				score01 = _mm256_add_ps(score01,load01);
+			}
+
+			_mm256_store_ps(&score[0],score00);
+			_mm256_store_ps(&score[8],score01);
+
+			if(q[thread_id].size() < k){
+				q[thread_id].push(tuple_<T,Z>(i,score[0]));
+				q[thread_id].push(tuple_<T,Z>(i+1,score[1]));
+				q[thread_id].push(tuple_<T,Z>(i+2,score[2]));
+				q[thread_id].push(tuple_<T,Z>(i+3,score[3]));
+				q[thread_id].push(tuple_<T,Z>(i+4,score[4]));
+				q[thread_id].push(tuple_<T,Z>(i+5,score[5]));
+				q[thread_id].push(tuple_<T,Z>(i+6,score[6]));
+				q[thread_id].push(tuple_<T,Z>(i+7,score[7]));
+				q[thread_id].push(tuple_<T,Z>(i+8,score[8]));
+				q[thread_id].push(tuple_<T,Z>(i+9,score[9]));
+				q[thread_id].push(tuple_<T,Z>(i+10,score[10]));
+				q[thread_id].push(tuple_<T,Z>(i+11,score[11]));
+				q[thread_id].push(tuple_<T,Z>(i+12,score[12]));
+				q[thread_id].push(tuple_<T,Z>(i+13,score[13]));
+				q[thread_id].push(tuple_<T,Z>(i+14,score[14]));
+				q[thread_id].push(tuple_<T,Z>(i+15,score[15]));
+			}else{
+				if(q[thread_id].top().score < score[0]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i,score[0])); }
+				if(q[thread_id].top().score < score[1]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+1,score[1])); }
+				if(q[thread_id].top().score < score[2]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+2,score[2])); }
+				if(q[thread_id].top().score < score[3]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+3,score[3])); }
+				if(q[thread_id].top().score < score[4]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+4,score[4])); }
+				if(q[thread_id].top().score < score[5]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+5,score[5])); }
+				if(q[thread_id].top().score < score[6]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+6,score[6])); }
+				if(q[thread_id].top().score < score[7]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+7,score[7])); }
+				if(q[thread_id].top().score < score[8]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+8,score[8])); }
+				if(q[thread_id].top().score < score[9]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+9,score[9])); }
+				if(q[thread_id].top().score < score[10]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+10,score[10])); }
+				if(q[thread_id].top().score < score[11]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+11,score[11])); }
+				if(q[thread_id].top().score < score[12]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+12,score[12])); }
+				if(q[thread_id].top().score < score[13]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+13,score[13])); }
+				if(q[thread_id].top().score < score[14]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+14,score[14])); }
+				if(q[thread_id].top().score < score[15]){ q[thread_id].pop(); q[thread_id].push(tuple_<T,Z>(i+15,score[15])); }
+			}
+		}
+	}
+
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, Desc<T,Z>> _q;
+	for(uint32_t m = 0; m < THREADS; m++){
+		while(!q[m].empty()){
+			if(_q.size() < k){
+				_q.push(q[m].top());
+			}else if(_q.top().score < q[m].top().score){
+				_q.pop();
+				_q.push(q[m].top());
+			}
+			q[m].pop();
+		}
+	}
+	while(_q.size() > k){ _q.pop(); }
+	T threshold = _q.top().score;
+//	std::cout << std::fixed << std::setprecision(4);
+//	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	return threshold;
+}
+
+template float findTopKtpac<float,uint32_t>(float *cdata, uint32_t n, uint32_t d, uint64_t k,uint8_t qq, float *weights, uint32_t *attr);
+template float findTopKtpac<float,uint64_t>(float *cdata, uint64_t n, uint64_t d, uint64_t k,uint8_t qq, float *weights, uint32_t *attr);

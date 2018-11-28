@@ -17,7 +17,7 @@ const std::string distributions[3] ={"correlated","independent","anticorrelated"
 
 void bench_bta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
 	File<float> f(fname,true,n,d);
-	BTA<float,uint64_t> bta(n,d);
+	BTA<float,uint32_t> bta(n,d);
 
 	std::cout << "Allocating buffers ..." << std::endl;
 	bta.alloc();
@@ -49,7 +49,7 @@ void bench_bta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 
 void bench_gvta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
 	File<float> f(fname,true,n,d);
-	GVTA<float,uint64_t> gvta(n,d);
+	GVTA<float,uint32_t> gvta(n,d);
 
 	std::cout << "Allocating buffers ..." << std::endl;
 	gvta.alloc();
@@ -65,6 +65,17 @@ void bench_gvta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t
 	}
 
 	gvta.init();
+	uint64_t q = 2;
+	if(IMP < 3){
+		for(uint64_t k = ks; k <= ke; k*=2){
+			for(uint64_t i = q; i <= f.items();i+=QD){
+				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+				gvta.copy_query(weights,attr[i-q]);
+				gvta.findTopK(k,i);
+				gvta.benchmark();
+			}
+		}
+	}
 }
 
 void bench_gta(std::string fname, uint64_t n, uint64_t d, uint64_t k){

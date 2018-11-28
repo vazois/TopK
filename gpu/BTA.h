@@ -5,7 +5,6 @@
  */
 
 #include "GAA.h"
-#include "../tools/tools.h"
 #define BTA_BLOCK_SIZE 512
 #define BTA_TUPLES_PER_BLOCK 4096
 
@@ -1621,7 +1620,7 @@ class BTA : public GAA<T,Z>{
 
 		void alloc();
 		void init();
-		void copy_query(T *weights, uint32_t *query);
+		//void copy_query(T *weights, uint32_t *query);
 		void findTopK(uint64_t k, uint64_t qq);
 
 	private:
@@ -1651,13 +1650,13 @@ void BTA<T,Z>::init()
 	cutil::safeCopyToDevice<T,uint64_t>(this->gdata,this->cdata,sizeof(T)*this->n*this->d, " copy from cdata to gdata ");//Copy data from cpu to gpu memory
 }
 
-template<class T, class Z>
-void BTA<T,Z>::copy_query(T *weights, uint32_t *query){
-	this->weights = weights;
-	this->query = query;
-	cutil::cudaCheckErr(cudaMemcpyToSymbol(gpu_weights, weights, sizeof(T)*NUM_DIMS),"copy weights");//Initialize preference vector
-	cutil::cudaCheckErr(cudaMemcpyToSymbol(gpu_query, query, sizeof(uint32_t)*NUM_DIMS),"copy query");//Initialize query vector
-}
+//template<class T, class Z>
+//void BTA<T,Z>::copy_query(T *weights, uint32_t *query){
+//	this->weights = weights;
+//	this->query = query;
+//	cutil::cudaCheckErr(cudaMemcpyToSymbol(gpu_weights, weights, sizeof(T)*NUM_DIMS),"copy weights");//Initialize preference vector
+//	cutil::cudaCheckErr(cudaMemcpyToSymbol(gpu_query, query, sizeof(uint32_t)*NUM_DIMS),"copy query");//Initialize query vector
+//}
 
 template<class T, class Z>
 void BTA<T,Z>::evaluate_single_attribute(uint64_t k, uint64_t qq){

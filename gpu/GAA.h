@@ -4,8 +4,8 @@
 /*
  * GPU Aggregation Abstract Header
  */
-#include <omp.h>
 #include "../tools/CudaHelper.h"
+#include "../tools/tools.h"
 #include <inttypes.h>
 #include <vector>
 #include <queue>
@@ -31,13 +31,13 @@ __global__ void init_rvlocal(Z *dkeys_in, uint64_t n)
 }
 
 /*
- * initialize global rearrange vector
+ * initialize first seen position
  */
 
 template<class Z>
-__global__ void init_rvglobal(Z *rvector, uint64_t n)
+__global__ void init_first_seen_position(Z *rvector, uint64_t n)
 {
-	uint64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+	Z i = blockIdx.x * blockDim.x + threadIdx.x;
 	if( i < n ){ rvector[i] = n; }
 }
 
@@ -47,7 +47,7 @@ __global__ void init_rvglobal(Z *rvector, uint64_t n)
 template<class Z>
 __global__ void max_rvglobal(Z *rvector, Z *dkeys_in, uint64_t n)
 {
-	uint64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+	Z i = blockIdx.x * blockDim.x + threadIdx.x;
 	if( i < n ){
 		Z obj_id = dkeys_in[i];
 		rvector[obj_id] = min(rvector[obj_id],i);
@@ -195,6 +195,8 @@ class GAA{
 			if(this->gscores != NULL){ cudaFree(this->gscores); this->gscores = NULL; }
 		};
 
+		void findTopKtpac(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);
+
 		std::string get_algo(){ return this->algo; }
 		T get_thres(){return this->threshold;}
 		T*& get_cdata(){ return this->cdata; }
@@ -226,6 +228,13 @@ class GAA{
 			this->queries_per_second = 0;
 		}
 
+		void copy_query(T *weights, uint32_t *query){
+			this->weights = weights;
+			this->query = query;
+			cutil::cudaCheckErr(cudaMemcpyToSymbol(gpu_weights, weights, sizeof(T)*NUM_DIMS),"copy weights");//Initialize preference vector
+			cutil::cudaCheckErr(cudaMemcpyToSymbol(gpu_query, query, sizeof(uint32_t)*NUM_DIMS),"copy query");//Initialize query vector
+		}
+
 	protected:
 		std::string algo = "default";
 		uint64_t n,d;// cardinality,dimensinality
@@ -250,6 +259,5 @@ class GAA{
 
 		Time<msecs> t;
 };
-
 
 #endif

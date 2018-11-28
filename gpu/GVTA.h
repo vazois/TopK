@@ -4,6 +4,8 @@
 #define GVTA_PARTITIONS 2
 #define GVTA_BLOCK_SIZE 8
 
+#include "../tools/tools.h"
+
 template<class T,class Z>
 struct gvta_block
 {
@@ -27,7 +29,7 @@ class GVTA : public GAA<T,Z>{
 				for(uint64_t i = 0; i < this->num_blocks;i++)
 				{
 					if( this->blocks[i].data != NULL ) cudaFreeHost(this->blocks[i].data);
-					//if( this->blocks[i].tvector != NULL ) free(this->blocks[i].tvector);
+					if( this->blocks[i].tvector != NULL ) cudaFreeHost(this->blocks[i].tvector);
 				}
 				cudaFreeHost(this->blocks);
 			}
@@ -35,31 +37,30 @@ class GVTA : public GAA<T,Z>{
 
 		void alloc();
 		void init();
+		void findTopK(uint64_t k, uint64_t qq);
 
 	private:
 		uint64_t tuples_per_part;
 		uint64_t num_blocks;
 		gvta_block<T,Z> *blocks = NULL;
-		void layer_data();
-
+		void reorder();
 };
 
 template<class T, class Z>
 void GVTA<T,Z>::alloc(){
 	cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
-	//cutil::safeMalloc<T,uint64_t>(&(this->gdata),sizeof(T)*this->n*this->d,"gdata alloc");//Allocate gpu data memory
 }
 
 template<class T, class Z>
-void GVTA<T,Z>::layer_data()
+void GVTA<T,Z>::reorder()
 {
 	dim3 block(256,1,1);
 	dim3 grid(1,1,1);
-	Z *grvector = NULL;
+	Z *grvector = NULL;//first seen position vector
 	Z *grvector_out = NULL;
-	Z *dkeys_in = NULL;
+	Z *dkeys_in = NULL;//local sort vector
 	Z *dkeys_out = NULL;
-	T *dvalues_in = NULL;
+	T *dvalues_in = NULL;//local sort values
 	T *dvalues_out = NULL;
 
 	Z *hkeys = NULL;
@@ -93,20 +94,21 @@ void GVTA<T,Z>::layer_data()
 	cutil::safeMallocHost<T,uint64_t>(&(dvalues_out),sizeof(T)*this->tuples_per_part,"alloc dvalues_out");
 	cub::DeviceRadixSort::SortPairsDescending(d_temp_storage, temp_storage_bytes, dkeys_in, dkeys_out, dvalues_in, dvalues_out, this->tuples_per_part);
 	cutil::cudaCheckErr(cudaMalloc(&d_temp_storage, temp_storage_bytes),"alloc d_temp_storage");
+	///Allocation ends//
 
 	uint64_t offset = 0;
-	for(uint64_t i = 0; i < GVTA_PARTITIONS; i++){//a: for each partition
-		//std::cout << "PART (" << i << ")" << std::endl;
-		//initialize sort indices
-		uint64_t psize = offset + this->tuples_per_part < this->n ? this->tuples_per_part : (this->n - offset);//b:Find partition size
+	//a: for each partition
+	for(uint64_t i = 0; i < GVTA_PARTITIONS; i++){
+		//b:Find partition size
+		uint64_t psize = offset + this->tuples_per_part < this->n ? this->tuples_per_part : (this->n - offset);
 		grid.x = (this->tuples_per_part-1)/block.x + 1;
-		init_rvlocal<Z><<<grid,block>>>(dkeys_in,psize);//c: initialize local for sorting attributes
+		//c: initialize local tuple ids for sorting attributes
+		init_rvlocal<Z><<<grid,block>>>(dkeys_in,psize);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_rvlocal");
 
 		//initialize first seen position//
-		init_rvglobal<Z><<<grid,block>>>(grvector,psize);//d: initialize local vector for first seen position
+		init_first_seen_position<Z><<<grid,block>>>(grvector,psize);//d: initialize local vector for first seen position
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_rvglobal");
-
 		for(uint64_t m = 0; m < this->d; m++){
 			//e: copy attributes and sort objects per attribute
 			cutil::safeCopyToDevice<T,uint64_t>(dvalues_in,&this->cdata[m*this->n + offset],sizeof(T)*psize, " copy from cdata to dvalues_in");
@@ -116,24 +118,7 @@ void GVTA<T,Z>::layer_data()
 			//f: update first seen position
 			max_rvglobal<Z><<<grid,block>>>(grvector, dkeys_out,this->tuples_per_part);
 			cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing max_rvglobal");
-
-//			if(i == 0){//DEBUG//
-//				std::cout << std::fixed << std::setprecision(4);
-//				cutil::safeCopyToHost<Z,uint64_t>(hkeys,dkeys_out,sizeof(Z)*psize, " copy from dkeys_out to hkeys");
-//				cutil::safeCopyToHost<T,uint64_t>(hvalues,dvalues_out,sizeof(T)*psize, " copy from dvalues_out to hvalues");
-//				//for(int j = 0; j < 20; j++){ std::cout << hkeys[j] << " "; } std::cout << std::endl;
-//				//for(int j = 0; j < 20; j++){ std::cout << hvalues[j] << " "; } std::cout << std::endl;
-//				//std::cout << " --------- " << std::endl;
-//			}
 		}
-
-//		if( i == 0 )//DEBUG//
-//		{
-//			cutil::safeCopyToHost<Z,uint64_t>(hrvector,grvector,sizeof(Z)*psize, " copy from grvector to hrvector");
-//			for(int j = 0; j < 32; j++){ std::cout << std::setfill('0') << std::setw(3) << hrvector[j] << " "; } std::cout << std::endl;
-//			for(int j = 0; j < 32; j++){ std::cout << std::setfill('0') << std::setw(3) << j << " "; } std::cout << std::endl;
-//			std::cout << " <---------> " << std::endl;
-//		}
 
 		////////////////////////////////////////////////////
 		//Find reordered position from first seen position//
@@ -142,21 +127,14 @@ void GVTA<T,Z>::layer_data()
 		init_rvlocal<Z><<<grid,block>>>(dkeys_in,psize);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_rvlocal for final reordering");
 		cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes, grvector, grvector_out, dkeys_in, dkeys_out, psize);
-		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing SortPairsDescending for final reordering");
-//		if( i < 1 )//DEBUG//
-//		{
-//			cutil::safeCopyToHost<Z,uint64_t>(hrvector,grvector_out,sizeof(Z)*psize, " copy from grvector_out to hrvector for final reordering");
-//			cutil::safeCopyToHost<Z,uint64_t>(hkeys,dkeys_out,sizeof(Z)*psize, " copy from dkeys_out to hkeys for final reordering");
-//			for(int j = 0; j < 32; j++){ std::cout << std::setfill('0') << std::setw(3) << hrvector[j] << " "; } std::cout << std::endl;
-//			for(int j = 0; j < 32; j++){ std::cout << std::setfill('0') << std::setw(3) << hkeys[j] << " "; } std::cout << std::endl;
-//			std::cout << " <---------> " << std::endl;
-//		}
+		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing SortPairsAscending for final reordering");
 
-		//h: final data rearrangement using hkeys
+		//DEBUG//
 		cutil::safeCopyToHost<Z,uint64_t>(hkeys,dkeys_out,sizeof(Z)*psize, " copy from dkeys_out to hkeys for final reordering");
 		std::cout << std::fixed << std::setprecision(4);
 		int count = 0;
-		for(uint64_t j = 0; j < psize; j++)//DEBUG//
+		std::cout << "<<<< ORDERED_PARTITIONS (part 1) >>>>" << std::endl;
+		for(uint64_t j = 0; j < psize; j++)
 		{
 			uint64_t id = offset + hkeys[j];
 			T mx = 0;
@@ -183,7 +161,7 @@ void GVTA<T,Z>::layer_data()
 		//h: final data rearrangement using hkeys
 		cutil::safeCopyToHost<Z,uint64_t>(hkeys,dkeys_out,sizeof(Z)*psize, " copy from dkeys_out to hkeys for final reordering");
 		uint64_t bi = 0;
-		T tvector[NUM_DIMS];
+		T tvector[NUM_DIMS];//Vector used to keep track of the threshold attributes
 		for(uint64_t j = 0; j < this->tuples_per_part; j+=GVTA_BLOCK_SIZE)
 		{
 			for(uint64_t m = 0; m < this->d; m++) tvector[m] = 0;
@@ -214,7 +192,8 @@ void GVTA<T,Z>::layer_data()
 
 	//DEBUG//
 	std::cout << std::fixed << std::setprecision(4);
-	for(uint64_t b = 0; b < 4; b++){
+	std::cout << "<<<< COLUMN MAJOR FINAL ORDERING >>>>" << std::endl;
+	for(uint64_t b = 0; b < 4; b++){//4 blocks per partition
 		T *data = this->blocks[b].data;
 		T *tvector = this->blocks[b].tvector;
 
@@ -250,12 +229,20 @@ void GVTA<T,Z>::layer_data()
 	free(hkeys);
 	free(hvalues);
 	free(hrvector);
+	//cudaFreeHost(this->cdata); this->cdata = NULL;
 }
 
 template<class T, class Z>
 void GVTA<T,Z>::init()
 {
-	this->layer_data();
+	normalize_transpose<T>(this->cdata, this->n, this->d);
+	this->reorder();
+}
+
+template<class T, class Z>
+void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
+	//this->findTopKtpac(k,(uint8_t)qq,this->weights,this->query);
+	this->cpu_threshold = findTopKtpac<T,Z>(this->cdata,this->n,this->d,k,(uint64_t)qq,this->weights,this->query );
 }
 
 #endif
