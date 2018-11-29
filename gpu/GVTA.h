@@ -6,15 +6,6 @@
 
 #include "../tools/tools.h"
 
-template<class T,class Z>
-struct gvta_block
-{
-	gvta_block() : data(NULL), tvector(NULL), num_tuples(0){}
-	T *data;
-	T *tvector;
-	Z num_tuples;
-};
-
 template<class T, class Z>
 class GVTA : public GAA<T,Z>{
 	public:
@@ -130,30 +121,32 @@ void GVTA<T,Z>::reorder()
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing SortPairsAscending for final reordering");
 
 		//DEBUG//
-		cutil::safeCopyToHost<Z,uint64_t>(hkeys,dkeys_out,sizeof(Z)*psize, " copy from dkeys_out to hkeys for final reordering");
-		std::cout << std::fixed << std::setprecision(4);
-		int count = 0;
-		std::cout << "<<<< ORDERED_PARTITIONS (part 1) >>>>" << std::endl;
-		for(uint64_t j = 0; j < psize; j++)
-		{
-			uint64_t id = offset + hkeys[j];
-			T mx = 0;
-			for(uint64_t m = 0; m < this->d; m++){
-				if( i == 1 )//DEBUG//
-				{
-					mx = std::max(mx, this->cdata[this->n * m+ id]);
-					std::cout << this->cdata[this->n * m+ id] << " ";
-				}
-			}
-
-			if(i == 1)//DEBUG//
+		if(GVTA_PARTITIONS == 2){
+			cutil::safeCopyToHost<Z,uint64_t>(hkeys,dkeys_out,sizeof(Z)*psize, " copy from dkeys_out to hkeys for final reordering");
+			std::cout << std::fixed << std::setprecision(4);
+			int count = 0;
+			if( i == 1 ) std::cout << "<<<< ORDERED_PARTITIONS (part 1) >>>>" << std::endl;
+			for(uint64_t j = 0; j < psize; j++)
 			{
-				std::cout << "(" << mx << ")" << std::endl;
-				if((j+1) % this->d == 0) std::cout << "-------" << std::endl;
-				if((j+1) % GVTA_BLOCK_SIZE == 0){
-					count ++;
-					std::cout << "_________________________________________________" << std::endl;
-					if(count == 2) break;
+				uint64_t id = offset + hkeys[j];
+				T mx = 0;
+				for(uint64_t m = 0; m < this->d; m++){
+					if( i == 1 )//DEBUG//
+					{
+						mx = std::max(mx, this->cdata[this->n * m+ id]);
+						std::cout << this->cdata[this->n * m+ id] << " ";
+					}
+				}
+
+				if(i == 1)//DEBUG//
+				{
+					std::cout << "(" << mx << ")" << std::endl;
+					if((j+1) % this->d == 0) std::cout << "-------" << std::endl;
+					if((j+1) % GVTA_BLOCK_SIZE == 0){
+						count ++;
+						std::cout << "_________________________________________________" << std::endl;
+						if(count == 2) break;
+					}
 				}
 			}
 		}
@@ -192,29 +185,31 @@ void GVTA<T,Z>::reorder()
 
 	//DEBUG//
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << "<<<< COLUMN MAJOR FINAL ORDERING >>>>" << std::endl;
-	for(uint64_t b = 0; b < 4; b++){//4 blocks per partition
-		T *data = this->blocks[b].data;
-		T *tvector = this->blocks[b].tvector;
+	if(GVTA_PARTITIONS == 2){
+		std::cout << "<<<< COLUMN MAJOR FINAL ORDERING >>>>" << std::endl;
+		for(uint64_t b = 0; b < 4; b++){//4 blocks per partition
+			T *data = this->blocks[b].data;
+			T *tvector = this->blocks[b].tvector;
 
-		for(uint64_t m = 0; m < this->d; m++)
-		{
-			uint64_t poff = 0;
-			for(uint64_t j = 0; j < GVTA_BLOCK_SIZE * GVTA_PARTITIONS; j++)
+			for(uint64_t m = 0; m < this->d; m++)
 			{
-				std::cout << data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + j] << " ";
-				if((j+1) % GVTA_BLOCK_SIZE == 0){
-					//std::cout << "(" << tvector[ (j % GVTA_BLOCK_SIZE)   +  (j / (GVTA_BLOCK_SIZE * GVTA_PARTITIONS))] <<")";
-					std::cout << "(" << tvector[poff + m] <<")";
-					//std::cout << "(0)";
-					std::cout << " | ";
-					poff+=this->d;
+				uint64_t poff = 0;
+				for(uint64_t j = 0; j < GVTA_BLOCK_SIZE * GVTA_PARTITIONS; j++)
+				{
+					std::cout << data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + j] << " ";
+					if((j+1) % GVTA_BLOCK_SIZE == 0){
+						//std::cout << "(" << tvector[ (j % GVTA_BLOCK_SIZE)   +  (j / (GVTA_BLOCK_SIZE * GVTA_PARTITIONS))] <<")";
+						std::cout << "(" << tvector[poff + m] <<")";
+						//std::cout << "(0)";
+						std::cout << " | ";
+						poff+=this->d;
+					}
 				}
+				std::cout << std::endl;
 			}
-			std::cout << std::endl;
 		}
 		std::cout << "____________________________________________________________________________________________________________________________\n";
-	}
+		}
 
 	/////////////////////////
 	//Free not needed space//
@@ -242,7 +237,17 @@ void GVTA<T,Z>::init()
 template<class T, class Z>
 void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	//this->findTopKtpac(k,(uint8_t)qq,this->weights,this->query);
-	this->cpu_threshold = findTopKtpac<T,Z>(this->cdata,this->n,this->d,k,(uint64_t)qq,this->weights,this->query );
+	VAGG<T,Z> vagg(this->cdata,this->n,this->d);
+	this->cpu_threshold = vagg.findTopKtpac(k, qq,this->weights,this->query );
+	GVAGG<T,Z> gvagg(this->blocks,this->n,this->d,GVTA_BLOCK_SIZE,GVTA_PARTITIONS,this->num_blocks);
+	T cpu_gvagg=gvagg.findTopKgvta(k,qq, this->weights,this->query);
+
+	std::cout << this->cpu_threshold << "," <<cpu_gvagg <<std::endl;
+
+
+	T threshold = 0;
+//	std::cout << std::fixed << std::setprecision(4);
+	std::cout << " threshold=[" << threshold << "," << this->cpu_threshold << "," << cpu_gvagg << "]"<< std::endl;
 }
 
 #endif

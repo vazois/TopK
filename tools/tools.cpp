@@ -66,9 +66,8 @@ void normalize_transpose(T *&cdata, uint64_t n, uint64_t d){
 template void normalize_transpose(float *&cdata, uint64_t n, uint64_t d);
 
 template<class T, class Z>
-T findTopKtpac(T *cdata, Z n, Z d, uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
-//	if(this->cdata == NULL){ perror("cdata not initialized"); }
-
+T VAGG<T,Z>::findTopKtpac(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
+	//	if(this->cdata == NULL){ perror("cdata not initialized"); }
 	int THREADS = 16;
 	omp_set_num_threads(THREADS);
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, Desc<T,Z>> q[THREADS];
@@ -97,7 +96,6 @@ T findTopKtpac(T *cdata, Z n, Z d, uint64_t k,uint8_t qq, T *weights, uint32_t *
 				score00 = _mm256_add_ps(score00,load00);
 				score01 = _mm256_add_ps(score01,load01);
 			}
-
 			_mm256_store_ps(&score[0],score00);
 			_mm256_store_ps(&score[8],score01);
 
@@ -158,5 +156,66 @@ T findTopKtpac(T *cdata, Z n, Z d, uint64_t k,uint8_t qq, T *weights, uint32_t *
 	return threshold;
 }
 
-template float findTopKtpac<float,uint32_t>(float *cdata, uint32_t n, uint32_t d, uint64_t k,uint8_t qq, float *weights, uint32_t *attr);
-template float findTopKtpac<float,uint64_t>(float *cdata, uint64_t n, uint64_t d, uint64_t k,uint8_t qq, float *weights, uint32_t *attr);
+template class VAGG<float, uint32_t>;
+template class VAGG<float, uint64_t>;
+
+template<class T, class Z>
+T GVAGG<T,Z>::findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
+{
+	uint64_t vsize = this->bsize * this->pnum;
+	//std::priority_queue<T, std::vector<tuple_<T,Z>>, Desc<T,Z>> q[THREADS];
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, Desc<T,Z>> q;
+	float score[16] __attribute__((aligned(32)));
+	Z i = 0;
+	for(uint64_t b = 0; b < this->nb; b++)
+	{
+		T *data = blocks[b].data;
+		T *tvector = blocks[b].tvector;
+		for(uint64_t j = 0; j < vsize; j+=8)
+		{
+			__m256 score00 = _mm256_setzero_ps();
+			__m256 score01 = _mm256_setzero_ps();
+			for(uint64_t m = 0; m < qq; m++)
+			{
+				uint32_t a = attr[m];
+				T weight = weights[a];
+				__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+				__m256 load00 = _mm256_load_ps(&data[vsize * a + j]);
+
+				load00 = _mm256_mul_ps(load00,_weight);
+				score00 = _mm256_add_ps(score00,load00);
+			}
+			_mm256_store_ps(&score[0],score00);
+
+			if(q.size() < k){
+				q.push(tuple_<T,Z>(i+j,score[0]));
+				q.push(tuple_<T,Z>(i+j+1,score[1]));
+				q.push(tuple_<T,Z>(i+j+2,score[2]));
+				q.push(tuple_<T,Z>(i+j+3,score[3]));
+				q.push(tuple_<T,Z>(i+j+4,score[4]));
+				q.push(tuple_<T,Z>(i+j+5,score[5]));
+				q.push(tuple_<T,Z>(i+j+6,score[6]));
+				q.push(tuple_<T,Z>(i+j+7,score[7]));
+			}else{
+				if(q.top().score < score[0]){ q.pop(); q.push(tuple_<T,Z>(i+j,score[0])); }
+				if(q.top().score < score[1]){ q.pop(); q.push(tuple_<T,Z>(i+j+1,score[1])); }
+				if(q.top().score < score[2]){ q.pop(); q.push(tuple_<T,Z>(i+j+2,score[2])); }
+				if(q.top().score < score[3]){ q.pop(); q.push(tuple_<T,Z>(i+j+3,score[3])); }
+				if(q.top().score < score[4]){ q.pop(); q.push(tuple_<T,Z>(i+j+4,score[4])); }
+				if(q.top().score < score[5]){ q.pop(); q.push(tuple_<T,Z>(i+j+5,score[5])); }
+				if(q.top().score < score[6]){ q.pop(); q.push(tuple_<T,Z>(i+j+6,score[6])); }
+				if(q.top().score < score[7]){ q.pop(); q.push(tuple_<T,Z>(i+j+7,score[7])); }
+			}
+		}
+		i+=vsize;
+	}
+
+	while(q.size() > k){ q.pop(); }
+	T threshold = q.top().score;
+	return threshold;
+}
+
+template class GVAGG<float, uint32_t>;
+template class GVAGG<float, uint64_t>;
+
+
