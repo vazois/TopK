@@ -68,7 +68,7 @@ template void normalize_transpose(float *&cdata, uint64_t n, uint64_t d);
 template<class T, class Z>
 T VAGG<T,Z>::findTopKtpac(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 	//	if(this->cdata == NULL){ perror("cdata not initialized"); }
-	int THREADS = 16;
+	int THREADS = 1;
 	omp_set_num_threads(THREADS);
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, Desc<T,Z>> q[THREADS];
 	#pragma omp parallel
@@ -171,21 +171,32 @@ T GVAGG<T,Z>::findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 	{
 		T *data = blocks[b].data;
 		T *tvector = blocks[b].tvector;
-		for(uint64_t j = 0; j < vsize; j+=8)
+		for(uint64_t j = 0; j < vsize; j+=16)
 		{
+			//if(j + 16 < vsize)
 			__m256 score00 = _mm256_setzero_ps();
 			__m256 score01 = _mm256_setzero_ps();
 			for(uint64_t m = 0; m < qq; m++)
 			{
-				uint32_t a = attr[m];
+				uint8_t a = attr[m];
+				uint64_t offset = vsize * a + j;
 				T weight = weights[a];
+
+				__builtin_prefetch(data + offset + 16);
+				__builtin_prefetch(data + offset + 24);
+//				__builtin_prefetch(data + offset + 32);
+//				__builtin_prefetch(data + offset + 40);
 				__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
-				__m256 load00 = _mm256_load_ps(&data[vsize * a + j]);
+				__m256 load00 = _mm256_load_ps(data + offset);
+				__m256 load01 = _mm256_load_ps(data + offset + 8);
 
 				load00 = _mm256_mul_ps(load00,_weight);
+				load01 = _mm256_mul_ps(load01,_weight);
 				score00 = _mm256_add_ps(score00,load00);
+				score01 = _mm256_add_ps(score01,load01);
 			}
 			_mm256_store_ps(&score[0],score00);
+			_mm256_store_ps(&score[8],score01);
 
 			if(q.size() < k){
 				q.push(tuple_<T,Z>(i+j,score[0]));
@@ -196,6 +207,15 @@ T GVAGG<T,Z>::findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 				q.push(tuple_<T,Z>(i+j+5,score[5]));
 				q.push(tuple_<T,Z>(i+j+6,score[6]));
 				q.push(tuple_<T,Z>(i+j+7,score[7]));
+
+				q.push(tuple_<T,Z>(i+j+8,score[8]));
+				q.push(tuple_<T,Z>(i+j+9,score[9]));
+				q.push(tuple_<T,Z>(i+j+10,score[10]));
+				q.push(tuple_<T,Z>(i+j+11,score[11]));
+				q.push(tuple_<T,Z>(i+j+12,score[12]));
+				q.push(tuple_<T,Z>(i+j+13,score[13]));
+				q.push(tuple_<T,Z>(i+j+14,score[14]));
+				q.push(tuple_<T,Z>(i+j+15,score[15]));
 			}else{
 				if(q.top().score < score[0]){ q.pop(); q.push(tuple_<T,Z>(i+j,score[0])); }
 				if(q.top().score < score[1]){ q.pop(); q.push(tuple_<T,Z>(i+j+1,score[1])); }
@@ -205,8 +225,40 @@ T GVAGG<T,Z>::findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 				if(q.top().score < score[5]){ q.pop(); q.push(tuple_<T,Z>(i+j+5,score[5])); }
 				if(q.top().score < score[6]){ q.pop(); q.push(tuple_<T,Z>(i+j+6,score[6])); }
 				if(q.top().score < score[7]){ q.pop(); q.push(tuple_<T,Z>(i+j+7,score[7])); }
+
+				if(q.top().score < score[8]){ q.pop(); q.push(tuple_<T,Z>(i+j,score[8])); }
+				if(q.top().score < score[9]){ q.pop(); q.push(tuple_<T,Z>(i+j+1,score[9])); }
+				if(q.top().score < score[10]){ q.pop(); q.push(tuple_<T,Z>(i+j+2,score[10])); }
+				if(q.top().score < score[11]){ q.pop(); q.push(tuple_<T,Z>(i+j+3,score[11])); }
+				if(q.top().score < score[12]){ q.pop(); q.push(tuple_<T,Z>(i+j+4,score[12])); }
+				if(q.top().score < score[13]){ q.pop(); q.push(tuple_<T,Z>(i+j+5,score[13])); }
+				if(q.top().score < score[14]){ q.pop(); q.push(tuple_<T,Z>(i+j+6,score[14])); }
+				if(q.top().score < score[15]){ q.pop(); q.push(tuple_<T,Z>(i+j+7,score[15])); }
 			}
 		}
+
+		__m256 mx = _mm256_setzero_ps();
+		for(uint64_t j = 0; j < this->pnum; j+=8){
+			__m256 score00 = _mm256_setzero_ps();
+			for(uint64_t m = 0; m < qq; m++){
+				uint32_t a = attr[m];
+				T weight = weights[a];
+				__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+				__m256 load00 = _mm256_load_ps(&tvector[j]);
+				load00 = _mm256_mul_ps(load00,_weight);
+				score00 = _mm256_add_ps(score00,load00);
+			}
+			mx = _mm256_max_ps(mx,score00);
+		}
+		_mm256_store_ps(&score[0],mx);
+		T t0 = std::max(score[0],score[1]);
+		T t1 = std::max(score[2],score[3]);
+		T t2 = std::max(score[4],score[5]);
+		T t3 = std::max(score[6],score[7]);
+		t0 = std::max(t0,t1);
+		t1 = std::max(t2,t3);
+		t0 = std::max(t0,t1);
+		if(q.size() >= k && ((q.top().score) >= t0) ){ break; }
 		i+=vsize;
 	}
 

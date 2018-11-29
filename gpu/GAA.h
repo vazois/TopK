@@ -17,6 +17,8 @@
 #define U32_BYTES_PER_TUPLE 8
 #define U64_BYTES_PER_TUPLE 12
 
+#define UNIFIED_MEMORY 1
+
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];
 
