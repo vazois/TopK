@@ -404,7 +404,7 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 			T threshold = 0;
 			T *tarray = this->parts[p].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			if(q.size() >= k && q.top().score >= threshold){ break; }
+			if(q.size() >= k && q.top().score > threshold){ break; }
 		}
 	}
 	this->tt_processing += this->t.lap();
@@ -416,7 +416,7 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 		this->res.push_back(q.top());
 		q.pop();
 	}
-	std::cout << std::fixed << std::setprecision(4);
+	std::cout << std::fixed << std::setprecision(8);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }

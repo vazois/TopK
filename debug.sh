@@ -5,7 +5,7 @@
 #############################
 START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
-DIMS=8
+DIMS=4
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
 KKE=128
@@ -84,7 +84,7 @@ DL_B=0
 #LARA Benchnmark
 LARA_B=0
 #TPAc Benchmark
-TPAc_B=0
+TPAc_B=1
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
