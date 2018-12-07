@@ -263,6 +263,7 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	if(STATS_EFF) this->pred_count=0;
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
+	if(STATS_EFF) this->candidate_count=0;
 
 	pqueue<T,Z,pqueue_desc<T,Z>> q(0);
 	pqueue<T,Z,pqueue_desc<T,Z>> cl(k);
@@ -285,14 +286,16 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 		if(cl.size() < k)
 		{
 			cl.push(p);
+			this->candidate_count+=1;
 		}else if(cl.top().score<p.score){
 			cl.pop();
 			cl.push(p);
+			this->candidate_count+=1;
 		}
 
 		//std::cout << p.id << "," << p.score << std::endl;
 	}
-
+	//if(STATS_EFF) this->candidate_count+=cl.size();
 	////////////////////////////
 	//Evaluate rest of layers///
 	while(q.size() < k)
@@ -305,12 +308,14 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 
 		//std::cout << p.id << "," << p.score << std::endl;
 		rs.insert(p.id);// object from cl now in rs
-		for(auto it=rs.begin(); it!= rs.end(); ++it)// For every object in rs
+		//for(auto it=rs.begin(); it!= rs.end(); ++it)// For every object in rs
 		{
-			auto plm = layer_map.find(*it);//find which layer i belong to//
+			//auto plm = layer_map.find(*it);//find which layer i belong to//
+			auto plm = layer_map.find(p.id);//find which layer i belong to//
 			if(plm == layer_map.end()) continue;
 			auto clist = this->fwd[plm->second].find(plm->first);
 			if(clist == this->fwd[plm->second].end()) continue;
+			if(STATS_EFF) this->candidate_count+=clist->second.size();
 			for(auto child = clist->second.begin(); child!= clist->second.end(); ++child)
 			{
 				Z child_id = *child;
@@ -350,44 +355,6 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 					}
 				}
 			}
-
-			//std::cout << layer_num << "," << l << std::endl;
-//			if(l >= this->layer_num) continue;
-//			for(uint64_t j = 0; j < this->layer_blocks[l].size; j++)
-//			{
-//				Z id = this->layer_blocks[l].offset + j;
-//				//if(rs.find(id) != rs.end()) continue;
-//				auto it = this->bwd[l].find(id);
-////				if( it->second.size() < q.size() )
-////				{
-//					bool parents  = true;
-//					for(uint64_t jj = 0; jj < it->second.size(); jj++)
-//					{
-//						parents &= (rs.find(it->second[jj]) != rs.end());//Check if all parents of child are in rs
-//					}
-//
-//					if(parents)// If all parents of child in rs
-//					{
-//						T score = 0;
-//						for(uint8_t mm = 0; mm < qq; mm++){
-//							uint8_t aa = attr[mm];
-//							score += weights[aa] * this->layer_blocks[l].data[j*this->d + aa];
-//						}
-//
-//						qpair<T,Z> pp;
-//						pp.id = id;
-//						pp.score = score;
-//						if(cl.size() < k)
-//						{
-//							cl.push(pp);
-//						}else if(cl.top().score<pp.score){
-//							cl.pop();
-//							cl.push(pp);
-//						}
-//					}
-//				//}
-//			}
-
 		}
 	}
 	this->tt_processing += this->t.lap();

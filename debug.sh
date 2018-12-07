@@ -3,8 +3,8 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((512*1024*1024))
-END_N=$((512*1024*1024))
+START_N=$((64*1024))
+END_N=$((64*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
@@ -59,7 +59,7 @@ QM=0
 #QD Dimension interval for testing
 QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
-IMP=3
+IMP=1
 #ITER Testing iterations
 ITER=1
 #Multiple Thread Count
@@ -80,7 +80,7 @@ TA_B=0
 #HL Index Benchmark
 HLi_B=0
 #DL Benchmark
-DL_B=0
+DL_B=1
 #LARA Benchnmark
 LARA_B=0
 #TPAc Benchmark
@@ -88,9 +88,9 @@ TPAc_B=0
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
-VTA_B=1
+VTA_B=0
 #PTA Benchmark
-PTA_B=1
+PTA_B=0
 #SLA Benchmark
 SLA_B=0
 #####################################################################################	
