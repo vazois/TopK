@@ -3,8 +3,8 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((64*1024))
-END_N=$((64*1024))
+START_N=$((1*1024*1024))
+END_N=$((1*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
@@ -80,9 +80,9 @@ TA_B=0
 #HL Index Benchmark
 HLi_B=0
 #DL Benchmark
-DL_B=1
+DL_B=0
 #LARA Benchnmark
-LARA_B=0
+LARA_B=1
 #TPAc Benchmark
 TPAc_B=0
 #TPAr Benchmark

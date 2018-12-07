@@ -63,6 +63,7 @@ void LARA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	if(STATS_EFF) this->pred_count=0;
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
+	if(STATS_EFF) this->candidate_count=0;
 
 	pqueue<T,Z,pqueue_desc<T,Z>> q(k);
 	std::unordered_map<Z,lara_candidate<T>> lbmap;

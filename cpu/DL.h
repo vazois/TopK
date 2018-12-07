@@ -111,7 +111,7 @@ void DL<T,Z>::create_layers(T **cdata)
 
 		last = this->partition_table(first, last, layer_set, cdata, offset);// Push dominated tables at the bottom//
 		this->layers.push_back(layer);
-		//std::cout << "layer info: (" << this->layers.size() - 1<< ") = " << layer.size() << std::endl;
+		std::cout << "layer info: (" << this->layers.size() - 1<< ") = " << layer.size() << std::endl;
 	}
 
 	if( last > 0 ){
@@ -319,6 +319,7 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			for(auto child = clist->second.begin(); child!= clist->second.end(); ++child)
 			{
 				Z child_id = *child;
+				this->candidate_count+=1;
 				if(rs.find(child_id) != rs.end()) continue;
 				auto clm = layer_map.find(child_id);
 				if(clm == layer_map.end()) continue;
