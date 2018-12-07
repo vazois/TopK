@@ -65,6 +65,7 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	if(STATS_EFF) this->pred_count=0;
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
+	if(STATS_EFF) this->candidate_count=0;
 
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
@@ -93,6 +94,7 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 		if(q.size() >= k && ((q.top().score) >= threshold) ){ break; }
 	}
 	this->tt_processing += this->t.lap();
+	if(STATS_EFF) this->candidate_count=k;
 
 	T threshold = q.top().score;
 	while(!q.empty()){

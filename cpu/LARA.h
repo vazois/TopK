@@ -118,6 +118,7 @@ void LARA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 		if(q.size() >= k && ((q.top().score) >= threshold) ){ break; }
 	}
 	if(STATS_EFF) this->tuple_count = lbmap.size();
+	if(STATS_EFF) this->candidate_count = lbmap.size();
 
 	T trank[NUM_DIMS];//Initialize last ranks
 	for(uint8_t m = 0; m < qq; m++)
@@ -219,6 +220,5 @@ void LARA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	std::cout << " partial threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
-
 
 #endif

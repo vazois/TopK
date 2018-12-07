@@ -112,6 +112,7 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke
 			ta.benchmark();
 		}
 	}
+	std::cout << "_________________________________________________________" << std::endl;
 }
 
 void bench_hli(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
@@ -143,6 +144,7 @@ void bench_hli(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 			hli.benchmark();
 		}
 	}
+	std::cout << "_________________________________________________________" << std::endl;
 }
 
 void bench_lara(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
@@ -173,6 +175,7 @@ void bench_lara(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 			lara.benchmark();
 		}
 	}
+	std::cout << "_________________________________________________________" << std::endl;
 }
 
 void bench_dl(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
@@ -203,6 +206,7 @@ void bench_dl(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke
 			dl.benchmark();
 		}
 	}
+	std::cout << "_________________________________________________________" << std::endl;
 }
 
 void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
@@ -245,6 +249,7 @@ void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 			tpar.benchmark();
 		}
 	}
+	std::cout << "_________________________________________________________" << std::endl;
 }
 
 void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
@@ -329,6 +334,7 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 			}
 		}
 	}
+	std::cout << "_________________________________________________________" << std::endl;
 }
 
 void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
@@ -413,6 +419,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 			}
 		}
 	}
+	std::cout << "_________________________________________________________" << std::endl;
 }
 
 void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
@@ -494,6 +501,7 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 			}
 		}
 	}
+	std::cout << "_________________________________________________________" << std::endl;
 }
 
 void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t ks,uint64_t ke){
@@ -537,6 +545,7 @@ void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t ks,uint64_t ke
 			sla.benchmark();
 		}
 	}
+	std::cout << "_________________________________________________________" << std::endl;
 }
 
 void bench_msa(std::string fname,uint64_t n, uint64_t d, uint64_t k){

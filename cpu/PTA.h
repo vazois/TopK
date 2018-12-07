@@ -180,7 +180,7 @@ void PTA<T,Z>::polar(){
 //				<< psize << " [ " << ((float)psize)/PBLOCK_SIZE << " , " << ((float)psize)/SIMD_GROUP << " ] " << std::endl;
 
 		this->parts[it->first].size = it->second;//True partition size
-		this->parts[it->first].block_num = ((float)psize)/PBLOCK_SIZE;//Maximum number of blocks//
+		this->parts[it->first].block_num = ((float)psize-1)/PBLOCK_SIZE + 1;//Maximum number of blocks//
 		this->parts[it->first].blocks = static_cast<pta_block<T,Z>*>(aligned_alloc(32,sizeof(pta_block<T,Z>)*this->parts[it->first].block_num));
 
 		//Set data blocks to zero
@@ -211,7 +211,7 @@ void PTA<T,Z>::create_partitions(){
 	pta_pos<Z> *pos = (pta_pos<Z>*)malloc(sizeof(pta_pos<Z>)*this->max_part_size);
 	pta_pair<T,Z> **lists = (pta_pair<T,Z>**)malloc(sizeof(pta_pair<T,Z>*)*this->d);
 	for(uint32_t m=0; m<this->d;m++) lists[m] = (pta_pair<T,Z>*)malloc(sizeof(pta_pair<T,Z>)*this->max_part_size);
-	for(uint32_t m = 0; m < this->d; m++){ for(uint64_t j = 0; j < this->max_part_size;j++){ lists[m][j].id = 0; lists[m][j].score = 0; } }
+	for(uint32_t m=0; m<this->d;m++){ for(uint64_t j = 0; j < this->max_part_size;j++){ lists[m][j].id = 0; lists[m][j].score = 0; } }
 
 	for(uint64_t i = 0; i < PPARTITIONS;i++){//Build Partitions
 		if(this->parts[i].size == 0) continue;
@@ -246,6 +246,12 @@ void PTA<T,Z>::create_partitions(){
 				Z gid = ppos[(gindex + lid)].id;//Find global tuple id
 				for(uint32_t m = 0; m < this->d; m++){//Assign attributes to partitions
 					this->parts[i].blocks[b].tuples[ m * PBLOCK_SIZE + l] = this->cdata[ m * this->n + gid ];
+				}
+			}
+
+			for(uint64_t l = upper; l < PBLOCK_SIZE; l++){
+				for(uint32_t m = 0; m < this->d; m++){//Assign attributes to partitions
+					this->parts[i].blocks[b].tuples[ m * PBLOCK_SIZE + l] = 0;
 				}
 			}
 
@@ -337,11 +343,12 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 			T threshold = 0;
 			T *tarray = this->parts[p].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			if(q.size() >= k && q.top().score >= threshold){ break; }
+			//if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 		//std::cout << "p: " <<p << " = " << count << std::endl;
 	}
 	this->tt_processing += this->t.lap();
+	if(STATS_EFF) this->candidate_count=k;
 
 	while(q.size() > k){ q.pop(); }
 	T threshold = q.top().score;
@@ -404,10 +411,11 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 			T threshold = 0;
 			T *tarray = this->parts[p].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			if(q.size() >= k && q.top().score > threshold){ break; }
+			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 	}
 	this->tt_processing += this->t.lap();
+	if(STATS_EFF) this->candidate_count=k;
 
 	while(q.size() > k){ q.pop(); }
 	T threshold = q.top().score;
@@ -416,7 +424,7 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 		this->res.push_back(q.top());
 		q.pop();
 	}
-	std::cout << std::fixed << std::setprecision(8);
+	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
@@ -474,6 +482,7 @@ void PTA<T,Z>::findTopKsimdMQ(uint64_t k, uint8_t qq, T *weights, uint8_t *attr,
 		}
 	}
 	this->tt_array[tid] += t.lap();
+	if(STATS_EFF) this->candidate_count=k;
 }
 
 template<class T, class Z>
@@ -552,6 +561,7 @@ void PTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 		}
 	}
 	this->tt_processing += this->t.lap();
+	if(STATS_EFF) this->candidate_count=k;
 
 	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
 	T threshold = q.top().score;

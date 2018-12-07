@@ -228,6 +228,7 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->iter = 1;
 	this->pred_count = 0;
 	this->tuple_count = 0;
+	this->candidate_count = 0;
 	this->pop_count = 0;
 	this->stop_pos = 0;
 	this->threshold = 0;

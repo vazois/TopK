@@ -148,6 +148,7 @@ void HLi<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	if(STATS_EFF) this->pred_count=0;
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
+	if(STATS_EFF) this->candidate_count=0;
 
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	eset_vec.resize(this->llsize.size());
@@ -184,6 +185,7 @@ void HLi<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			if(q.size() >= k && ((q.top().score) >= threshold) ){ break; }
 		}
 	}
+	if(STATS_EFF) this->candidate_count=k;
 
 	this->tt_processing += this->t.lap();
 	T threshold = q.top().score;

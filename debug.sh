@@ -5,17 +5,17 @@
 #############################
 START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
-DIMS=4
+DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
 KKE=128
-#LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=1
+#LD 0:load from file(debugging), 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
+LD=0
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
 #randdataset3: higher precission , randdataset: lower precission
-script=randdataset
+script=randdataset3
 
 ######################
 ### DO NOT CHANGE  ###
@@ -88,11 +88,11 @@ TPAc_B=1
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
-VTA_B=1
+VTA_B=0
 #PTA Benchmark
-PTA_B=1
+PTA_B=0
 #SLA Benchmark
-SLA_B=0
+SLA_B=1
 #####################################################################################	
 
 ####################################

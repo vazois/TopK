@@ -209,9 +209,6 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 			}
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
-			#if LD == 2
-				threshold /=qq;
-			#endif
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
 			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
@@ -226,7 +223,7 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 		q.pop();
 	}
 	std::cout << std::fixed << std::setprecision(4);
-	std::cout << " threshold=[" << threshold <<"] (" << q.size() << ")" << std::endl;
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
 
@@ -327,6 +324,7 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 		}
 	}
 	this->tt_processing += this->t.lap();
+	if(STATS_EFF) this->candidate_count=k;
 
 	while(q.size() > k){ q.pop(); }
 	T threshold = q.top().score;
@@ -335,7 +333,7 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 		this->res.push_back(q.top());
 		q.pop();
 	}
-	std::cout << std::fixed << std::setprecision(8);
+	std::cout << std::fixed << std::setprecision(4);
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
@@ -419,6 +417,7 @@ void VTA<T,Z>::findTopKsimdMQ(uint64_t k, uint8_t qq, T *weights, uint8_t *attr,
 		}
 	}
 	this->tt_array[tid] += t.lap();
+	if(STATS_EFF) this->candidate_count=k;
 }
 
 template<class T, class Z>
