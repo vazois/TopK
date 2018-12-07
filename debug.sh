@@ -82,15 +82,15 @@ HLi_B=0
 #DL Benchmark
 DL_B=0
 #LARA Benchnmark
-LARA_B=1
+LARA_B=0
 #TPAc Benchmark
 TPAc_B=0
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
-VTA_B=0
+VTA_B=1
 #PTA Benchmark
-PTA_B=0
+PTA_B=1
 #SLA Benchmark
 SLA_B=0
 #####################################################################################	

@@ -272,8 +272,10 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 
 					load00 = _mm256_mul_ps(load00,_weight);
 					load01 = _mm256_mul_ps(load01,_weight);
-					score00 = _mm256_add_ps(score00,load00);
-					score01 = _mm256_add_ps(score01,load01);
+					score00 = _mm256_add_ps(load00,load00);
+					score01 = _mm256_add_ps(load01,load01);
+//					score00 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_load_ps(&tuples[offset]),_weight));
+//					score01 = _mm256_add_ps(score01,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+8]),_weight));
 				}
 
 				_mm256_store_ps(&score[0],score00);
