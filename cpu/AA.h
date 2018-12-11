@@ -3,6 +3,7 @@
 
 #include "../common/common.h"
 #include <limits>
+#include <bitset>
 
 #define QATTR 1
 #define FIRST(d,qq) ( (QATTR == 0) ? 0 : d - qq)

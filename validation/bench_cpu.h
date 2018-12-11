@@ -21,6 +21,7 @@
 #include "../cpu/T2S.h"
 #include "../cpu/LARA.h"
 #include "../cpu/DL.h"
+#include "../cpu/Onion.h"
 
 float weights[8] = { 1,1,1,1,1,1,1,1 };//Q0
 //float weights[8] = { 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8 };//Q1
@@ -143,6 +144,38 @@ void bench_lara(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 				lara.findTopK(k,i,weights,attr[i-q]);
 			}
 			lara.benchmark();
+		}
+	}
+	std::cout << "_________________________________________________________" << std::endl;
+}
+
+void bench_onion(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
+	File<float> f(fname,false,n,d);
+	Onion<float,uint64_t> onion(f.rows(),f.items());
+	//f.set_transpose(true);
+
+	if (LD != 1){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(onion.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(onion.get_cdata(),DISTR);
+	}
+
+	onion.init();
+	onion.set_iter(ITER);
+	uint8_t q = 2;
+	for(uint64_t k = ks; k <= ke; k*=2){
+		for(uint8_t i = q; i <= f.items();i+=QD){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+			//Warm up
+			onion.findTopK(k,i,weights,attr[i-q]);
+			onion.reset_clocks();
+			//Benchmark
+			for(uint8_t m = 0; m < ITER;m++){
+				onion.findTopK(k,i,weights,attr[i-q]);
+			}
+			onion.benchmark();
 		}
 	}
 	std::cout << "_________________________________________________________" << std::endl;

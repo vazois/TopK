@@ -45,6 +45,7 @@ int main(int argc, char **argv){
 	if (NRA_B == 1){ bench_nra(ap.getString("-f"),n,d,KKS,KKE); }
 	if (BPA_B == 1){ bench_bpa(ap.getString("-f"),n,d,KKS,KKE); }
 	if (HLi_B == 1){ bench_hli(ap.getString("-f"),n,d,KKS,KKE); }
+	if (Onion_B == 1){ bench_onion(ap.getString("-f"),n,d,KKS,KKE); }
 	if (DL_B == 1){ bench_dl(ap.getString("-f"),n,d,KKS,KKE); }
 	if (LARA_B == 1){ bench_lara(ap.getString("-f"),n,d,KKS,KKE); }
 	if (TPAr_B == 1){ bench_tpar(ap.getString("-f"),n,d,KKS,KKE); }

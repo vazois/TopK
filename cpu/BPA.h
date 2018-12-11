@@ -47,6 +47,7 @@ void BPA<T,Z>::init()
 			this->lists[m][i].score = this->cdata[i*this->d + m];
 		}
 	}
+
 	for(uint8_t m = 0; m < this->d; m++){
 		__gnu_parallel::sort(this->lists[m],lists[m]+this->n,bpa_pair_descending<T,Z>);
 		for(uint64_t i = 0; i < this->n; i++) pos[m].emplace(lists[m][i].id,i);
@@ -101,10 +102,22 @@ void BPA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 
 		T threshold=0;
 		for(uint8_t m = 0; m < qq; m++){
-			while(bp[m] < this->n && ( ( ( (seen[m][(bp[m] >> 5)] >> (bp[m] & 31)) & 0x1) == 0x1) ) ) bp[m]++;
+			//while(bp[m] < this->n && ( ( ( (seen[m][(bp[m] >> 5)] >> (bp[m] & 31)) & 0x1) == 0x1) ) ) bp[m]++;
+			uint32_t p = bp[m] >> 5;
+			uint32_t d = bp[m] & 31;
+			while(bp[m] < this->n && (((seen[m][p] >> d) & 0x1 ) == 0x1))
+			{
+				bp[m]++; p = bp[m] >> 5; d = bp[m] & 31;
+			}
+			//std::cout << "( " <<i << "," << bp[m]-1 << " ) | ";
 			threshold+=lists[attr[m]][bp[m]-1].score;
 		}
+		//std::cout <<"\n_______________________________\n";
+		//if(i==100) break;
 		if(q.size() >= k && ((q.top().score) >= threshold) ){
+			//std::bitset<16> x(seen[0][0]);
+			//std::cout << "break: " << x << std::endl;
+
 			//std::cout << "break i: " << i << std::endl;
 			break;
 		}
@@ -123,6 +136,5 @@ void BPA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
 	this->threshold = threshold;
 }
-
 
 #endif

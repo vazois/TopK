@@ -344,6 +344,7 @@ void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 		}
 	}
 	this->tt_processing += this->t.lap();
+	if(STATS_EFF) this->candidate_count=k;
 
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
@@ -404,6 +405,7 @@ void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 		}
 	}
 	this->tt_processing+=this->t.lap();
+	if(STATS_EFF) this->candidate_count=k;
 
 	while(q.size() > k){ q.pop(); }
 	T threshold = q.top().score;
@@ -485,7 +487,7 @@ void SLA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 	}
 	if(STATS_EFF) tt_count[tid] = tuple_count;
 }
-
+	if(STATS_EFF) this->candidate_count=k;
 	for(uint32_t m = 0; m < threads; m++){
 		while(!_q[m].empty()){
 			if(q.size() < k){
@@ -588,7 +590,7 @@ void SLA<T,Z>::findTopKthreads2(uint64_t k, uint8_t qq, T *weights, uint8_t *att
 		}
 	}
 	this->tt_processing+=this->t.lap();
-
+	if(STATS_EFF) this->candidate_count=k;
 	if(STATS_EFF){ for(uint32_t i = 0; i < threads; i++) this->tuple_count +=tt_count[i]; }
 	T threshold = q.top().score;
 	std::cout << std::fixed << std::setprecision(4);
