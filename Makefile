@@ -36,6 +36,10 @@ WORKLOAD=32768
 
 #TA Benchmark
 TA_B=1
+#BPA Benchmark
+BPA_B=1
+#NRA Benchmark
+NRA_B=1
 #HL index Benchmark
 HLi_B=1
 #DL Benchmark
@@ -57,7 +61,7 @@ SLA_B=1
 KKS=16
 KKE=16
 
-BENCH= -DTA_B=$(TA_B) -DHLi_B=$(HLi_B) -DDL_B=$(DL_B) -DLARA_B=$(LARA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
+BENCH= -DTA_B=$(TA_B) -DNRA_B=$(NRA_B) -DBPA_B=$(BPA_B) -DHLi_B=$(HLi_B) -DDL_B=$(DL_B) -DLARA_B=$(LARA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
 
 #CPU CONFIGURATION
 CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp input/randdataset-1.1.0/src/randdataset.c

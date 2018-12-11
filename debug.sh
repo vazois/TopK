@@ -3,17 +3,17 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((1*1024*1024))
-END_N=$((1*1024*1024))
+START_N=$((128*1024))
+END_N=$((128*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=128
-KKE=128
+KKS=4
+KKE=4
 #LD 0:load from file(debugging), 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
 LD=0
 
 #distr c:correlated i:independent a:anticorrelated
-distr=i
+distr=c
 #randdataset3: higher precission , randdataset: lower precission
 script=randdataset3
 
@@ -76,7 +76,11 @@ fi
 
 ######CHOOSE CPU ALGORITHM######
 #TA Benchmark
-TA_B=0
+TA_B=1
+#NRA Benchmark
+NRA_B=0
+#BPA Benchmark
+BPA_B=1
 #HL Index Benchmark
 HLi_B=0
 #DL Benchmark
@@ -84,7 +88,7 @@ DL_B=0
 #LARA Benchnmark
 LARA_B=0
 #TPAc Benchmark
-TPAc_B=1
+TPAc_B=0
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
@@ -92,7 +96,7 @@ VTA_B=0
 #PTA Benchmark
 PTA_B=0
 #SLA Benchmark
-SLA_B=1
+SLA_B=0
 #####################################################################################	
 
 ####################################
@@ -100,7 +104,7 @@ SLA_B=1
 ####################################
 if [ $device -eq 0 ]
 then
-	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B HLi_B=$HLi_B DL_B=$DL_B LARA_B=$LARA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
+	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B NRA_B=$NRA_B BPA_B=$BPA_B HLi_B=$HLi_B DL_B=$DL_B LARA_B=$LARA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 else
 	make gpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR KKS=$KKS KKE=$KKE STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 fi

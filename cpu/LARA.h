@@ -1,6 +1,8 @@
 #ifndef LARA_H
 #define LARA_H
 
+#include "AA.h"
+
 template<class T>
 struct lara_candidate
 {

@@ -2,6 +2,7 @@
 #define AA_H
 
 #include "../common/common.h"
+#include <limits>
 
 #define QATTR 1
 #define FIRST(d,qq) ( (QATTR == 0) ? 0 : d - qq)
@@ -91,7 +92,7 @@ class pqueue{
 		void pop_back();
 
 		uint64_t size(){return this->queue.size();}
-		bool empty(){ return (this->queue.size() > 0);}
+		bool empty(){return (this->queue.size() > 0);}
 		const qpair<T,Z>& top();
 		const qpair<T,Z>& bottom();
 

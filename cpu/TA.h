@@ -98,7 +98,6 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 
 	T threshold = q.top().score;
 	while(!q.empty()){
-		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
 		this->res.push_back(q.top());
 		q.pop();
 	}

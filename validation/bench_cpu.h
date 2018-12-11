@@ -7,6 +7,8 @@
 
 #include "../cpu/AA.h"
 #include "../cpu/TA.h"
+#include "../cpu/NRA.h"
+#include "../cpu/BPA.h"
 
 #include "../cpu/MSA.h"
 #include "../cpu/LSA.h"
@@ -115,6 +117,37 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke
 	std::cout << "_________________________________________________________" << std::endl;
 }
 
+void bench_lara(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
+	File<float> f(fname,false,n,d);
+	LARA<float,uint64_t> lara(f.rows(),f.items());
+
+	if (LD != 1){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(lara.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(lara.get_cdata(),DISTR);
+	}
+
+	lara.init();
+	lara.set_iter(ITER);
+	uint8_t q = 2;
+	for(uint64_t k = ks; k <= ke; k*=2){
+		for(uint8_t i = q; i <= f.items();i+=QD){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+			//Warm up
+			lara.findTopK(k,i,weights,attr[i-q]);
+			lara.reset_clocks();
+			//Benchmark
+			for(uint8_t m = 0; m < ITER;m++){
+				lara.findTopK(k,i,weights,attr[i-q]);
+			}
+			lara.benchmark();
+		}
+	}
+	std::cout << "_________________________________________________________" << std::endl;
+}
+
 void bench_hli(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
 	File<float> f(fname,false,n,d);
 	HLi<float,uint64_t> hli(f.rows(),f.items());
@@ -147,32 +180,63 @@ void bench_hli(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 	std::cout << "_________________________________________________________" << std::endl;
 }
 
-void bench_lara(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
+void bench_nra(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
 	File<float> f(fname,false,n,d);
-	LARA<float,uint64_t> lara(f.rows(),f.items());
+	NRA<float,uint64_t> nra(f.rows(),f.items());
 
 	if (LD != 1){
 		std::cout << "Loading data from file !!!" <<std::endl;
-		f.load(lara.get_cdata());
+		f.load(nra.get_cdata());
 	}else{
 		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
-		f.gen(lara.get_cdata(),DISTR);
+		f.gen(nra.get_cdata(),DISTR);
 	}
 
-	lara.init();
-	lara.set_iter(ITER);
+	nra.init();
+	nra.set_iter(ITER);
 	uint8_t q = 2;
 	for(uint64_t k = ks; k <= ke; k*=2){
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
-			lara.findTopK(k,i,weights,attr[i-q]);
-			lara.reset_clocks();
+			nra.findTopK(k,i,weights,attr[i-q]);
+			nra.reset_clocks();
 			//Benchmark
 			for(uint8_t m = 0; m < ITER;m++){
-				lara.findTopK(k,i,weights,attr[i-q]);
+				nra.findTopK(k,i,weights,attr[i-q]);
 			}
-			lara.benchmark();
+			nra.benchmark();
+		}
+	}
+	std::cout << "_________________________________________________________" << std::endl;
+}
+
+void bench_bpa(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
+	File<float> f(fname,false,n,d);
+	BPA<float,uint64_t> bpa(f.rows(),f.items());
+
+	if (LD != 1){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(bpa.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(bpa.get_cdata(),DISTR);
+	}
+
+	bpa.init();
+	bpa.set_iter(ITER);
+	uint8_t q = 2;
+	for(uint64_t k = ks; k <= ke; k*=2){
+		for(uint8_t i = q; i <= f.items();i+=QD){
+			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+			//Warm up
+			bpa.findTopK(k,i,weights,attr[i-q]);
+			bpa.reset_clocks();
+			//Benchmark
+			for(uint8_t m = 0; m < ITER;m++){
+				bpa.findTopK(k,i,weights,attr[i-q]);
+			}
+			bpa.benchmark();
 		}
 	}
 	std::cout << "_________________________________________________________" << std::endl;
