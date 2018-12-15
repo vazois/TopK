@@ -1,6 +1,18 @@
 #include "tools.h"
 #include <parallel/algorithm>
 
+inline __m256 _mm256_sel_ps(__m256 a, __m256 b, __m256 mask)
+{//((b^a) & mask)^a : mask = 0x0 select a else select b
+	return _mm256_xor_ps(_mm256_and_ps(_mm256_xor_ps(a,b),mask),a);
+}
+
+inline void swap(__m256 &a, __m256 &b){
+	__m256 tmp;
+	tmp = _mm256_sel_ps(a,b,_mm256_cmp_ps(a,b,_CMP_LE_OQ));//MAX
+	a = _mm256_sel_ps(a,b,_mm256_cmp_ps(a,b,_CMP_GT_OQ));
+	b = tmp;
+}
+
 template<class T, class Z>
 void psort(gpta_pair<T,Z> *tpairs,uint64_t n, bool ascending){
 	if(ascending){
@@ -182,10 +194,6 @@ T GVAGG<T,Z>::findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 				uint64_t offset = vsize * a + j;
 				T weight = weights[a];
 
-				__builtin_prefetch(data + offset + 16);
-				__builtin_prefetch(data + offset + 24);
-//				__builtin_prefetch(data + offset + 32);
-//				__builtin_prefetch(data + offset + 40);
 				__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 				__m256 load00 = _mm256_load_ps(data + offset);
 				__m256 load01 = _mm256_load_ps(data + offset + 8);
@@ -270,4 +278,277 @@ T GVAGG<T,Z>::findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 template class GVAGG<float, uint32_t>;
 template class GVAGG<float, uint64_t>;
 
+template<class T, class Z>
+T GVAGG<T,Z>::findTopKgvta2(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
+{
+	uint64_t vsize = this->bsize * this->pnum;
+	float buffer[64] __attribute__((aligned(64)));
+	//std::priority_queue<T, std::vector<tuple_<T,Z>>, Desc<T,Z>> q;
+	float *max_scores = static_cast<float*>(aligned_alloc(32,sizeof(float)*k));
+	for(uint64_t b = 0; b < this->nb; b++)
+	{
+		T *data = blocks[b].data;
+		T *tvector = blocks[b].tvector;
+		for(uint64_t j = 0; j < vsize; j+=64)
+		{
+			__m256 score00 = _mm256_setzero_ps();//8
+			__m256 score01 = _mm256_setzero_ps();//16
+			__m256 score02 = _mm256_setzero_ps();//24
+			__m256 score03 = _mm256_setzero_ps();//32
+			__m256 score04 = _mm256_setzero_ps();//40
+			__m256 score05 = _mm256_setzero_ps();//48
+			__m256 score06 = _mm256_setzero_ps();//56
+			__m256 score07 = _mm256_setzero_ps();//64
 
+			for(uint8_t m = 0; m <qq ; m++)
+			{
+				uint8_t a = attr[m];
+				uint64_t offset = vsize * a + j;
+				T weight = weights[a];
+
+				__m256 _weight = _mm256_set1_ps(weight);
+				score00 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_load_ps(data + offset),_weight));
+				score01 = _mm256_add_ps(score01,_mm256_mul_ps(_mm256_load_ps(data + offset + 8),_weight));
+				score02 = _mm256_add_ps(score02,_mm256_mul_ps(_mm256_load_ps(data + offset + 16),_weight));
+				score03 = _mm256_add_ps(score03,_mm256_mul_ps(_mm256_load_ps(data + offset + 24),_weight));
+				score04 = _mm256_add_ps(score04,_mm256_mul_ps(_mm256_load_ps(data + offset + 32),_weight));
+				score05 = _mm256_add_ps(score05,_mm256_mul_ps(_mm256_load_ps(data + offset + 40),_weight));
+				score06 = _mm256_add_ps(score06,_mm256_mul_ps(_mm256_load_ps(data + offset + 48),_weight));
+				score07 = _mm256_add_ps(score07,_mm256_mul_ps(_mm256_load_ps(data + offset + 56),_weight));
+			}
+
+			//////////////////////
+			//simd bitonic sort//
+			//1//
+			__m256 tmp;
+			if(k >= 2)
+			{
+				//tmp = swap(score00,score01,_CMP_LE_OQ);
+				swap(score00,score01); swap(score03,score02); swap(score04,score05); swap(score07,score06);
+//				tmp = _mm256_sel_ps(score00,score01,_mm256_cmp_ps(score00,score01,_CMP_LE_OQ));//MAX
+//				score01 = _mm256_sel_ps(score00,score01,_mm256_cmp_ps(score00,score01,_CMP_GT_OQ));
+//				score00 = tmp;
+//				tmp = _mm256_sel_ps(score02,score03,_mm256_cmp_ps(score02,score03,_CMP_GT_OQ));//MIN
+//				score03 = _mm256_sel_ps(score02,score03,_mm256_cmp_ps(score02,score03,_CMP_LE_OQ));
+//				score02 = tmp;
+//				tmp = _mm256_sel_ps(score04,score05,_mm256_cmp_ps(score04,score05,_CMP_LE_OQ));//MAX
+//				score05 = _mm256_sel_ps(score04,score05,_mm256_cmp_ps(score04,score05,_CMP_GT_OQ));
+//				score04 = tmp;
+//				tmp = _mm256_sel_ps(score06,score07,_mm256_cmp_ps(score06,score07,_CMP_GT_OQ));//MIN
+//				score07 = _mm256_sel_ps(score06,score07,_mm256_cmp_ps(score06,score07,_CMP_LE_OQ));
+//				score06 = tmp;
+			}
+
+			//2//
+			if(k >= 4){
+				swap(score00,score02); swap(score01,score03); swap(score06,score04); swap(score07,score05);
+//				tmp = _mm256_sel_ps(score00,score02,_mm256_cmp_ps(score00,score02,_CMP_LE_OQ));//MAX
+//				score02 = _mm256_sel_ps(score00,score02,_mm256_cmp_ps(score00,score02,_CMP_GT_OQ));
+//				score00 = tmp;
+//				tmp = _mm256_sel_ps(score01,score03,_mm256_cmp_ps(score01,score03,_CMP_LE_OQ));//MAX
+//				score03 = _mm256_sel_ps(score01,score03,_mm256_cmp_ps(score01,score03,_CMP_GT_OQ));
+//				score01 = tmp;
+//				tmp = _mm256_sel_ps(score04,score06,_mm256_cmp_ps(score04,score06,_CMP_GT_OQ));//MIN
+//				score06 = _mm256_sel_ps(score04,score06,_mm256_cmp_ps(score04,score06,_CMP_LE_OQ));
+//				score04 = tmp;
+//				tmp = _mm256_sel_ps(score05,score07,_mm256_cmp_ps(score05,score07,_CMP_GT_OQ));//MIN
+//				score07 = _mm256_sel_ps(score05,score07,_mm256_cmp_ps(score05,score07,_CMP_LE_OQ));
+//				score05 = tmp;
+
+				swap(score00,score01); swap(score02,score03); swap(score05,score04); swap(score07,score06);
+//				tmp = _mm256_sel_ps(score00,score01,_mm256_cmp_ps(score00,score01,_CMP_LE_OQ));//MAX
+//				score01 = _mm256_sel_ps(score00,score01,_mm256_cmp_ps(score00,score01,_CMP_GT_OQ));
+//				score00 = tmp;
+//				tmp = _mm256_sel_ps(score02,score03,_mm256_cmp_ps(score02,score03,_CMP_LE_OQ));//MAX
+//				score03 = _mm256_sel_ps(score02,score03,_mm256_cmp_ps(score02,score03,_CMP_GT_OQ));
+//				score02 = tmp;
+//				tmp = _mm256_sel_ps(score04,score05,_mm256_cmp_ps(score04,score05,_CMP_GT_OQ));//MIN
+//				score05 = _mm256_sel_ps(score04,score05,_mm256_cmp_ps(score04,score05,_CMP_LE_OQ));
+//				score04 = tmp;
+//				tmp = _mm256_sel_ps(score06,score07,_mm256_cmp_ps(score06,score07,_CMP_GT_OQ));//MIN
+//				score07 = _mm256_sel_ps(score06,score07,_mm256_cmp_ps(score06,score07,_CMP_LE_OQ));
+//				score06 = tmp;
+			}
+
+			if(k >= 8){
+				swap(score04,score00); swap(score05,score01); swap(score06,score02); swap(score07,score03);
+//				tmp = _mm256_sel_ps(score00,score04,_mm256_cmp_ps(score00,score04,_CMP_LE_OQ));//MAX
+//				score04 = _mm256_sel_ps(score00,score04,_mm256_cmp_ps(score00,score04,_CMP_GT_OQ));
+//				score00 = tmp;
+//				tmp = _mm256_sel_ps(score01,score05,_mm256_cmp_ps(score01,score05,_CMP_LE_OQ));//MAX
+//				score05 = _mm256_sel_ps(score01,score05,_mm256_cmp_ps(score01,score05,_CMP_GT_OQ));
+//				score01 = tmp;
+//				tmp = _mm256_sel_ps(score02,score06,_mm256_cmp_ps(score02,score06,_CMP_LE_OQ));//MAX
+//				score06 = _mm256_sel_ps(score02,score06,_mm256_cmp_ps(score02,score06,_CMP_GT_OQ));
+//				score02 = tmp;
+//				tmp = _mm256_sel_ps(score03,score07,_mm256_cmp_ps(score03,score07,_CMP_LE_OQ));//MAX
+//				score07 = _mm256_sel_ps(score03,score07,_mm256_cmp_ps(score03,score07,_CMP_GT_OQ));
+//				score03 = tmp;
+
+				swap(score02,score00); swap(score03,score01); swap(score06,score04); swap(score07,score05);
+//				tmp = _mm256_sel_ps(score00,score02,_mm256_cmp_ps(score00,score02,_CMP_LE_OQ));//MAX
+//				score02 = _mm256_sel_ps(score00,score02,_mm256_cmp_ps(score00,score02,_CMP_GT_OQ));
+//				score00 = tmp;
+//				tmp = _mm256_sel_ps(score01,score03,_mm256_cmp_ps(score01,score03,_CMP_LE_OQ));//MAX
+//				score03 = _mm256_sel_ps(score01,score03,_mm256_cmp_ps(score01,score03,_CMP_GT_OQ));
+//				score01 = tmp;
+//				tmp = _mm256_sel_ps(score04,score06,_mm256_cmp_ps(score04,score06,_CMP_LE_OQ));//MAX
+//				score06 = _mm256_sel_ps(score04,score06,_mm256_cmp_ps(score04,score06,_CMP_GT_OQ));
+//				score04 = tmp;
+//				tmp = _mm256_sel_ps(score05,score07,_mm256_cmp_ps(score05,score07,_CMP_LE_OQ));//MAX
+//				score07 = _mm256_sel_ps(score05,score07,_mm256_cmp_ps(score05,score07,_CMP_GT_OQ));
+//				score05 = tmp;
+
+				swap(score01,score00); swap(score03,score02); swap(score05,score04); swap(score07,score06);
+//				tmp = _mm256_sel_ps(score00,score01,_mm256_cmp_ps(score00,score01,_CMP_LE_OQ));//MAX
+//				score01 = _mm256_sel_ps(score00,score01,_mm256_cmp_ps(score00,score01,_CMP_GT_OQ));
+//				score00 = tmp;
+//				tmp = _mm256_sel_ps(score02,score03,_mm256_cmp_ps(score02,score03,_CMP_LE_OQ));//MAX
+//				score03 = _mm256_sel_ps(score02,score03,_mm256_cmp_ps(score02,score03,_CMP_GT_OQ));
+//				score02 = tmp;
+//				tmp = _mm256_sel_ps(score04,score05,_mm256_cmp_ps(score04,score05,_CMP_LE_OQ));//MAX
+//				score05 = _mm256_sel_ps(score04,score05,_mm256_cmp_ps(score04,score05,_CMP_GT_OQ));
+//				score04 = tmp;
+//				tmp = _mm256_sel_ps(score06,score07,_mm256_cmp_ps(score06,score07,_CMP_LE_OQ));//MAX
+//				score07 = _mm256_sel_ps(score06,score07,_mm256_cmp_ps(score06,score07,_CMP_GT_OQ));
+//				score06 = tmp;
+			}
+			//__m256i p = _mm256_set_epi32(0x0,0x1,0x2,0x3,0x4,0x5,0x6,0x7);//
+			//score01 = _mm256_permutevar8x32_ps(score01,p);
+
+			/////////////////////////////////////
+			//store to buffer for
+			_mm256_store_ps(&buffer[0],score00);
+			_mm256_store_ps(&buffer[8],score01);
+			_mm256_store_ps(&buffer[16],score02);
+			_mm256_store_ps(&buffer[24],score03);
+			_mm256_store_ps(&buffer[32],score04);
+			_mm256_store_ps(&buffer[40],score05);
+			_mm256_store_ps(&buffer[48],score06);
+			_mm256_store_ps(&buffer[56],score07);
+
+			std::cout << std::endl << "-------------------------" << std::endl;
+			for(uint32_t m = 0; m < 64; m+=8){
+				for(uint32_t mm = m; mm < m+8; mm++ ){
+					std::cout << buffer[mm] << " | ";
+				}
+				std::cout << std::endl;
+			}
+			std::cout << "-------------------------" << std::endl;
+			tmp = _mm256_unpackhi_ps(score00,score01);
+			score00 = _mm256_unpacklo_ps(score00,score01);
+			score01 = tmp;
+
+			tmp = _mm256_unpackhi_ps(score02,score03);
+			score02 = _mm256_unpacklo_ps(score02,score03);
+			score03 = tmp;
+
+			tmp = _mm256_unpackhi_ps(score04,score05);
+			score04 = _mm256_unpacklo_ps(score04,score05);
+			score05 = tmp;
+
+			tmp = _mm256_unpackhi_ps(score06,score07);
+			score06 = _mm256_unpacklo_ps(score06,score07);
+			score07 = tmp;
+
+			//shuffle
+//			tmp = _mm256_shuffle_ps(score00,score02, 0x44);
+//			score00 = _mm256_shuffle_ps(score00,score02, 0xEE);
+//			score01 = tmp;
+
+			_mm256_store_ps(&buffer[0],score00);
+			_mm256_store_ps(&buffer[8],score01);
+			_mm256_store_ps(&buffer[16],score02);
+			_mm256_store_ps(&buffer[24],score03);
+			_mm256_store_ps(&buffer[32],score04);
+			_mm256_store_ps(&buffer[40],score05);
+			_mm256_store_ps(&buffer[48],score06);
+			_mm256_store_ps(&buffer[56],score07);
+
+			std::cout << std::endl << "-------------------------" << std::endl;
+			for(uint32_t m = 0; m < 64; m+=8){
+				for(uint32_t mm = m; mm < m+8; mm++ ){
+					std::cout << buffer[mm] << " | ";
+				}
+				std::cout << std::endl;
+			}
+			std::cout << "-------------------------" << std::endl;
+
+			//score00[0] score00[1] score02[0] score02[1]
+			tmp = _mm256_shuffle_ps(score00,score02,_MM_SHUFFLE(1,0,1,0));
+			score02 = _mm256_shuffle_ps(score00,score02,_MM_SHUFFLE(3,2,3,2));
+			score00 = tmp;
+
+			tmp = _mm256_shuffle_ps(score01,score03,_MM_SHUFFLE(1,0,1,0));
+			score03 = _mm256_shuffle_ps(score01,score03,_MM_SHUFFLE(3,2,3,2));
+			score01 = tmp;
+
+			tmp = _mm256_shuffle_ps(score04,score06,_MM_SHUFFLE(1,0,1,0));
+			score06 = _mm256_shuffle_ps(score04,score06,_MM_SHUFFLE(3,2,3,2));
+			score04 = tmp;
+
+			tmp = _mm256_shuffle_ps(score05,score07,_MM_SHUFFLE(1,0,1,0));
+			score07 = _mm256_shuffle_ps(score05,score07,_MM_SHUFFLE(3,2,3,2));
+			score05 = tmp;
+
+			//score00[0] score04[0]
+			//score02[0] score06[0]
+			//score01[0] score05[0]
+			//score03[0] score07[0]
+			//score00[128] score04[128]
+			//score02[128] score06[128]
+			//score01[128] score05[128]
+			//score03[128] score07[128]
+
+			_mm256_store_ps(&buffer[0],score00);
+			_mm256_store_ps(&buffer[8],score01);
+			_mm256_store_ps(&buffer[16],score02);
+			_mm256_store_ps(&buffer[24],score03);
+			_mm256_store_ps(&buffer[32],score04);
+			_mm256_store_ps(&buffer[40],score05);
+			_mm256_store_ps(&buffer[48],score06);
+			_mm256_store_ps(&buffer[56],score07);
+
+			std::cout << std::endl << "-------------------------" << std::endl;
+			for(uint32_t m = 0; m < 64; m+=8){
+				for(uint32_t mm = m; mm < m+8; mm++ ){
+					std::cout << buffer[mm] << " | ";
+				}
+				std::cout << std::endl;
+			}
+			std::cout << "-------------------------" << std::endl;
+
+			//__m256i idx = _mm256_set_epi32(0x4,0x5,0x6,0x7,0x3,0x2,0x1,0x0);
+			score00 = _mm256_permutevar8x32_ps(score00,_mm256_set_epi32(0x4,0x5,0x6,0x7,0x3,0x2,0x1,0x0));
+			score04 = _mm256_permutevar8x32_ps(score04,_mm256_set_epi32(0x3,0x2,0x1,0x0,0x4,0x5,0x6,0x7));
+
+			_mm256_store_ps(&buffer[0],score00);
+			_mm256_store_ps(&buffer[8],score01);
+			_mm256_store_ps(&buffer[16],score02);
+			_mm256_store_ps(&buffer[24],score03);
+			_mm256_store_ps(&buffer[32],score04);
+			_mm256_store_ps(&buffer[40],score05);
+			_mm256_store_ps(&buffer[48],score06);
+			_mm256_store_ps(&buffer[56],score07);
+
+			std::cout << std::endl << "-------------------------" << std::endl;
+			for(uint32_t m = 0; m < 64; m+=8){
+				for(uint32_t mm = m; mm < m+8; mm++ ){
+					std::cout << buffer[mm] << " | ";
+				}
+				std::cout << std::endl;
+			}
+			std::cout << "-------------------------" << std::endl;
+
+
+			/////////////////////////
+			//bitonic-sort in cache//
+			/////////////////////////
+
+			//Find-Max//
+			break;
+		}
+		break;
+	}
+	free(max_scores);
+}

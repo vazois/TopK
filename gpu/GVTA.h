@@ -282,9 +282,8 @@ void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	this->t.start();
 	T cpu_gvagg=gvagg.findTopKgvta(k,qq, this->weights,this->query);
 	this->t.lap("gvagg");
-
 	std::cout << this->cpu_threshold << "," << cpu_gvagg <<std::endl;
-
+	gvagg.findTopKgvta2(k,qq, this->weights,this->query);
 
 	T threshold = 0;
 //	std::cout << std::fixed << std::setprecision(4);
