@@ -427,7 +427,7 @@ T GVAGG<T,Z>::findTopKgvta2(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 			_mm256_store_ps(&buffer[48],score06);
 			_mm256_store_ps(&buffer[56],score07);
 
-			std::cout << std::endl << "-------------------------" << std::endl;
+			std::cout << std::endl << "<SORTED>-------------------------" << std::endl;
 			for(uint32_t m = 0; m < 64; m+=8){
 				for(uint32_t mm = m; mm < m+8; mm++ ){
 					std::cout << buffer[mm] << " | ";
@@ -456,23 +456,23 @@ T GVAGG<T,Z>::findTopKgvta2(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 //			score00 = _mm256_shuffle_ps(score00,score02, 0xEE);
 //			score01 = tmp;
 
-			_mm256_store_ps(&buffer[0],score00);
-			_mm256_store_ps(&buffer[8],score01);
-			_mm256_store_ps(&buffer[16],score02);
-			_mm256_store_ps(&buffer[24],score03);
-			_mm256_store_ps(&buffer[32],score04);
-			_mm256_store_ps(&buffer[40],score05);
-			_mm256_store_ps(&buffer[48],score06);
-			_mm256_store_ps(&buffer[56],score07);
-
-			std::cout << std::endl << "-------------------------" << std::endl;
-			for(uint32_t m = 0; m < 64; m+=8){
-				for(uint32_t mm = m; mm < m+8; mm++ ){
-					std::cout << buffer[mm] << " | ";
-				}
-				std::cout << std::endl;
-			}
-			std::cout << "-------------------------" << std::endl;
+//			_mm256_store_ps(&buffer[0],score00);
+//			_mm256_store_ps(&buffer[8],score01);
+//			_mm256_store_ps(&buffer[16],score02);
+//			_mm256_store_ps(&buffer[24],score03);
+//			_mm256_store_ps(&buffer[32],score04);
+//			_mm256_store_ps(&buffer[40],score05);
+//			_mm256_store_ps(&buffer[48],score06);
+//			_mm256_store_ps(&buffer[56],score07);
+//
+//			std::cout << std::endl << "<TRANSPOSE I> -------------------------" << std::endl;
+//			for(uint32_t m = 0; m < 64; m+=8){
+//				for(uint32_t mm = m; mm < m+8; mm++ ){
+//					std::cout << buffer[mm] << " | ";
+//				}
+//				std::cout << std::endl;
+//			}
+//			std::cout << "-------------------------" << std::endl;
 
 			//score00[0] score00[1] score02[0] score02[1]
 			tmp = _mm256_shuffle_ps(score00,score02,_MM_SHUFFLE(1,0,1,0));
@@ -491,36 +491,43 @@ T GVAGG<T,Z>::findTopKgvta2(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 			score07 = _mm256_shuffle_ps(score05,score07,_MM_SHUFFLE(3,2,3,2));
 			score05 = tmp;
 
-			//score00[0] score04[0]
-			//score02[0] score06[0]
-			//score01[0] score05[0]
-			//score03[0] score07[0]
-			//score00[128] score04[128]
-			//score02[128] score06[128]
-			//score01[128] score05[128]
-			//score03[128] score07[128]
+//			_mm256_store_ps(&buffer[0],score00);
+//			_mm256_store_ps(&buffer[8],score01);
+//			_mm256_store_ps(&buffer[16],score02);
+//			_mm256_store_ps(&buffer[24],score03);
+//			_mm256_store_ps(&buffer[32],score04);
+//			_mm256_store_ps(&buffer[40],score05);
+//			_mm256_store_ps(&buffer[48],score06);
+//			_mm256_store_ps(&buffer[56],score07);
+//
+//			std::cout << std::endl << "<TRANSPOSE II> -------------------------" << std::endl;
+//			for(uint32_t m = 0; m < 64; m+=8){
+//				for(uint32_t mm = m; mm < m+8; mm++ ){
+//					std::cout << buffer[mm] << " | ";
+//				}
+//				std::cout << std::endl;
+//			}
+//			std::cout << "-------------------------" << std::endl;
 
-			_mm256_store_ps(&buffer[0],score00);
-			_mm256_store_ps(&buffer[8],score01);
-			_mm256_store_ps(&buffer[16],score02);
-			_mm256_store_ps(&buffer[24],score03);
-			_mm256_store_ps(&buffer[32],score04);
-			_mm256_store_ps(&buffer[40],score05);
-			_mm256_store_ps(&buffer[48],score06);
-			_mm256_store_ps(&buffer[56],score07);
+			tmp = _mm256_permute2f128_ps(score00, score04, 0x20);
+			score04 = _mm256_permute2f128_ps(score00, score04, 0x31);
+			score00 = tmp;
 
-			std::cout << std::endl << "-------------------------" << std::endl;
-			for(uint32_t m = 0; m < 64; m+=8){
-				for(uint32_t mm = m; mm < m+8; mm++ ){
-					std::cout << buffer[mm] << " | ";
-				}
-				std::cout << std::endl;
-			}
-			std::cout << "-------------------------" << std::endl;
+			tmp = _mm256_permute2f128_ps(score01, score05, 0x20);
+			score05 = _mm256_permute2f128_ps(score01, score05, 0x31);
+			score01 = tmp;
+
+			tmp = _mm256_permute2f128_ps(score02, score06, 0x20);
+			score06 = _mm256_permute2f128_ps(score02, score06, 0x31);
+			score02 = tmp;
+
+			tmp = _mm256_permute2f128_ps(score03, score07, 0x20);
+			score07 = _mm256_permute2f128_ps(score03, score07, 0x31);
+			score03 = tmp;
 
 			//__m256i idx = _mm256_set_epi32(0x4,0x5,0x6,0x7,0x3,0x2,0x1,0x0);
-			score00 = _mm256_permutevar8x32_ps(score00,_mm256_set_epi32(0x4,0x5,0x6,0x7,0x3,0x2,0x1,0x0));
-			score04 = _mm256_permutevar8x32_ps(score04,_mm256_set_epi32(0x3,0x2,0x1,0x0,0x4,0x5,0x6,0x7));
+	//		score00 = _mm256_permutevar8x32_ps(score00,_mm256_set_epi32(0x4,0x5,0x6,0x7,0x3,0x2,0x1,0x0));
+	//		score04 = _mm256_permutevar8x32_ps(score04,_mm256_set_epi32(0x3,0x2,0x1,0x0,0x4,0x5,0x6,0x7));
 
 			_mm256_store_ps(&buffer[0],score00);
 			_mm256_store_ps(&buffer[8],score01);
@@ -531,7 +538,7 @@ T GVAGG<T,Z>::findTopKgvta2(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 			_mm256_store_ps(&buffer[48],score06);
 			_mm256_store_ps(&buffer[56],score07);
 
-			std::cout << std::endl << "-------------------------" << std::endl;
+			std::cout << std::endl << "<TRANSPOSE III> -------------------------" << std::endl;
 			for(uint32_t m = 0; m < 64; m+=8){
 				for(uint32_t mm = m; mm < m+8; mm++ ){
 					std::cout << buffer[mm] << " | ";
