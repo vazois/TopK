@@ -84,7 +84,7 @@ BPA_B=0
 #HL Index Benchmark
 HLi_B=0
 #T2S Without Views
-T2S_B=1
+T2S_B=0
 #Onion Benchmark
 Onion_B=0
 #DL Benchmark
@@ -92,7 +92,7 @@ DL_B=0
 #LARA Benchnmark
 LARA_B=0
 #TPAc Benchmark
-TPAc_B=0
+TPAc_B=1
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
