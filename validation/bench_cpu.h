@@ -213,6 +213,37 @@ void bench_hli(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 	std::cout << "_________________________________________________________" << std::endl;
 }
 
+void bench_t2s(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
+	File<float> f(fname,false,n,d);
+	T2S<float,uint64_t> t2s(f.rows(),f.items());
+
+	if (LD != 1){
+		std::cout << "Loading data from file !!!" <<std::endl;
+		f.load(t2s.get_cdata());
+	}else{
+		std::cout << "Generating ( "<< distributions[DISTR] <<" ) data in memory !!!" <<std::endl;
+		f.gen(t2s.get_cdata(),DISTR);
+	}
+
+	t2s.init();
+	t2s.set_iter(ITER);
+//	uint8_t q = 2;
+//	for(uint64_t k = ks; k <= ke; k*=2){
+//		for(uint8_t i = q; i <= f.items();i+=QD){
+//			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+//			//Warm up
+//			t2s.findTopK(k,i,weights,attr[i-q]);
+//			t2s.reset_clocks();
+//			//Benchmark
+//			for(uint8_t m = 0; m < ITER;m++){
+//				t2s.findTopK(k,i,weights,attr[i-q]);
+//			}
+//			t2s.benchmark();
+//		}
+//	}
+//	std::cout << "_________________________________________________________" << std::endl;
+}
+
 void bench_nra(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke){
 	File<float> f(fname,false,n,d);
 	NRA<float,uint64_t> nra(f.rows(),f.items());

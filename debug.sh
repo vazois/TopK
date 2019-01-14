@@ -3,8 +3,8 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((1*1024))
-END_N=$((1*1024))
+START_N=$((1*1024*1024))
+END_N=$((1*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
@@ -83,8 +83,10 @@ NRA_B=0
 BPA_B=0
 #HL Index Benchmark
 HLi_B=0
+#T2S Without Views
+T2S_B=1
 #Onion Benchmark
-Onion_B=1
+Onion_B=0
 #DL Benchmark
 DL_B=0
 #LARA Benchnmark
@@ -106,7 +108,7 @@ SLA_B=0
 ####################################
 if [ $device -eq 0 ]
 then
-	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B NRA_B=$NRA_B BPA_B=$BPA_B HLi_B=$HLi_B Onion_B=$Onion_B DL_B=$DL_B LARA_B=$LARA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
+	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B NRA_B=$NRA_B BPA_B=$BPA_B HLi_B=$HLi_B T2S_B=$T2S_B Onion_B=$Onion_B DL_B=$DL_B LARA_B=$LARA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 else
 	make gpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR KKS=$KKS KKE=$KKE STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 fi

@@ -8,6 +8,24 @@ The following is a short description of each CPU algorithm:
 * cpu/TA.h
 	<br /> - Scalar implementation of the Threshold Algorithm using standard C++ library.
 
+* cpu/NRA.h
+	<br /> - Scalar implementation of the No Random Access Algorithm using standard C++ library.
+	
+* cpu/HLi.h
+	<br /> - Scalar implementation of the Hybrid Layer Index Algorithm using standard C++ library.
+	
+* cpu/T2S.h
+	<br /> - Scalar implementation of the T2S Algorithm using standard C++ library.
+	
+* cpu/DL.h
+	<br /> - Scalar implementation of the DL Algorithm using standard C++ library.
+	
+* cpu/BPA.h
+	<br /> - Scalar implementation of the Best Position Algorithm using standard C++ library.
+
+* cpu/LARA.h
+	<br /> - Scalar implementation of the LARA using standard C++ library.
+	
 * cpu/TPAc.h
 	<br /> - Scalar, SIMD, SIMD + multi-threaded, and multi-query implementation of Full Table Evaluation (FTE) using column major order.
 	

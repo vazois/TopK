@@ -41,7 +41,6 @@ struct vta_partition{
 	vta_block<T,Z> *blocks;
 };
 
-
 template<class T,class Z>
 static bool cmp_vta_pos(const vta_pos<Z> &a, const vta_pos<Z> &b){ return a.pos < b.pos; };
 
@@ -57,7 +56,7 @@ class VTA : public AA<T,Z>{
 		}
 
 		~VTA(){
-
+			for(uint64_t i = 0; i < VPARTITIONS; i++){ if(parts[i].blocks!=NULL) free(parts[i].blocks); }
 		}
 		void init();
 		void findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
