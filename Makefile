@@ -85,7 +85,7 @@ reorder_cc:
 
 gpu_cc:
 	$(NVCC) -c $(NVCC_LIBS) -std=c++11 $(GPU_PARAMETERS) $(GPU_FLAGS) $(GC_MAIN) $(NVCC_INCLUDE)
-	$(CC) $(CC_FLAGS) $(GPU_GCC_FLAGS) -o $(GC_EXE) input/randdataset-1.1.0/src/randdataset.cpp tools/tools.cpp main.o $(NVCC_LIBS) -lcudart
+	$(CC) $(CC_FLAGS) -DNUM_DIMS=$(DIMS) $(GPU_GCC_FLAGS) -o $(GC_EXE) input/randdataset-1.1.0/src/randdataset.cpp tools/tools.cpp main.o $(NVCC_LIBS) -lcudart
 	
 clean:
 	rm -rf $(CC_EXE)

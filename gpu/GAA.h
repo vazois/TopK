@@ -22,7 +22,6 @@
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];
 
-
 template<class T>
 __device__ T swap(T a, uint32_t stride, int dir){
 	T b = __shfl_xor_sync(0xFFFFFFFF,a,stride);
@@ -197,6 +196,7 @@ class GAA{
 			this->pred_count = 0;
 			this->tuple_count = 0;
 			this->queries_per_second = 0;
+			std::cout << std::fixed << std::setprecision(6);
 		};
 
 		~GAA<T,Z>(){

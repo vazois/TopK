@@ -1885,7 +1885,7 @@ template<class T, class Z>
 void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	//this->cpu_threshold = compute_threshold<T,Z>(this->cdata, this->n, qq, this->weights, this->query, k);
 	//this->evaluate_single_attribute(k,qq);
-	this->evaluate_full_relation(k,qq);
+	//this->evaluate_full_relation(k,qq);
 }
 
 

@@ -1,10 +1,10 @@
 #ifndef GVTA_H
 #define GVTA_H
 
-#define GVTA_PARTITIONS 16 //at least 8 partitions//
-#define GVTA_BLOCK_SIZE 4096
 
 #include "GAA.h"
+
+#define USE_DEVICE_MEM false
 
 template<class T, class Z>
 class GVTA : public GAA<T,Z>{
@@ -16,15 +16,10 @@ class GVTA : public GAA<T,Z>{
 
 		~GVTA()
 		{
-			if(blocks != NULL)
-			{
-				for(uint64_t i = 0; i < this->num_blocks;i++)
-				{
-					if( this->blocks[i].data != NULL ) cudaFreeHost(this->blocks[i].data);
-					if( this->blocks[i].tvector != NULL ) cudaFreeHost(this->blocks[i].tvector);
-				}
-				cudaFreeHost(this->blocks);
-			}
+			if(blocks != NULL){ cudaFreeHost(this->blocks); }
+			#if USE_DEVICE_MEM
+				cudaFree(this->gblocks);
+			#endif
 		};
 
 		void alloc();
@@ -42,6 +37,7 @@ class GVTA : public GAA<T,Z>{
 		uint64_t tuples_per_part;
 		uint64_t num_blocks;
 		gvta_block<T,Z> *blocks = NULL;
+		gvta_block<T,Z> *gblocks = NULL;
 		void reorder();
 
 		void clear_mem_counters(){
@@ -73,7 +69,7 @@ __global__ void gvta_atm_16(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq, u
 	//__shared__ T scores[GVTA_BLOCK_SIZE];
 	T *data;
 	//T *tvector;
-	while(i < 16)
+	while(i < nb)
 	{
 		data = &blocks[i].data[blockIdx.x * GVTA_BLOCK_SIZE];
 		//tvector = &blocks[i].tvector[threshold_offset];
@@ -132,23 +128,28 @@ __global__ void gvta_atm_16_2(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq,
 	T v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
 	T v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
 	//__shared__ Z ids[GVTA_BLOCK_SIZE];
-	//__shared__ T heap[16];
+	__shared__ T threshold;
+	__shared__ T heap[32];
 	__shared__ T buffer[256];
 	T *data;
-	//T *tvector;
-	while(i < 16)
+	T *tvector;
+	if(threadIdx.x < 32) heap[threadIdx.x] = 0;
+	while(i < nb)
 	{
 		data = &blocks[i].data[blockIdx.x * GVTA_BLOCK_SIZE];
-		//tvector = &blocks[i].tvector[threshold_offset];
+		if(threadIdx.x == 0){
+			tvector = blocks[i].tvector;
+			threshold = 0;
+		}
 
 		v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
 		v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
-		//for(uint32_t j = threadIdx.x; j < GVTA_BLOCK_SIZE; j+=blockDim.x){ scores[j] = 0; }
-
 		for(uint32_t m = 0; m < qq; m++)
 		{
 			uint64_t ai = gpu_query[m];
 			uint64_t begin = GVTA_BLOCK_SIZE * GVTA_PARTITIONS * ai;
+			if(threadIdx.x == 0) threshold += tvector[ai * GVTA_PARTITIONS + blockIdx.x];
+
 			v0 += data[begin + threadIdx.x] * gpu_weights[ai];
 			v1 += data[begin + threadIdx.x + 256] * gpu_weights[ai];
 			v2 += data[begin + threadIdx.x + 512] * gpu_weights[ai];
@@ -369,36 +370,62 @@ __global__ void gvta_atm_16_2(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq,
 			/*
 			 * Sort 16
 			 */
-			for( level = k; level < 32; level = level << 1){
+			for(level = k; level < 32; level = level << 1){
 				for(step = level; step > 0; step = step >> 1){
 					dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
 					v0 = swap(v0,step,dir);
 				}
 			}
-			if(31 - threadIdx.x < k){
-				//v1 = heap[threadIdx.x];
-				out[offset + 31 - threadIdx.x] = v0;
+
+			/*
+			 * Merge with Buffer
+			 */
+			//out[offset + 31 - threadIdx.x] = v0;
+			if(i == 0)
+			{
+				heap[31 - threadIdx.x] = v0;
+			}else{
+				v1 = heap[threadIdx.x];
+				v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+				v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+				v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+
+				for(step = level; step > 0; step = step >> 1){
+					dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+					v0 = swap(v0,step,dir);
+				}
+				v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+				v0 = (threadIdx.x & k) == 0 ? v0 : 0;
+
+				for(level = k; level < 32; level = level << 1){
+					for(step = level; step > 0; step = step >> 1){
+						dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+						v0 = swap(v0,step,dir);
+					}
+				}
+				heap[31 - threadIdx.x] = v0;
 			}
 		}
-
-//		out[offset + threadIdx.x] = v0;
-//		out[offset + threadIdx.x] = v0;
-//		out[offset + threadIdx.x + 256] = v4;
-//		out[offset + threadIdx.x + 512] = v8;
-//		out[offset + threadIdx.x + 768] = vC;
-//		out[offset + threadIdx.x] = v0;
-//		out[offset + threadIdx.x + 256] = v2;
-//		out[offset + threadIdx.x + 512] = v4;
-//		out[offset + threadIdx.x + 768] = v6;
-//		out[offset + threadIdx.x + 1024] = v8;
-//		out[offset + threadIdx.x + 1280] = vA;
-//		out[offset + threadIdx.x + 1536] = vC;
-//		out[offset + threadIdx.x + 1792] = vE;
-		offset+=GVTA_BLOCK_SIZE;
+		__syncthreads();
+		/*
+		 * Break if suitable threshold reached
+		 */
+//		if(heap[k-1] > threshold){
+//			//if(threadIdx.x == 0) printf("[%d],%d < %d\n",blockIdx.x,(uint32_t)i);
+//			break;
+//		}
+		//offset+=GVTA_BLOCK_SIZE;
 		i++;
 	}
-}
 
+	//Store Ascending Descending
+	if(threadIdx.x < k){
+		offset = blockIdx.x * k;
+		//if((blockIdx.x & 0x1) == 0) out[offset + (k-1) - threadIdx.x] = heap[threadIdx.x];
+		//else out[offset + threadIdx.x] = heap[threadIdx.x];
+		out[offset + threadIdx.x] = heap[threadIdx.x];
+	}
+}
 
 template<class T, class Z>
 void GVTA<T,Z>::alloc(){
@@ -430,8 +457,8 @@ void GVTA<T,Z>::reorder()
 	std::cout << this->n << " = p,psz(" << GVTA_PARTITIONS <<"," << this->tuples_per_part << ") - " << "b,bsz(" << this->num_blocks << "," << GVTA_BLOCK_SIZE << ")" << std::endl;
 	for(uint64_t i = 0; i< this->num_blocks; i++)//TODO:safemalloc
 	{
-		cutil::safeMallocHost<T,uint64_t>(&(this->blocks[i].data),sizeof(T)*GVTA_PARTITIONS*GVTA_BLOCK_SIZE*this->d,"alloc gvta_block data("+std::to_string((unsigned long long)i)+")");
-		cutil::safeMallocHost<T,uint64_t>(&(this->blocks[i].tvector),sizeof(T)*GVTA_PARTITIONS*this->d,"alloc gvta_block tvector("+std::to_string((unsigned long long)i)+")");
+		//cutil::safeMallocHost<T,uint64_t>(&(this->blocks[i].data),sizeof(T)*GVTA_PARTITIONS*GVTA_BLOCK_SIZE*this->d,"alloc gvta_block data("+std::to_string((unsigned long long)i)+")");
+		//cutil::safeMallocHost<T,uint64_t>(&(this->blocks[i].tvector),sizeof(T)*GVTA_PARTITIONS*this->d,"alloc gvta_block tvector("+std::to_string((unsigned long long)i)+")");
 		this->gvta_mem += sizeof(T)*GVTA_PARTITIONS*GVTA_BLOCK_SIZE*this->d;
 		this->gvta_mem += sizeof(T)*GVTA_PARTITIONS*this->d;
 	}
@@ -530,20 +557,21 @@ void GVTA<T,Z>::reorder()
 		offset += this->tuples_per_part;
 	}
 
-	//DEBUG//
-//	std::cout << std::fixed << std::setprecision(4);
-//	if(GVTA_PARTITIONS == 2){
+//	//DEBUG//
+//	std::cout << std::fixed << std::setprecision(6);
+//	//if(GVTA_PARTITIONS == 2){
 //		std::cout << "<<<< COLUMN MAJOR FINAL ORDERING >>>>" << std::endl;
 //		for(uint64_t b = 0; b < 4; b++){//4 blocks per partition
 //			T *data = this->blocks[b].data;
 //			T *tvector = this->blocks[b].tvector;
 //
+//			std::cout <<"[" << b << "]" << std::endl;
 //			for(uint64_t m = 0; m < this->d; m++)
 //			{
 //				uint64_t poff = 0;
 //				for(uint64_t j = 0; j < GVTA_BLOCK_SIZE * GVTA_PARTITIONS; j++)
 //				{
-//					std::cout << data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + j] << " ";
+//					//std::cout << data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + j] << " ";
 //					if((j+1) % GVTA_BLOCK_SIZE == 0){
 //						//std::cout << "(" << tvector[ (j % GVTA_BLOCK_SIZE)   +  (j / (GVTA_BLOCK_SIZE * GVTA_PARTITIONS))] <<")";
 //						std::cout << "(" << tvector[poff + m] <<")";
@@ -556,7 +584,7 @@ void GVTA<T,Z>::reorder()
 //			}
 //		}
 //		std::cout << "____________________________________________________________________________________________________________________________\n";
-//	}
+//	//}
 
 	/////////////////////////
 	//Free not needed space//
@@ -578,11 +606,33 @@ void GVTA<T,Z>::init()
 	normalize_transpose<T>(this->cdata, this->n, this->d);
 	this->t.start();
 	this->reorder();
+
+#if USE_DEVICE_MEM
+	cutil::safeMalloc<gvta_block<T,Z>,uint64_t>(&(this->gblocks),sizeof(gvta_block<T,Z>)*this->num_blocks,"alloc gpu gvta_blocks");
+	for(uint64_t i = 0; i< this->num_blocks; i++)//TODO:safemalloc
+	{
+		//cutil::safeMalloc<T,uint64_t>(&(this->gblocks[i].data),sizeof(T)*GVTA_PARTITIONS*GVTA_BLOCK_SIZE*this->d,"alloc gpu gvta_block data("+std::to_string((unsigned long long)i)+")");
+		//cutil::safeMalloc<T,uint64_t>(&(this->gblocks[i].tvector),sizeof(T)*GVTA_PARTITIONS*this->d,"alloc gpu gvta_block tvector("+std::to_string((unsigned long long)i)+")");
+	}
+	cutil::safeCopyToDevice<gvta_block<T,Z>,uint64_t>(this->gblocks,this->blocks,sizeof(gvta_block<T,Z>)*this->num_blocks,"error copying to gpu gvta_blocks");
+#else
+	this->gblocks = this->blocks;
+#endif
 	this->tt_init = this->t.lap();
 }
 
 template<class T, class Z>
 void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
+	dim3 atm_16_block(256,1,1);
+	dim3 atm_16_grid(GVTA_PARTITIONS, 1, 1);
+	T *out, *gout;
+	cutil::safeMallocHost<T,uint64_t>(&out,sizeof(T)*this->n,"out alloc");
+#if USE_DEVICE_MEM
+	cutil::safeMalloc<T,uint64_t>(&gout,sizeof(T)*this->n,"gout alloc");
+#else
+	gout = out;
+#endif
+
 	T threshold = 0;
 	//this->findTopKtpac(k,(uint8_t)qq,this->weights,this->query);
 	VAGG<T,Z> vagg(this->cdata,this->n,this->d);
@@ -596,34 +646,27 @@ void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	this->t.lap("gvagg");
 	//gvagg.findTopKgvta2(k,qq, this->weights,this->query);
 
-	T *out;
-	cutil::safeMallocHost<T,uint64_t>(&out,sizeof(T)*this->n,"out alloc");
 	for(uint32_t i = 0; i < this->n; i++) out[i] = 0;
-	dim3 atm_16_block(256,1,1);
-	dim3 atm_16_grid(GVTA_PARTITIONS, 1, 1);
-	gvta_atm_16<T,Z><<<atm_16_grid,atm_16_block>>>(this->blocks,this->num_blocks,qq,k,out);
+	#if USE_DEVICE_MEM
+		cutil::safeCopyToDevice<T,uint64_t>(gout,out,sizeof(T)*this->n, "error copying to gout");
+	#endif
+	this->t.start();
+	gvta_atm_16_2<T,Z><<<atm_16_grid,atm_16_block>>>(this->gblocks,this->num_blocks,qq,k,gout);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gvta_atm_16");
-//	std::sort(out, out + this->n,std::greater<T>());
-//	std::cout << "nb: " << this->num_blocks << std::endl;
-//	std::cout << "{" << out[k-1] << "}" << std::endl;
+	this->t.lap("gvta_atm_16_2");
 
-	for(uint32_t i = 0; i < this->n; i++) out[i] = 0;
-	gvta_atm_16_2<T,Z><<<atm_16_grid,atm_16_block>>>(this->blocks,this->num_blocks,qq,k,out);
-	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gvta_atm_16");
+	#if USE_DEVICE_MEM
+		cutil::safeCopyToHost<T,uint64_t>(out,gout,sizeof(T)*this->n, "error copying to out");
+	#endif
 //	for(uint32_t i = 0; i < 128; i+=k)
 //	{
 //		for(uint32_t j = i; j < i + k; j++) std::cout << out[j] << " ";
 //		std::cout << "[" << std::is_sorted(&out[i],(&out[i+k])) << "]" << std::endl;
 //	}
-	std::sort(out, out + this->n,std::greater<T>());
+	std::sort(out, out + this->num_blocks * k,std::greater<T>());
 	threshold = out[k-1];
-	if(abs(out[k-1] - cpu_gvagg) > 0.0000001) {
-		std::cout << "ERROR: {" << out[k-1] << "," << cpu_gvagg << "}" << std::endl;
-		exit(1);
-	}
+	if(abs(out[k-1] - cpu_gvagg) > 0.0000001) { std::cout << "ERROR: {" << out[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "}" << std::endl; exit(1); }
 	cudaFreeHost(out);
-
-//	std::cout << std::fixed << std::setprecision(4);
 	std::cout << "threshold=[" << threshold << "," << this->cpu_threshold << "," << cpu_gvagg << "]"<< std::endl;
 }
 

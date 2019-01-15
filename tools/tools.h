@@ -55,14 +55,26 @@ struct gpta_pos{
 	Z pos;
 };
 
+#define GVTA_PARTITIONS 16 //at least 8 partitions//
+#define GVTA_BLOCK_SIZE 4096
+
 template<class T,class Z>
 struct gvta_block
 {
-	gvta_block() : data(NULL), tvector(NULL), num_tuples(0){}
-	T *data;
-	T *tvector;
+	gvta_block(){};
+	T data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * NUM_DIMS] __attribute__((aligned(32)));
+	T tvector[GVTA_PARTITIONS * NUM_DIMS] __attribute__((aligned(32)));
 	Z num_tuples;
 };
+
+//template<class T,class Z>
+//struct gvta_block
+//{
+//	gvta_block() : data(NULL), tvector(NULL), num_tuples(0){}
+//	T *data;
+//	T *tvector;
+//	Z num_tuples;
+//};
 
 template<class T,class Z>
 struct tuple_{
