@@ -72,16 +72,6 @@ __global__ void scores_topk(T *ivec, T *ovec, uint64_t k){
 	}
 }
 
-template<class T>
-__device__ T swap(T a, uint32_t stride, int dir){
-	T b = __shfl_xor_sync(0xFFFFFFFF,a,stride);
-	return ((a < b) == dir) ? b : a;
-}
-
-__device__ uint32_t bfe(uint32_t a, uint32_t i){
-	return (a >> i) & 0x1;
-}
-
 /*
  * Partial sort top-k function for at most k=16
  */
@@ -160,7 +150,6 @@ __global__ void lsort_atm_16(T *ivec, T *ovec, uint64_t k){
 	level = k >> 1;
 	for(uint32_t size = 2048; size > 256; size = size >> 1){//
 		if ( threadIdx.x < rw ){
-
 			i = threadIdx.x;
 			v0 = sm_vals[i]; i += rw;
 			v1 = sm_vals[i]; i += rw;
@@ -684,7 +673,6 @@ __global__ void mrebuild_atm_16(T *ivec, T *ovec, uint64_t k, uint32_t remainder
 		v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
 		v0 = (threadIdx.x & k) == 0 ? v0 : v8;
 
-
 		//16//
 		for( ; level < 32; level = level << 1){
 			for(step = level; step > 0; step = step >> 1){
@@ -1071,25 +1059,29 @@ __global__ void agg_lsort_atm_16(T *ivec, T *ovec, uint64_t n, uint64_t d, uint6
 	T v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
 
 	goffset = (blockIdx.x << 12) + threadIdx.x;
-	for(uint64_t m = 0; m < 1; m++)
+	//for(uint64_t m = 0; m < 1; m++)//TODO: m < qq
+	for(uint64_t m = 0; m < d; m++)
 	{
-		v0 += ivec[goffset + n*m];
-		v1 += ivec[goffset + n*m + 256];
-		v2 += ivec[goffset + n*m + 512];
-		v3 += ivec[goffset + n*m + 768];
-		v4 += ivec[goffset + n*m + 1024];
-		v5 += ivec[goffset + n*m + 1280];
-		v6 += ivec[goffset + n*m + 1536];
-		v7 += ivec[goffset + n*m + 1792];
-		v8 += ivec[goffset + n*m + 2048];
-		v9 += ivec[goffset + n*m + 2304];
-		vA += ivec[goffset + n*m + 2560];
-		vB += ivec[goffset + n*m + 2816];
-		vC += ivec[goffset + n*m + 3072];
-		vD += ivec[goffset + n*m + 3328];
-		vE += ivec[goffset + n*m + 3584];
-		vF += ivec[goffset + n*m + 3840];
+		uint64_t ai = gpu_query[m];
+		//score+=ivec[ai*n + goffset] * gpu_weights[ai];
+		v0 += ivec[goffset + n*ai] * gpu_weights[ai];
+		v1 += ivec[goffset + n*ai + 256] * gpu_weights[ai];
+		v2 += ivec[goffset + n*ai + 512] * gpu_weights[ai];
+		v3 += ivec[goffset + n*ai + 768] * gpu_weights[ai];
+		v4 += ivec[goffset + n*ai + 1024]* gpu_weights[ai];
+		v5 += ivec[goffset + n*ai + 1280]* gpu_weights[ai];
+		v6 += ivec[goffset + n*ai + 1536]* gpu_weights[ai];
+		v7 += ivec[goffset + n*ai + 1792]* gpu_weights[ai];
+		v8 += ivec[goffset + n*ai + 2048]* gpu_weights[ai];
+		v9 += ivec[goffset + n*ai + 2304]* gpu_weights[ai];
+		vA += ivec[goffset + n*ai + 2560]* gpu_weights[ai];
+		vB += ivec[goffset + n*ai + 2816]* gpu_weights[ai];
+		vC += ivec[goffset + n*ai + 3072]* gpu_weights[ai];
+		vD += ivec[goffset + n*ai + 3328]* gpu_weights[ai];
+		vE += ivec[goffset + n*ai + 3584]* gpu_weights[ai];
+		vF += ivec[goffset + n*ai + 3840]* gpu_weights[ai];
 	}
+	//__syncthreads();
 
 	uint32_t laneId = threadIdx.x;
 	uint32_t level, step, dir;
@@ -1795,17 +1787,24 @@ void BTA<T,Z>::evaluate_single_attribute(uint64_t k, uint64_t qq){
 
 template<class T, class Z>
 void BTA<T,Z>::evaluate_full_relation(uint64_t k, uint64_t qq){
+	std::cout << "Evaluating full relation!!!" << std::endl;
+	double tt_processing = 0.0f;
 	uint32_t block_size = 512;
+
+	///////////////////////////////
+	//For Debugging from CPU side//
 	dim3 lsort_block(block_size,1,1);
 	dim3 lsort_grid((this->n-1)/BTA_TUPLES_PER_BLOCK + 1, 1, 1);
 	aggregate<T,Z><<<lsort_grid,lsort_block>>>(this->gdata,this->n,qq,this->g_ivec);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing aggregate");
+	std::cout << "aggregate: " << tt_processing << std::endl;
 	cutil::safeCopyToHost<T,uint64_t>(this->c_ovec, this->g_ivec, sizeof(T)*this->n,"copy scores to host");
-	srand(time(NULL));
+	//srand(time(NULL));
 	//for(uint32_t i = 0; i < this->n; i++){ this->c_ovec[i] = this->n - i; }//Linear increasing data
 	//for(uint32_t i = 0; i < this->n; i++){ this->c_ovec[i] = rand()%1000000; }//Linear increasing data
 	cutil::safeCopyToDevice<T,uint64_t>(this->g_ivec, this->c_ovec, sizeof(T)*this->n,"copy scores to device");
 	this->cpu_threshold=find_threshold<T,Z>(this->c_ovec,this->n,k);
+	//////////////////////////////
 
 	if( k < 32 )
 	{
@@ -1816,14 +1815,16 @@ void BTA<T,Z>::evaluate_full_relation(uint64_t k, uint64_t qq){
 		//std::cout << "qq: " << qq << std::endl;
 		this->t.start();
 		//agg_lsort_atm_16<T,256><<<atm_16_grid,atm_16_block>>>(this->gdata, this->g_ovec, this->n, qq, k);
-		agg_lsort_atm_16<T,256><<<atm_16_grid,atm_16_block>>>(this->g_ivec, this->g_ovec, this->n, qq, k);
+		lsort_atm_16<T,256><<<atm_16_grid,atm_16_block>>>(this->g_ivec, this->g_ovec,k);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_atm_16");
-		this->tt_processing = this->t.lap();
-		std::cout << "agg_lsort_atm_16: " << this->tt_processing << std::endl;
-		std::cout << "agg_lsort_atm_16 (GB/s):" << ((this->n * qq * 4 + ((this->n/4096)*k))/(this->tt_processing/1000))/(1024*1024*1204) << std::endl;
+		tt_processing = this->t.lap();
+		this->tt_processing += tt_processing;
+		std::cout << "agg_lsort_atm_16: " << tt_processing << std::endl;
+		std::cout << "agg_lsort_atm_16 (GB/s):" << ((this->n * qq * 4 + ((this->n/4096)*k))/(tt_processing/1000))/(1024*1024*1204) << std::endl;
 
 		T *pswap;
 		uint32_t remainder = ((this->n-1)/BTA_TUPLES_PER_BLOCK + 1) * k;
+		tt_processing = 0;
 		while(remainder > k){
 			//std::cout << "remainder: " << remainder << std::endl;
 			pswap = this->g_ivec;
@@ -1833,14 +1834,15 @@ void BTA<T,Z>::evaluate_full_relation(uint64_t k, uint64_t qq){
 			this->t.start();
 			mrebuild_atm_16<T,256><<<atm_16_grid,atm_16_block>>>(this->g_ivec, this->g_ovec, k, remainder);
 			cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing mrebuild_atm_16");
-			this->tt_processing += this->t.lap();
+			tt_processing += this->t.lap();
 			cutil::safeCopyToHost<T,uint64_t>(this->c_ovec, this->g_ovec, sizeof(T)*this->n,"copy scores to host");
 			this->gpu_threshold = find_partial_threshold<T,Z>(this->c_ovec,this->n,k,false,remainder);
 			remainder = ((remainder-1)/BTA_TUPLES_PER_BLOCK + 1) * k;
-			std::cout << "{" << remainder << "}" << std::endl;
+			//std::cout << "{" << remainder << "}" << std::endl;
 		}
-		std::cout << "bta_atm_16: " << this->tt_processing << std::endl;
-		std::cout << "bta_atm_16 (GB/s):" << ((this->n * 4 + ((this->n/4096)*k))/(this->tt_processing/1000))/(1024*1024*1204) << std::endl;
+		this->tt_processing += tt_processing;
+		std::cout << "mrebuild_atm_16: " << tt_processing << std::endl;
+		std::cout << "mrebuild_atm_16 (GB/s):" << ((this->n * 4 + ((this->n/4096)*k))/(tt_processing/1000))/(1024*1024*1204) << std::endl;
 	}else{
 		dim3 geq_32_block(256,1,1);
 		dim3 geq_32_grid((this->n-1)/BTA_TUPLES_PER_BLOCK + 1, 1, 1);
@@ -1848,15 +1850,17 @@ void BTA<T,Z>::evaluate_full_relation(uint64_t k, uint64_t qq){
 		this->t.start();
 		lsort_geq_32<T,256><<<geq_32_grid,geq_32_block>>>(this->g_ivec, this->g_ovec, k);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing lsort_leq_32");
-		this->tt_processing = this->t.lap();
+		tt_processing = this->t.lap();
+		this->tt_processing += tt_processing;
 		cutil::safeCopyToHost<T,uint64_t>(this->c_ovec, this->g_ovec, sizeof(T)*this->n,"copy scores to host");
-		std::cout << "lsort_geq_32: " << this->tt_processing << std::endl;
+		std::cout << "lsort_geq_32: " << tt_processing << std::endl;
 		std::cout << "lsort_geq_32 (GB/s):" << ((this->n * 4 + ((this->n/4096)*k))/(this->tt_processing/1000))/(1024*1024*1204) << std::endl;
 
 		T *pswap;
 		uint32_t remainder = ((this->n-1)/BTA_TUPLES_PER_BLOCK + 1) * k;
+		tt_processing = 0;
 		while(remainder > k){
-			std::cout << "remainder: {" << remainder << "}" << std::endl;
+			//std::cout << "remainder: {" << remainder << "}" << std::endl;
 			pswap = this->g_ivec;
 			this->g_ivec = this->g_ovec;
 			this->g_ovec = pswap;
@@ -1864,12 +1868,16 @@ void BTA<T,Z>::evaluate_full_relation(uint64_t k, uint64_t qq){
 			this->t.start();
 			mrebuild_geq_32<T,256><<<geq_32_grid,geq_32_block>>>(this->g_ivec, this->g_ovec, k, remainder);
 			cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing mrebuild_geq_32");
-			this->tt_processing += this->t.lap();
+			tt_processing = this->t.lap();
+			this->tt_processing += tt_processing;
 			cutil::safeCopyToHost<T,uint64_t>(this->c_ovec, this->g_ovec, sizeof(T)*this->n,"copy scores to host");
 			//this->gpu_threshold = find_remain_threshold<T,Z>(this->c_ovec,remainder,k,k);
 			this->gpu_threshold = find_partial_threshold<T,Z>(this->c_ovec,this->n,k,false,remainder);
 			remainder = ((remainder-1)/BTA_TUPLES_PER_BLOCK + 1) * k;
 		}
+		this->tt_processing += tt_processing;
+		std::cout << "mrebuild_geq_32: " << tt_processing << std::endl;
+		std::cout << "mrebuild_geq_32 (GB/s):" << ((this->n * 4 + ((this->n/4096)*k))/(tt_processing/1000))/(1024*1024*1204) << std::endl;
 	}
 }
 

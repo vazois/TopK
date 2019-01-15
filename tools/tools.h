@@ -127,6 +127,7 @@ class VAGG{
 		uint64_t n, d;
 };
 
+//Vectorized Aggregation on CPU//
 template<class T, class Z>
 class GVAGG{
 	public:

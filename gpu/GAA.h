@@ -22,6 +22,17 @@
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];
 
+
+template<class T>
+__device__ T swap(T a, uint32_t stride, int dir){
+	T b = __shfl_xor_sync(0xFFFFFFFF,a,stride);
+	return ((a < b) == dir) ? b : a;
+}
+
+__device__ uint32_t bfe(uint32_t a, uint32_t i){
+	return (a >> i) & 0x1;
+}
+
 /*
  * initialize global rearrange vector
  */

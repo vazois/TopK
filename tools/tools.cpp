@@ -171,6 +171,9 @@ T VAGG<T,Z>::findTopKtpac(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 template class VAGG<float, uint32_t>;
 template class VAGG<float, uint64_t>;
 
+/*
+ * Vectorized TA using Priority Queue
+ */
 template<class T, class Z>
 T GVAGG<T,Z>::findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 {
@@ -188,6 +191,7 @@ T GVAGG<T,Z>::findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 			//if(j + 16 < vsize)
 			__m256 score00 = _mm256_setzero_ps();
 			__m256 score01 = _mm256_setzero_ps();
+			//a: Aggregate 16 tuple scores
 			for(uint64_t m = 0; m < qq; m++)
 			{
 				uint8_t a = attr[m];
@@ -206,6 +210,7 @@ T GVAGG<T,Z>::findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 			_mm256_store_ps(&score[0],score00);
 			_mm256_store_ps(&score[8],score01);
 
+			//b: Push scores to priority queue
 			if(q.size() < k){
 				q.push(tuple_<T,Z>(i+j,score[0]));
 				q.push(tuple_<T,Z>(i+j+1,score[1]));
@@ -278,6 +283,9 @@ T GVAGG<T,Z>::findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 template class GVAGG<float, uint32_t>;
 template class GVAGG<float, uint64_t>;
 
+/*
+ * Vectorized TA using Bitonic Sort
+ */
 template<class T, class Z>
 T GVAGG<T,Z>::findTopKgvta2(uint64_t k, uint8_t qq, T *weights, uint32_t *attr)
 {
