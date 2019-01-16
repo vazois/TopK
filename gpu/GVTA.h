@@ -1,10 +1,7 @@
 #ifndef GVTA_H
 #define GVTA_H
 
-
 #include "GAA.h"
-
-#define USE_DEVICE_MEM false
 
 template<class T, class Z>
 class GVTA : public GAA<T,Z>{
@@ -606,7 +603,6 @@ void GVTA<T,Z>::init()
 	normalize_transpose<T>(this->cdata, this->n, this->d);
 	this->t.start();
 	this->reorder();
-
 #if USE_DEVICE_MEM
 	cutil::safeMalloc<gvta_block<T,Z>,uint64_t>(&(this->gblocks),sizeof(gvta_block<T,Z>)*this->num_blocks,"alloc gpu gvta_blocks");
 	for(uint64_t i = 0; i< this->num_blocks; i++)//TODO:safemalloc

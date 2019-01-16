@@ -97,6 +97,8 @@ T VAGG<T,Z>::findTopKtpac(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 			for(uint8_t m = 0; m < qq; m++){
 				uint64_t offset00 = attr[m] * n + i;
 				uint64_t offset01 = attr[m] * n + i + 8;
+//				uint64_t offset00 = m * n + i;
+//				uint64_t offset01 = m * n + i + 8;
 				T weight = weights[attr[m]];
 
 				__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
@@ -165,6 +167,7 @@ T VAGG<T,Z>::findTopKtpac(uint64_t k,uint8_t qq, T *weights, uint32_t *attr){
 	T threshold = _q.top().score;
 //	std::cout << std::fixed << std::setprecision(4);
 //	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+
 	return threshold;
 }
 

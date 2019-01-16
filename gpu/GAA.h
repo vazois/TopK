@@ -18,6 +18,7 @@
 #define U64_BYTES_PER_TUPLE 12
 
 #define UNIFIED_MEMORY 1
+#define USE_DEVICE_MEM false
 
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];
@@ -26,6 +27,11 @@ template<class T>
 __device__ T swap(T a, uint32_t stride, int dir){
 	T b = __shfl_xor_sync(0xFFFFFFFF,a,stride);
 	return ((a < b) == dir) ? b : a;
+}
+template<class T>
+__device__ T rswap(T a, uint32_t stride, int dir){
+	T b = __shfl_xor_sync(0xFFFFFFFF,a,stride);
+	return ((a > b) == dir) ? b : a;
 }
 
 __device__ uint32_t bfe(uint32_t a, uint32_t i){
@@ -91,12 +97,14 @@ class MaxFirst{
 template<class T, class Z>
 static T compute_threshold(T* cdata, uint64_t n, uint64_t d, T *weights, uint32_t *query, uint64_t k){
 	std::priority_queue<T, std::vector<ranked_tuple<T,Z>>, MaxFirst<T,Z>> q;
+	T *csvector =(T*)malloc(sizeof(T)*n);
 	for(uint64_t i = 0; i < n; i++){
 		T score = 0;
 		for(uint64_t m = 0; m < d; m++){
 			uint32_t a = query[m];
 			score+=cdata[a*n + i] * weights[a];
 		}
+		csvector[i] = score;
 		if(q.size() < k){
 			q.push(ranked_tuple<T,Z>(i,score));
 		}else if ( q.top().score < score ){
@@ -104,7 +112,6 @@ static T compute_threshold(T* cdata, uint64_t n, uint64_t d, T *weights, uint32_
 			q.push(ranked_tuple<T,Z>(i,score));
 		}
 	}
-
 	std::cout << std::fixed << std::setprecision(4);
 	//std::cout << "threshold: " << q.top().score << std::endl;
 	return q.top().score;
@@ -196,7 +203,7 @@ class GAA{
 			this->pred_count = 0;
 			this->tuple_count = 0;
 			this->queries_per_second = 0;
-			std::cout << std::fixed << std::setprecision(6);
+			std::cout << std::fixed << std::setprecision(4);
 		};
 
 		~GAA<T,Z>(){
