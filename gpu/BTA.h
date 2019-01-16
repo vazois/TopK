@@ -12,12 +12,7 @@ class BTA : public GAA<T,Z>{
 			this->algo = "BTA";
 		};
 
-		~BTA(){
-			if(this->csvector!=NULL) cudaFreeHost(this->csvector);
-			#if USE_DEVICE_MEM
-				if(this->gsvector!=NULL) cudaFree(this->gsvector);
-			#endif
-		};
+		~BTA(){};
 
 		void alloc();
 		void init();
@@ -25,9 +20,12 @@ class BTA : public GAA<T,Z>{
 
 	private:
 		void clear(T *vec, uint64_t size);
+		void gclear_driver(T *vec, uint64_t size);
 
 		T *csvector = NULL;
+		T *csvector_out = NULL;
 		T *gsvector = NULL;
+		T *gsvector_out = NULL;
 };
 
 template<class T, class Z>
@@ -338,6 +336,273 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 	}
 }
 
+template<class T>
+__global__ void reduce_rebuild_atm_16(T *iscores, uint64_t n, uint64_t k, T *oscores){
+	uint64_t i;
+	__shared__ T buffer[256];
+	T v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
+	T v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
+
+//	if(blockIdx.x == 0 && threadIdx.x == 0){
+//		printf("===============================\n");
+//		printf("<<<< reduce_rebuild_atm_16 >>>>\n");
+//		printf("===============================\n");
+//		printf("{%d} <%d>\n",(uint32_t)n,(uint32_t)k);
+//	}
+
+	i = (blockIdx.x << 12) + threadIdx.x;
+	if(i<n) v0 = iscores[i];
+	if(i+256<n) v1 = iscores[i+256];
+	if(i+512<n) v2 = iscores[i+512];
+	if(i+768<n) v3 = iscores[i+768];
+	if(i+1024<n) v4 = iscores[i+1024];
+	if(i+1280<n) v5 = iscores[i+1280];
+	if(i+1536<n) v6 = iscores[i+1536];
+	if(i+1792<n) v7 = iscores[i+1792];
+	if(i+2048<n) v8 = iscores[i+2048];
+	if(i+2304<n) v9 = iscores[i+2304];
+	if(i+2560<n) vA = iscores[i+2560];
+	if(i+2816<n) vB = iscores[i+2816];
+	if(i+3072<n) vC = iscores[i+3072];
+	if(i+3328<n) vD = iscores[i+3328];
+	if(i+3584<n) vE = iscores[i+3584];
+	if(i+3840<n) vF = iscores[i+3840];
+
+//	if(i<n) oscores[i] = v0;
+//	if(i+256<n) oscores[i+256] = v1;
+//	if(i+512<n) oscores[i+512] = v2;
+//	if(i+768<n) oscores[i+768] = v3;
+//	if(i+1024<n) oscores[i+1024] = v4;
+//	if(i+1280<n) oscores[i+1280] = v5;
+//	if(i+1536<n) oscores[i+1536] = v6;
+//	if(i+1792<n) oscores[i+1792] = v7;
+//	if(i+2048<n) oscores[i+2048] = v8;
+//	if(i+2304<n) oscores[i+2304] = v9;
+//	if(i+2560<n) oscores[i+2560] = vA;
+//	if(i+2816<n) oscores[i+2816] = vB;
+//	if(i+3072<n) oscores[i+3072] = vC;
+//	if(i+3328<n) oscores[i+3328] = vD;
+//	if(i+3584<n) oscores[i+3584] = vE;
+//	if(i+3840<n) oscores[i+3840] = vF;
+
+	//4096 -> 2048
+	v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+	v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+	v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+	v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+	v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+	v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
+	v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+	v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
+	v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+	v9 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v9, k),v9);
+	vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
+	vB = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vB, k),vB);
+	vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
+	vD = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vD, k),vD);
+	vE = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vE, k),vE);
+	vF = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vF, k),vF);
+	v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+	v2 = (threadIdx.x & k) == 0 ? v2 : v3;
+	v4 = (threadIdx.x & k) == 0 ? v4 : v5;
+	v6 = (threadIdx.x & k) == 0 ? v6 : v7;
+	v8 = (threadIdx.x & k) == 0 ? v8 : v9;
+	vA = (threadIdx.x & k) == 0 ? vA : vB;
+	vC = (threadIdx.x & k) == 0 ? vC : vD;
+	vE = (threadIdx.x & k) == 0 ? vE : vF;
+	uint32_t laneId = threadIdx.x;
+	uint32_t level = k>>1, step, dir;
+	for(step = level; step > 0; step = step >> 1){
+		dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+		v0 = swap(v0,step,dir);
+		v2 = swap(v2,step,dir);
+		v4 = swap(v4,step,dir);
+		v6 = swap(v6,step,dir);
+		v8 = swap(v8,step,dir);
+		vA = swap(vA,step,dir);
+		vC = swap(vC,step,dir);
+		vE = swap(vE,step,dir);
+	}
+
+//	if(i<n) oscores[i] = v0;
+//	if(i+256<n) oscores[i+256] = v2;
+//	if(i+512<n) oscores[i+512] = v4;
+//	if(i+768<n) oscores[i+768] = v6;
+//	if(i+1024<n) oscores[i+1024] = v8;
+//	if(i+1280<n) oscores[i+1280] = vA;
+//	if(i+1536<n) oscores[i+1536] = vC;
+//	if(i+1792<n) oscores[i+1792] = vE;
+
+	//2048 -> 1024
+	v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+	v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+	v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+	v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+	v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+	vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
+	vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
+	vE = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vE, k),vE);
+	v0 = (threadIdx.x & k) == 0 ? v0 : v2;
+	v4 = (threadIdx.x & k) == 0 ? v4 : v6;
+	v8 = (threadIdx.x & k) == 0 ? v8 : vA;
+	vC = (threadIdx.x & k) == 0 ? vC : vE;
+	for(step = level; step > 0; step = step >> 1){
+		dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+		v0 = swap(v0,step,dir);
+		v4 = swap(v4,step,dir);
+		v8 = swap(v8,step,dir);
+		vC = swap(vC,step,dir);
+	}
+
+//	if(i<n) oscores[i] = v0;
+//	if(i+256<n) oscores[i+256] = v4;
+//	if(i+512<n) oscores[i+512] = v8;
+//	if(i+768<n) oscores[i+768] = vC;
+
+	//1024 -> 512
+	v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+	v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+	v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+	vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
+	v0 = (threadIdx.x & k) == 0 ? v0 : v4;
+	v8 = (threadIdx.x & k) == 0 ? v8 : vC;
+	for(step = level; step > 0; step = step >> 1){
+		dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+		v0 = swap(v0,step,dir);
+		v8 = swap(v8,step,dir);
+	}
+
+//	if(i<n) oscores[i] = v0;
+//	if(i+256<n) oscores[i+256] = v8;
+
+	//512 -> 256
+	v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+	v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+	v0 = (threadIdx.x & k) == 0 ? v0 : v8;
+	for(step = level; step > 0; step = step >> 1){
+		dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+		v0 = swap(v0,step,dir);
+	}
+
+//	if(i<n) oscores[i] = v0;
+
+	buffer[threadIdx.x] = v0;
+	__syncthreads();
+	if(threadIdx.x < 32)
+	{
+		v0 = buffer[threadIdx.x];
+		v1 = buffer[threadIdx.x+32];
+		v2 = buffer[threadIdx.x+64];
+		v3 = buffer[threadIdx.x+96];
+		v4 = buffer[threadIdx.x+128];
+		v5 = buffer[threadIdx.x+160];
+		v6 = buffer[threadIdx.x+192];
+		v7 = buffer[threadIdx.x+224];
+
+//		if(i<n) oscores[i] = v0;
+//		if(i+32<n) oscores[i+32] = v1;
+//		if(i+64<n) oscores[i+64] = v2;
+//		if(i+96<n) oscores[i+96] = v3;
+//		if(i+128<n) oscores[i+128] = v4;
+//		if(i+160<n) oscores[i+160] = v5;
+//		if(i+192<n) oscores[i+192] = v6;
+//		if(i+224<n) oscores[i+224] = v7;
+
+		/*
+		 * 256->128
+		 */
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+			v1 = swap(v1,step,dir);
+			v2 = swap(v2,step,dir);
+			v3 = swap(v3,step,dir);
+			v4 = swap(v4,step,dir);
+			v5 = swap(v5,step,dir);
+			v6 = swap(v6,step,dir);
+			v7 = swap(v7,step,dir);
+		}
+		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+		v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+		v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+		v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+		v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+		v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
+		v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+		v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
+		v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+		v2 = (threadIdx.x & k) == 0 ? v2 : v3;
+		v4 = (threadIdx.x & k) == 0 ? v4 : v5;
+		v6 = (threadIdx.x & k) == 0 ? v6 : v7;
+
+//		if(i<n) oscores[i] = v0;
+//		if(i+32<n) oscores[i+32] = v2;
+//		if(i+64<n) oscores[i+64] = v4;
+//		if(i+96<n) oscores[i+96] = v6;
+
+		/*
+		 * 128->64
+		 */
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+			v2 = swap(v2,step,dir);
+			v4 = swap(v4,step,dir);
+			v6 = swap(v6,step,dir);
+		}
+		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+		v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+		v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+		v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+		v0 = (threadIdx.x & k) == 0 ? v0 : v2;
+		v4 = (threadIdx.x & k) == 0 ? v4 : v6;
+
+//		if(i<n) oscores[i] = v0;
+//		if(i+32<n) oscores[i+32] = v4;
+
+		/*
+		 * 64->32
+		 */
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+			v4 = swap(v4,step,dir);
+		}
+		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+		v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+		v0 = (threadIdx.x & k) == 0 ? v0 : v4;
+
+//		if(i<n) oscores[i] = v0;
+
+		/*
+		 * 32->16
+		 */
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+		}
+		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+		v0 = (threadIdx.x & k) == 0 ? v0 : 0;
+
+		//if(i<n) oscores[i] = v0;
+		/*
+		* Sort 16
+		*/
+		for(level = k; level < 32; level = level << 1){
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				v0 = rswap(v0,step,dir);
+			}
+		}
+		//gscores[i] = v0;
+
+		if(threadIdx.x < k)
+		{
+			i = blockIdx.x * k;
+			if((blockIdx.x & 0x1) == 0) oscores[i + threadIdx.x] = v0; else oscores[i + (threadIdx.x ^ (k-1))] = v0;
+		}
+	}
+}
 
 template<class T>
 __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, T *gscores){
@@ -404,24 +669,23 @@ __global__ void gclear(T *vec, uint64_t size)
 }
 
 template<class T, class Z>
+void BTA<T,Z>::gclear_driver(T *vec, uint64_t size){
+	gclear<T><<<((this->n-1) / 256) + 1, 256>>>(vec,this->n);
+	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gclear");
+}
+
+template<class T, class Z>
 void BTA<T,Z>::alloc(){
 	cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
-	cutil::safeMallocHost<T,uint64_t>(&(this->csvector),sizeof(T)*this->n,"csvector alloc");//Allocate cpu scores memory
-	this->clear(this->csvector,this->n);
+	#if USE_DEVICE_MEM
+		cutil::safeMalloc<T,uint64_t>(&(this->gdata),sizeof(T)*this->n*this->d,"gdata alloc");//Allocate gpu data memory
+	#endif
 }
 
 template<class T, class Z>
 void BTA<T,Z>::init()
 {
 	normalize_transpose<T>(this->cdata, this->n, this->d);
-	#if USE_DEVICE_MEM
-		cutil::safeMalloc<T,uint64_t>(&(this->gdata),sizeof(T)*this->n*this->d,"gdata alloc");//Allocate gpu data memory
-		cutil::safeCopyToDevice<T,uint64_t>(this->gdata,this->cdata,sizeof(T)*this->n*this->d, " copy from cdata to gdata ");//Copy data from cpu to gpu memory
-		cutil::safeMalloc<T,uint64_t>(&(this->gsvector),sizeof(T)*this->n,"gsvector alloc");//Allocate gpu scores memory
-	#else
-		this->gdata = this->cdata;
-		this->gsvector = this->csvector;
-	#endif
 }
 
 template<class T, class Z>
@@ -429,14 +693,33 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	double tt_processing = 0;
 	T threshold = 0;
 
+	/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	 * ALLOCATE MEMORY
+	 */
+	cutil::safeMallocHost<T,uint64_t>(&(this->csvector),sizeof(T)*this->n,"csvector alloc");//Allocate cpu scores memory
+	cutil::safeMallocHost<T,uint64_t>(&(this->csvector_out),sizeof(T)*this->n,"csvector alloc");//Allocate cpu scores memory
+	this->clear(this->csvector,this->n);
+	this->clear(this->csvector_out,this->n);
+
+	#if USE_DEVICE_MEM
+		cutil::safeCopyToDevice<T,uint64_t>(this->gdata,this->cdata,sizeof(T)*this->n*this->d, " copy from cdata to gdata ");//Copy data from cpu to gpu memory
+		cutil::safeMalloc<T,uint64_t>(&(this->gsvector),sizeof(T)*this->n,"gsvector alloc");//Allocate gpu scores memory
+		cutil::safeMalloc<T,uint64_t>(&(this->gsvector_out),sizeof(T)*this->n,"gsvector_out alloc");//Allocate gpu scores memory
+	#else
+		this->gdata = this->cdata;
+		this->gsvector = this->csvector;
+		this->gsvector_out = this->csvector_out;
+	#endif
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//TODO: DEBUG
+	//T threshold = 0;
 	VAGG<T,Z> vagg(this->cdata,this->n,this->d);
 	this->t.start();
 	this->cpu_threshold = vagg.findTopKtpac(k, qq,this->weights,this->query);
 	this->t.lap("vagg");
 
-	//TODO: DEBUG
-	//T threshold = 0;
-	gclear<T><<<((this->n-1) / 256) + 1, 256>>>(this->gsvector,this->n);
+	gclear_driver(this->gsvector,this->n);
 	this->t.start();
 	aggregate<T><<<((this->n-1) / 256) + 1, 256>>>(this->gdata,this->n,qq,this->gsvector);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gclear");
@@ -448,10 +731,15 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	#endif
 	std::sort(this->csvector,this->csvector + this->n,std::greater<T>());
 	threshold = this->csvector[k-1];
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	/*
+	 * Bitonic Top-k
+	 */
 	dim3 agg_lsort_block(256,1,1);
-	dim3 agg_lsort_grid((this->n-1)/4096 + 1,1,1);
-	gclear<T><<<((this->n-1) / 256) + 1, 256>>>(this->gsvector,this->n);
+	dim3 agg_lsort_grid((this->n-1)/BTA_TUPLES_PER_BLOCK + 1,1,1);
+	gclear_driver(this->gsvector,this->n);
+	gclear_driver(this->gsvector_out,this->n);
 	if( k < 32 ){
 		this->t.start();
 		agg_lsort_atm_16<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, this->gsvector);
@@ -460,19 +748,59 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 		std::cout << "agg_lsort_atm_16: " << tt_processing << std::endl;
 		std::cout << "agg_lsort_atm_16 (GB/s): " << ((this->n * qq * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
 		#if USE_DEVICE_MEM
-			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector ");
+			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector");
 		#endif
-		//std::sort(this->csvector,this->csvector + this->n,std::greater<T>());
-		std::sort(this->csvector,this->csvector + (agg_lsort_grid.x * k),std::greater<T>());
+		uint64_t remainder = (agg_lsort_grid.x * k);
+		/////////
+		//DEBUG//
+//		for(uint32_t i = 0; i < 128; i+=k)
+//		{
+//			for(uint32_t j = i; j < i + k; j++) std::cout << this->csvector[j] << " ";
+//			std::cout << "[" << std::is_sorted(&this->csvector[i],(&this->csvector[i+k])) << "]" << std::endl;
+//		}
+//		std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
+//		//std::sort(this->csvector,this->csvector + this->n,std::greater<T>());
+//		std::sort(this->csvector,this->csvector + remainder,std::greater<T>());
+//		T atm_lsort_16_threshold = this->csvector[k-1];
+		///////////////////////////////////////////////////////////////////////
+		while(remainder > k)
+		{
+			gclear_driver(this->gsvector_out,this->n);
+			agg_lsort_grid.x = ((remainder - 1) /BTA_TUPLES_PER_BLOCK) + 1;
+			std::cout << "remainder:{" << remainder << "," << agg_lsort_grid.x << "}" << std::endl;
+
+			reduce_rebuild_atm_16<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gsvector,remainder,k,this->gsvector_out);
+			cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing reduce_rebuild_atm_16");
+			std::swap(this->gsvector,this->gsvector_out);
+			remainder = (agg_lsort_grid.x * k);
+			//break;
+		}
+		#if USE_DEVICE_MEM
+			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from iscores to csvector");
+		#else
+			this->csvector = this->gsvector;
+		#endif
+		for(uint32_t i = 0; i < 32; i+=k)
+		{
+			for(uint32_t j = i; j < i + k; j++) std::cout << this->csvector[j] << " ";
+			std::cout << "[" << std::is_sorted(&this->csvector[i],(&this->csvector[i+k])) << "]" << std::endl;
+		}
+		std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
+		std::sort(this->csvector,this->csvector + remainder,std::greater<T>());
 		T atm_lsort_16_threshold = this->csvector[k-1];
-		//T atm_lsort_16_threshold = find_threshold<T,Z>(this->csvector, this->n, k);
-		if(abs((double)atm_lsort_16_threshold - (double)threshold) > (double)0.00000000000001)
+
+		//DEBUG//
+		if(abs((double)atm_lsort_16_threshold - (double)this->cpu_threshold) > (double)0.00000000000001
+				||
+				abs((double)atm_lsort_16_threshold - (double)threshold) > (double)0.00000000000001
+				)
 		{
 			std::cout << std::fixed << std::setprecision(16);
 			std::cout << "{ERROR}: " << atm_lsort_16_threshold << "," << threshold << "," << this->cpu_threshold << std::endl;
 			exit(1);
 		}
 		std::cout << "{k < 32} threshold=[" << atm_lsort_16_threshold << "," << threshold << "," << this->cpu_threshold << "]"<< std::endl;
+		//////
 	}else{
 		this->t.start();
 		agg_lsort_geq_32<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, this->gsvector);
@@ -503,6 +831,13 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 //		exit(1);
 //	}
 
+
+	cudaFreeHost(this->csvector);  this->csvector = NULL;
+	cudaFreeHost(this->csvector_out); this->csvector = NULL;
+	#if USE_DEVICE_MEM
+		cudaFree(this->gsvector);
+		cudaFree(this->gsvector);
+	#endif
 }
 
 #endif
