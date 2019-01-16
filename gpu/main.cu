@@ -31,8 +31,8 @@ int main(int argc, char **argv){
 	cudaSetDevice(0);
 	//bench_gpa(ap.getString("-f"),n,d,KKS);
 	//bench_gpam(ap.getString("-f"),n,d,K);
-	bench_bta(ap.getString("-f"),n,d,KKS,KKE);
-	//bench_gvta(ap.getString("-f"),n,d,KKS,KKE);
+	//bench_bta(ap.getString("-f"),n,d,KKS,KKE);
+	bench_gvta(ap.getString("-f"),n,d,KKS,KKE);
 	//bench_gpta(ap.getString("-f"),n,d,KKS);
 	//bench_gta(ap.getString("-f"),n,d,KKS);
 

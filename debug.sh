@@ -10,7 +10,7 @@ DIMS=8
 KKS=2
 KKE=16
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=0
+LD=1
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -139,7 +139,11 @@ else
 		else
   			#nvprof --devices 0 ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 			#echo "./gpu_run -f=data/$fname -n=$n -d=$DIMS"
-			./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			set -e
+			for (( x=0; x<=10; x+=1 ))
+			do
+				./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			done
 		fi
 		
 		if [ $? -eq 1 ]

@@ -661,7 +661,7 @@ void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 //	}
 	std::sort(out, out + this->num_blocks * k,std::greater<T>());
 	threshold = out[k-1];
-	if(abs(out[k-1] - cpu_gvagg) > 0.0000001) { std::cout << "ERROR: {" << out[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "}" << std::endl; exit(1); }
+	if(abs((double)out[k-1] - (double)cpu_gvagg) > (double)0.00000000000001) { std::cout << "ERROR: {" << out[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "}" << std::endl; exit(1); }
 	cudaFreeHost(out);
 	std::cout << "threshold=[" << threshold << "," << this->cpu_threshold << "," << cpu_gvagg << "]"<< std::endl;
 }

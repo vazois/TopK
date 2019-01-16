@@ -337,6 +337,58 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 	}
 }
 
+
+template<class T>
+__global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, T *gscores){
+	uint32_t i;
+	//__shared__ T buffer[256];
+	T v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
+	T v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
+
+	/*
+	 * Aggregate
+	 */
+	i = (blockIdx.x << 12) + threadIdx.x;
+	for(uint64_t m = 0; m < qq; m++)
+	{
+		uint64_t ai = gpu_query[m];
+		uint64_t index = n * ai + i;
+		v0 += gdata[index] * gpu_weights[ai];
+		v1 += gdata[index + 256] * gpu_weights[ai];
+		v2 += gdata[index + 512] * gpu_weights[ai];
+		v3 += gdata[index + 768] * gpu_weights[ai];
+		v4 += gdata[index + 1024] * gpu_weights[ai];
+		v5 += gdata[index + 1280] * gpu_weights[ai];
+		v6 += gdata[index + 1536] * gpu_weights[ai];
+		v7 += gdata[index + 1792] * gpu_weights[ai];
+		v8 += gdata[index + 2048] * gpu_weights[ai];
+		v9 += gdata[index + 2304] * gpu_weights[ai];
+		vA += gdata[index + 2560] * gpu_weights[ai];
+		vB += gdata[index + 2816] * gpu_weights[ai];
+		vC += gdata[index + 3072] * gpu_weights[ai];
+		vD += gdata[index + 3328] * gpu_weights[ai];
+		vE += gdata[index + 3584] * gpu_weights[ai];
+		vF += gdata[index + 3840] * gpu_weights[ai];
+	}
+
+	gscores[i] = v0;
+	gscores[i+256] = v1;
+	gscores[i+512] = v2;
+	gscores[i+768] = v3;
+	gscores[i+1024] = v4;
+	gscores[i+1280] = v5;
+	gscores[i+1536] = v6;
+	gscores[i+1792] = v7;
+	gscores[i+2048] = v8;
+	gscores[i+2304] = v9;
+	gscores[i+2560] = vA;
+	gscores[i+2816] = vB;
+	gscores[i+3072] = vC;
+	gscores[i+3328] = vD;
+	gscores[i+3584] = vE;
+	gscores[i+3840] = vF;
+}
+
 template<class T>
 __global__ void gclear(T *vec, uint64_t size)
 {
@@ -393,25 +445,40 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	dim3 agg_lsort_block(256,1,1);
 	dim3 agg_lsort_grid((this->n-1)/4096,1,1);
 	gclear<T><<<((this->n-1) / 256) + 1, 256>>>(this->gsvector,this->n);
-	this->t.start();
-	agg_lsort_atm_16<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, this->gsvector);
-	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_atm_16");
-	tt_processing = this->t.lap();
-	std::cout << "agg_lsort_atm_16: " << tt_processing << std::endl;
-	std::cout << "agg_lsort_atm_16 (GB/s): " << ((this->n * qq * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
-	#if USE_DEVICE_MEM
-		cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector ");
-	#endif
-	for(uint32_t i = 0; i < 128; i+=k)
-	{
-		for(uint32_t j = i; j < i + k; j++) std::cout << this->csvector[j] << " ";
-		std::cout << "[" << std::is_sorted(&this->csvector[i],(&this->csvector[i+k])) << "]" << std::endl;
+	if( k < 32 ){
+		this->t.start();
+		agg_lsort_atm_16<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, this->gsvector);
+		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_atm_16");
+		tt_processing = this->t.lap();
+		std::cout << "agg_lsort_atm_16: " << tt_processing << std::endl;
+		std::cout << "agg_lsort_atm_16 (GB/s): " << ((this->n * qq * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
+		#if USE_DEVICE_MEM
+			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector ");
+		#endif
+	}else{
+		this->t.start();
+		agg_lsort_geq_32<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, this->gsvector);
+		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_geq_32");
+		tt_processing = this->t.lap();
+		std::cout << "agg_lsort_geq_32: " << tt_processing << std::endl;
+		std::cout << "agg_lsort_geq_32 (GB/s): " << ((this->n * qq * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
+		#if USE_DEVICE_MEM
+			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector ");
+		#endif
 	}
+	//DEBUG
+//	for(uint32_t i = 0; i < 128; i+=k)
+//	{
+//		for(uint32_t j = i; j < i + k; j++) std::cout << this->csvector[j] << " ";
+//		std::cout << "[" << std::is_sorted(&this->csvector[i],(&this->csvector[i+k])) << "]" << std::endl;
+//	}
 	//std::sort(this->csvector,this->csvector + this->n,std::greater<T>());
 	std::sort(this->csvector,this->csvector + (agg_lsort_grid.x * k),std::greater<T>());
 	T atm_lsort_16_threshold = this->csvector[k-1];
-	if(abs(atm_lsort_16_threshold - threshold) > 0.00000001)
+	if(abs((double)atm_lsort_16_threshold - (double)threshold) > (double)0.00000000000001)
+	//if(abs((double)this->cpu_threshold - (double)threshold) > (double)0.00000000000001)
 	{
+		std::cout << std::fixed << std::setprecision(16);
 		std::cout << "{ERROR}: " << atm_lsort_16_threshold << "," << threshold << "," << this->cpu_threshold << std::endl;
 		exit(1);
 	}
