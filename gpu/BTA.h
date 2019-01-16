@@ -101,6 +101,7 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 //	gscores[i+3328] = vD;
 //	gscores[i+3584] = vE;
 //	gscores[i+3840] = vF;
+//	return ;
 
 	/*
 	 * Rebuild - Reduce 4096 -> 2048
@@ -345,6 +346,12 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 	T v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
 	T v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
 
+	if(blockIdx.x == 0 && threadIdx.x == 0){
+		printf("=============\n");
+		printf("<<<< GEQ >>>>\n");
+		printf("=============\n");
+	}
+
 	/*
 	 * Aggregate
 	 */
@@ -443,7 +450,7 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	threshold = this->csvector[k-1];
 
 	dim3 agg_lsort_block(256,1,1);
-	dim3 agg_lsort_grid((this->n-1)/4096,1,1);
+	dim3 agg_lsort_grid((this->n-1)/4096 + 1,1,1);
 	gclear<T><<<((this->n-1) / 256) + 1, 256>>>(this->gsvector,this->n);
 	if( k < 32 ){
 		this->t.start();
@@ -455,6 +462,17 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 		#if USE_DEVICE_MEM
 			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector ");
 		#endif
+		//std::sort(this->csvector,this->csvector + this->n,std::greater<T>());
+		std::sort(this->csvector,this->csvector + (agg_lsort_grid.x * k),std::greater<T>());
+		T atm_lsort_16_threshold = this->csvector[k-1];
+		//T atm_lsort_16_threshold = find_threshold<T,Z>(this->csvector, this->n, k);
+		if(abs((double)atm_lsort_16_threshold - (double)threshold) > (double)0.00000000000001)
+		{
+			std::cout << std::fixed << std::setprecision(16);
+			std::cout << "{ERROR}: " << atm_lsort_16_threshold << "," << threshold << "," << this->cpu_threshold << std::endl;
+			exit(1);
+		}
+		std::cout << "{k < 32} threshold=[" << atm_lsort_16_threshold << "," << threshold << "," << this->cpu_threshold << "]"<< std::endl;
 	}else{
 		this->t.start();
 		agg_lsort_geq_32<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, this->gsvector);
@@ -472,18 +490,19 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 //		for(uint32_t j = i; j < i + k; j++) std::cout << this->csvector[j] << " ";
 //		std::cout << "[" << std::is_sorted(&this->csvector[i],(&this->csvector[i+k])) << "]" << std::endl;
 //	}
-	//std::sort(this->csvector,this->csvector + this->n,std::greater<T>());
-	std::sort(this->csvector,this->csvector + (agg_lsort_grid.x * k),std::greater<T>());
-	T atm_lsort_16_threshold = this->csvector[k-1];
-	if(abs((double)atm_lsort_16_threshold - (double)threshold) > (double)0.00000000000001)
-	//if(abs((double)this->cpu_threshold - (double)threshold) > (double)0.00000000000001)
-	{
-		std::cout << std::fixed << std::setprecision(16);
-		std::cout << "{ERROR}: " << atm_lsort_16_threshold << "," << threshold << "," << this->cpu_threshold << std::endl;
-		exit(1);
-	}
+//	//std::sort(this->csvector,this->csvector + this->n,std::greater<T>());
+//	//std::sort(this->csvector,this->csvector + (agg_lsort_grid.x * k),std::greater<T>());
+//	//T atm_lsort_16_threshold = this->csvector[k-1];
+//	T atm_lsort_16_threshold = find_threshold<T,Z>(this->csvector, this->n, k);
+//	//if(abs((double)atm_lsort_16_threshold - (double)threshold) > (double)0.0001)
+//	if(abs((double)atm_lsort_16_threshold - (double)threshold) > (double)0.00000000000001)
+//	//if(abs((double)this->cpu_threshold - (double)threshold) > (double)0.00000000000001)
+//	{
+//		std::cout << std::fixed << std::setprecision(16);
+//		std::cout << "{ERROR}: " << atm_lsort_16_threshold << "," << threshold << "," << this->cpu_threshold << std::endl;
+//		exit(1);
+//	}
 
-	std::cout << "threshold=[" << atm_lsort_16_threshold << "," << threshold << "," << this->cpu_threshold << "]"<< std::endl;
 }
 
 #endif
