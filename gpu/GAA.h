@@ -17,6 +17,8 @@
 #define U32_BYTES_PER_TUPLE 8
 #define U64_BYTES_PER_TUPLE 12
 
+#define VALIDATE false//ENABLE RESULT VALIDATION//
+
 #define UNIFIED_MEMORY 1
 #define USE_DEVICE_MEM true
 

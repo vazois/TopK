@@ -3,50 +3,6 @@
 
 #include "GAA.h"
 
-template<class T, class Z>
-class GVTA : public GAA<T,Z>{
-	public:
-		GVTA(uint64_t n, uint64_t d) : GAA<T,Z>(n,d){
-			this->algo = "GVTA";
-			this->clear_mem_counters();
-		};
-
-		~GVTA()
-		{
-			if(blocks != NULL){ cudaFreeHost(this->blocks); }
-			#if USE_DEVICE_MEM
-				cudaFree(this->gblocks);
-			#endif
-		};
-
-		void alloc();
-		void init();
-		void findTopK(uint64_t k, uint64_t qq);
-
-		void benchmark(){
-			GAA<T,Z>::benchmark();
-			std::cout << "gvta_mem(MB): " << this->gvta_mem/(1024*1024) << std::endl;
-			std::cout << "base_mem(MB): " << this->base_mem/(1024*1024) << std::endl;
-			std::cout << "reorder_mem(MB): " << this->reorder_mem/(1024*1024) << std::endl;
-		}
-
-	private:
-		uint64_t tuples_per_part;
-		uint64_t num_blocks;
-		gvta_block<T,Z> *blocks = NULL;
-		gvta_block<T,Z> *gblocks = NULL;
-		void reorder();
-
-		void clear_mem_counters(){
-			this->gvta_mem = 0;
-			this->base_mem = 0;
-			this->reorder_mem = 0;
-		}
-		double gvta_mem;
-		double reorder_mem;
-		double base_mem;
-};
-
 /*
  * blocks: data blocks
  * n: tuple number
@@ -403,14 +359,14 @@ __global__ void gvta_atm_16_2(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq,
 				heap[31 - threadIdx.x] = v0;
 			}
 		}
-		__syncthreads();
+		//__syncthreads();
 		/*
 		 * Break if suitable threshold reached
 		 */
-//		if(heap[k-1] > threshold){
-//			//if(threadIdx.x == 0) printf("[%d],%d < %d\n",blockIdx.x,(uint32_t)i);
-//			break;
-//		}
+		if(heap[k-1] > threshold){
+			//if(threadIdx.x == 0) printf("[%d],%d < %d\n",blockIdx.x,(uint32_t)i);
+			break;
+		}
 		//offset+=GVTA_BLOCK_SIZE;
 		i++;
 	}
@@ -423,6 +379,53 @@ __global__ void gvta_atm_16_2(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq,
 		out[offset + threadIdx.x] = heap[threadIdx.x];
 	}
 }
+
+template<class T, class Z>
+class GVTA : public GAA<T,Z>{
+	public:
+		GVTA(uint64_t n, uint64_t d) : GAA<T,Z>(n,d){
+			this->algo = "GVTA";
+			this->clear_mem_counters();
+		};
+
+		~GVTA()
+		{
+			if(blocks){ cudaFreeHost(this->blocks); }
+			#if USE_DEVICE_MEM
+				cudaFree(this->gblocks);
+				if(gout) cudaFree(gout);
+			#endif
+		};
+
+		void alloc();
+		void init();
+		void findTopK(uint64_t k, uint64_t qq);
+
+		void benchmark(){
+			GAA<T,Z>::benchmark();
+			std::cout << "gvta_mem(MB): " << this->gvta_mem/(1024*1024) << std::endl;
+			std::cout << "base_mem(MB): " << this->base_mem/(1024*1024) << std::endl;
+			std::cout << "reorder_mem(MB): " << this->reorder_mem/(1024*1024) << std::endl;
+		}
+
+	private:
+		uint64_t tuples_per_part;
+		uint64_t num_blocks;
+		gvta_block<T,Z> *blocks = NULL;
+		gvta_block<T,Z> *gblocks = NULL;
+		T *cout = NULL;
+		T *gout = NULL;
+		void reorder();
+
+		void clear_mem_counters(){
+			this->gvta_mem = 0;
+			this->base_mem = 0;
+			this->reorder_mem = 0;
+		}
+		double gvta_mem;
+		double reorder_mem;
+		double base_mem;
+};
 
 template<class T, class Z>
 void GVTA<T,Z>::alloc(){
@@ -603,18 +606,14 @@ void GVTA<T,Z>::init()
 	normalize_transpose<T>(this->cdata, this->n, this->d);
 	this->t.start();
 	this->reorder();
-#if USE_DEVICE_MEM
-	cutil::safeMalloc<gvta_block<T,Z>,uint64_t>(&(this->gblocks),sizeof(gvta_block<T,Z>)*this->num_blocks,"alloc gpu gvta_blocks");
-	for(uint64_t i = 0; i< this->num_blocks; i++)//TODO:safemalloc
-	{
-		//cutil::safeMalloc<T,uint64_t>(&(this->gblocks[i].data),sizeof(T)*GVTA_PARTITIONS*GVTA_BLOCK_SIZE*this->d,"alloc gpu gvta_block data("+std::to_string((unsigned long long)i)+")");
-		//cutil::safeMalloc<T,uint64_t>(&(this->gblocks[i].tvector),sizeof(T)*GVTA_PARTITIONS*this->d,"alloc gpu gvta_block tvector("+std::to_string((unsigned long long)i)+")");
-	}
-	cutil::safeCopyToDevice<gvta_block<T,Z>,uint64_t>(this->gblocks,this->blocks,sizeof(gvta_block<T,Z>)*this->num_blocks,"error copying to gpu gvta_blocks");
-#else
-	this->gblocks = this->blocks;
-#endif
 	this->tt_init = this->t.lap();
+
+	#if USE_DEVICE_MEM
+		cutil::safeMalloc<gvta_block<T,Z>,uint64_t>(&(this->gblocks),sizeof(gvta_block<T,Z>)*this->num_blocks,"alloc gpu gvta_blocks");
+		cutil::safeCopyToDevice<gvta_block<T,Z>,uint64_t>(this->gblocks,this->blocks,sizeof(gvta_block<T,Z>)*this->num_blocks,"error copying to gpu gvta_blocks");
+	#else
+		this->gblocks = this->blocks;
+	#endif
 }
 
 template<class T, class Z>
@@ -659,11 +658,22 @@ void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 //		for(uint32_t j = i; j < i + k; j++) std::cout << out[j] << " ";
 //		std::cout << "[" << std::is_sorted(&out[i],(&out[i+k])) << "]" << std::endl;
 //	}
-	std::sort(out, out + this->num_blocks * k,std::greater<T>());
+	std::sort(out, out + GVTA_PARTITIONS * k,std::greater<T>());
 	threshold = out[k-1];
-	if(abs((double)out[k-1] - (double)cpu_gvagg) > (double)0.00000000000001) { std::cout << "ERROR: {" << out[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "}" << std::endl; exit(1); }
-	cudaFreeHost(out);
+	if(abs((double)out[k-1] - (double)cpu_gvagg) > (double)0.00000000000001
+			||
+			abs((double)out[k-1] - (double)this->cpu_threshold) > (double)0.00000000000001
+			) {
+		std::cout << std::fixed << std::setprecision(16);
+		std::cout << "ERROR: {" << out[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "}" << std::endl; exit(1);
+	}
+	#if USE_DEVICE_MEM
+		cudaFree(gout);
+	#else
+		cudaFreeHost(out);
+	#endif
 	std::cout << "threshold=[" << threshold << "," << this->cpu_threshold << "," << cpu_gvagg << "]"<< std::endl;
+	std::cout << "[" << atm_16_grid.x << " , " << atm_16_block.x << "]"<< std::endl;
 }
 
 #endif

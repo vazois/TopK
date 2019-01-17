@@ -12,7 +12,14 @@ class BTA : public GAA<T,Z>{
 			this->algo = "BTA";
 		};
 
-		~BTA(){};
+		~BTA(){
+			if(this->csvector){ cudaFreeHost(this->csvector);  this->csvector = NULL; }
+			if(this->csvector_out){ cudaFreeHost(this->csvector_out); this->csvector = NULL; }
+			#if USE_DEVICE_MEM
+				if(this->gsvector){ cudaFree(this->gsvector); this->gsvector = NULL; }
+				if(this->gsvector_out){ cudaFree(this->gsvector); this->gsvector_out = NULL; }
+			#endif
+		};
 
 		void alloc();
 		void init();
@@ -686,16 +693,6 @@ template<class T, class Z>
 void BTA<T,Z>::init()
 {
 	normalize_transpose<T>(this->cdata, this->n, this->d);
-}
-
-template<class T, class Z>
-void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
-	double tt_processing = 0;
-	T threshold = 0;
-
-	/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	 * ALLOCATE MEMORY
-	 */
 	cutil::safeMallocHost<T,uint64_t>(&(this->csvector),sizeof(T)*this->n,"csvector alloc");//Allocate cpu scores memory
 	cutil::safeMallocHost<T,uint64_t>(&(this->csvector_out),sizeof(T)*this->n,"csvector alloc");//Allocate cpu scores memory
 	this->clear(this->csvector,this->n);
@@ -710,27 +707,64 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 		this->gsvector = this->csvector;
 		this->gsvector_out = this->csvector_out;
 	#endif
+}
+
+template<class T, class Z>
+void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
+	double tt_processing = 0;
+
+	T *csvector = this->csvector;
+	T *gsvector;
+	T *gsvector_out;
+	#if USE_DEVICE_MEM
+		gsvector = this->gsvector;
+		gsvector_out = this->gsvector_out;
+	#else
+		gsvector = csvector;
+		gsvector_out = this->csvector_out;
+	#endif
+
+	/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	 * ALLOCATE MEMORY
+	 */
+//	cutil::safeMallocHost<T,uint64_t>(&(this->csvector),sizeof(T)*this->n,"csvector alloc");//Allocate cpu scores memory
+//	cutil::safeMallocHost<T,uint64_t>(&(this->csvector_out),sizeof(T)*this->n,"csvector alloc");//Allocate cpu scores memory
+//	this->clear(this->csvector,this->n);
+//	this->clear(this->csvector_out,this->n);
+//
+//	#if USE_DEVICE_MEM
+//		cutil::safeCopyToDevice<T,uint64_t>(this->gdata,this->cdata,sizeof(T)*this->n*this->d, " copy from cdata to gdata ");//Copy data from cpu to gpu memory
+//		cutil::safeMalloc<T,uint64_t>(&(this->gsvector),sizeof(T)*this->n,"gsvector alloc");//Allocate gpu scores memory
+//		cutil::safeMalloc<T,uint64_t>(&(this->gsvector_out),sizeof(T)*this->n,"gsvector_out alloc");//Allocate gpu scores memory
+//	#else
+//		this->gdata = this->cdata;
+//		this->gsvector = this->csvector;
+//		this->gsvector_out = this->csvector_out;
+//	#endif
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	//TODO: DEBUG
 	//T threshold = 0;
+#if VALIDATE
+	T threshold = 0;
 	VAGG<T,Z> vagg(this->cdata,this->n,this->d);
 	this->t.start();
 	this->cpu_threshold = vagg.findTopKtpac(k, qq,this->weights,this->query);
 	this->t.lap("vagg");
 
-	gclear_driver(this->gsvector,this->n);
+	gclear_driver(gsvector,this->n);
 	this->t.start();
-	aggregate<T><<<((this->n-1) / 256) + 1, 256>>>(this->gdata,this->n,qq,this->gsvector);
+	aggregate<T><<<((this->n-1) / 256) + 1, 256>>>(this->gdata,this->n,qq,gsvector);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gclear");
 	tt_processing = this->t.lap();
 	std::cout << "aggregate: " << tt_processing << std::endl;
 	std::cout << "aggregate (GB/s): " << ((this->n * qq * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
 	#if USE_DEVICE_MEM
-		cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector ");
+		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*this->n, "copy from gsvector to csvector ");
 	#endif
-	std::sort(this->csvector,this->csvector + this->n,std::greater<T>());
-	threshold = this->csvector[k-1];
+	std::sort(csvector,csvector + this->n,std::greater<T>());
+	threshold = csvector[k-1];
+#endif
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
@@ -738,21 +772,24 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	 */
 	dim3 agg_lsort_block(256,1,1);
 	dim3 agg_lsort_grid((this->n-1)/BTA_TUPLES_PER_BLOCK + 1,1,1);
-	gclear_driver(this->gsvector,this->n);
-	gclear_driver(this->gsvector_out,this->n);
+	std::cout << "[" << agg_lsort_grid.x << " , " << agg_lsort_block.x << "]"<< std::endl;
+	gclear_driver(gsvector,this->n);
+	gclear_driver(gsvector_out,this->n);
 	if( k < 32 ){
 		this->t.start();
-		agg_lsort_atm_16<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, this->gsvector);
+		agg_lsort_atm_16<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, gsvector);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_atm_16");
 		tt_processing = this->t.lap();
 		std::cout << "agg_lsort_atm_16: " << tt_processing << std::endl;
 		std::cout << "agg_lsort_atm_16 (GB/s): " << ((this->n * qq * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
-		#if USE_DEVICE_MEM
-			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector");
-		#endif
+		this->tt_processing += tt_processing;
 		uint64_t remainder = (agg_lsort_grid.x * k);
+
 		/////////
 		//DEBUG//
+//		#if USE_DEVICE_MEM
+//			cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*this->n, "copy from gsvector to csvector");
+//		#endif
 //		for(uint32_t i = 0; i < 128; i+=k)
 //		{
 //			for(uint32_t j = i; j < i + k; j++) std::cout << this->csvector[j] << " ";
@@ -763,33 +800,44 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 //		std::sort(this->csvector,this->csvector + remainder,std::greater<T>());
 //		T atm_lsort_16_threshold = this->csvector[k-1];
 		///////////////////////////////////////////////////////////////////////
+		tt_processing = 0;
+		uint64_t items = 0;
 		while(remainder > k)
 		{
-			gclear_driver(this->gsvector_out,this->n);
+			//gclear_driver(gsvector_out,this->n);//TODO:DEBUG
 			agg_lsort_grid.x = ((remainder - 1) /BTA_TUPLES_PER_BLOCK) + 1;
 			std::cout << "remainder:{" << remainder << "," << agg_lsort_grid.x << "}" << std::endl;
 
-			reduce_rebuild_atm_16<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gsvector,remainder,k,this->gsvector_out);
+			this->t.start();
+			reduce_rebuild_atm_16<T><<<agg_lsort_grid,agg_lsort_block>>>(gsvector,remainder,k,gsvector_out);
 			cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing reduce_rebuild_atm_16");
-			std::swap(this->gsvector,this->gsvector_out);
+			tt_processing += this->t.lap();
+
+			items+=remainder;
 			remainder = (agg_lsort_grid.x * k);
+			std::swap(gsvector,gsvector_out);
 			//break;
 		}
-		#if USE_DEVICE_MEM
-			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from iscores to csvector");
-		#else
-			this->csvector = this->gsvector;
-		#endif
-		for(uint32_t i = 0; i < 32; i+=k)
-		{
-			for(uint32_t j = i; j < i + k; j++) std::cout << this->csvector[j] << " ";
-			std::cout << "[" << std::is_sorted(&this->csvector[i],(&this->csvector[i+k])) << "]" << std::endl;
-		}
-		std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
-		std::sort(this->csvector,this->csvector + remainder,std::greater<T>());
-		T atm_lsort_16_threshold = this->csvector[k-1];
+		std::cout << "reduce_rebuild_atm_16: " << tt_processing << std::endl;
+		std::cout << "reduce_rebuild_atm_16 (GB/s): " << ((items * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
+		this->tt_processing += tt_processing;
 
-		//DEBUG//
+		#if USE_DEVICE_MEM
+			cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*remainder, "copy from iscores to csvector");
+		#else
+			csvector = gsvector;
+		#endif
+//		for(uint32_t i = 0; i < 32; i+=k)//TODO:DEBUG
+//		{
+//			for(uint32_t j = i; j < i + k; j++) std::cout << csvector[j] << " ";
+//			std::cout << "[" << std::is_sorted(&csvector[i],(&csvector[i+k])) << "]" << std::endl;
+//		}
+//		std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
+		//std::sort(csvector,csvector + remainder,std::greater<T>());//TODO:DEBUG
+		this->gpu_threshold = csvector[k-1];
+
+#if VALIDATE
+		T atm_lsort_16_threshold = csvector[k-1];
 		if(abs((double)atm_lsort_16_threshold - (double)this->cpu_threshold) > (double)0.00000000000001
 				||
 				abs((double)atm_lsort_16_threshold - (double)threshold) > (double)0.00000000000001
@@ -800,44 +848,27 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 			exit(1);
 		}
 		std::cout << "{k < 32} threshold=[" << atm_lsort_16_threshold << "," << threshold << "," << this->cpu_threshold << "]"<< std::endl;
+#endif
+		this->cpu_threshold = csvector[k-1];
 		//////
 	}else{
-		this->t.start();
-		agg_lsort_geq_32<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, this->gsvector);
-		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_geq_32");
-		tt_processing = this->t.lap();
-		std::cout << "agg_lsort_geq_32: " << tt_processing << std::endl;
-		std::cout << "agg_lsort_geq_32 (GB/s): " << ((this->n * qq * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
-		#if USE_DEVICE_MEM
-			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector ");
-		#endif
+//		this->t.start();
+//		agg_lsort_geq_32<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, this->gsvector);
+//		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_geq_32");
+//		tt_processing = this->t.lap();
+//		std::cout << "agg_lsort_geq_32: " << tt_processing << std::endl;
+//		std::cout << "agg_lsort_geq_32 (GB/s): " << ((this->n * qq * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
+//		#if USE_DEVICE_MEM
+//			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector ");
+//		#endif
 	}
-	//DEBUG
-//	for(uint32_t i = 0; i < 128; i+=k)
-//	{
-//		for(uint32_t j = i; j < i + k; j++) std::cout << this->csvector[j] << " ";
-//		std::cout << "[" << std::is_sorted(&this->csvector[i],(&this->csvector[i+k])) << "]" << std::endl;
-//	}
-//	//std::sort(this->csvector,this->csvector + this->n,std::greater<T>());
-//	//std::sort(this->csvector,this->csvector + (agg_lsort_grid.x * k),std::greater<T>());
-//	//T atm_lsort_16_threshold = this->csvector[k-1];
-//	T atm_lsort_16_threshold = find_threshold<T,Z>(this->csvector, this->n, k);
-//	//if(abs((double)atm_lsort_16_threshold - (double)threshold) > (double)0.0001)
-//	if(abs((double)atm_lsort_16_threshold - (double)threshold) > (double)0.00000000000001)
-//	//if(abs((double)this->cpu_threshold - (double)threshold) > (double)0.00000000000001)
-//	{
-//		std::cout << std::fixed << std::setprecision(16);
-//		std::cout << "{ERROR}: " << atm_lsort_16_threshold << "," << threshold << "," << this->cpu_threshold << std::endl;
-//		exit(1);
-//	}
 
-
-	cudaFreeHost(this->csvector);  this->csvector = NULL;
-	cudaFreeHost(this->csvector_out); this->csvector = NULL;
-	#if USE_DEVICE_MEM
-		cudaFree(this->gsvector);
-		cudaFree(this->gsvector);
-	#endif
+//	cudaFreeHost(this->csvector);  this->csvector = NULL;
+//	cudaFreeHost(this->csvector_out); this->csvector = NULL;
+//	#if USE_DEVICE_MEM
+//		cudaFree(this->gsvector);
+//		cudaFree(this->gsvector);
+//	#endif
 }
 
 #endif
