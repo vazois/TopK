@@ -12,75 +12,13 @@
  * nb: number of blocks (levels)
  */
 template<class T, class Z>
-__global__ void gvta_atm_16(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq, uint64_t k, T *out)
+__global__ void gvta_atm_16_4096(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq, uint64_t k, T *out)
 {
 	uint64_t i = 0;//data block level
 	uint64_t offset = blockIdx.x * nb * GVTA_BLOCK_SIZE;
 	T v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
 	T v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
-	//__shared__ Z ids[GVTA_BLOCK_SIZE];
-	//__shared__ T scores[GVTA_BLOCK_SIZE];
-	T *data;
-	//T *tvector;
-	while(i < nb)
-	{
-		data = &blocks[i].data[blockIdx.x * GVTA_BLOCK_SIZE];
-		//tvector = &blocks[i].tvector[threshold_offset];
 
-		v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
-		v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
-		//for(uint32_t j = threadIdx.x; j < GVTA_BLOCK_SIZE; j+=blockDim.x){ scores[j] = 0; }
-
-		for(uint32_t m = 0; m < qq; m++)
-		{
-			uint64_t ai = gpu_query[m];
-			uint64_t begin = GVTA_BLOCK_SIZE * GVTA_PARTITIONS * ai;
-			v0 += data[begin + threadIdx.x] * gpu_weights[ai];
-			v1 += data[begin + threadIdx.x + 256] * gpu_weights[ai];
-			v2 += data[begin + threadIdx.x + 512] * gpu_weights[ai];
-			v3 += data[begin + threadIdx.x + 768] * gpu_weights[ai];
-			v4 += data[begin + threadIdx.x + 1024] * gpu_weights[ai];
-			v5 += data[begin + threadIdx.x + 1280] * gpu_weights[ai];
-			v6 += data[begin + threadIdx.x + 1536] * gpu_weights[ai];
-			v7 += data[begin + threadIdx.x + 1792] * gpu_weights[ai];
-			v8 += data[begin + threadIdx.x + 2048] * gpu_weights[ai];
-			v9 += data[begin + threadIdx.x + 2304] * gpu_weights[ai];
-			vA += data[begin + threadIdx.x + 2560] * gpu_weights[ai];
-			vB += data[begin + threadIdx.x + 2816] * gpu_weights[ai];
-			vC += data[begin + threadIdx.x + 3072] * gpu_weights[ai];
-			vD += data[begin + threadIdx.x + 3328] * gpu_weights[ai];
-			vE += data[begin + threadIdx.x + 3584] * gpu_weights[ai];
-			vF += data[begin + threadIdx.x + 3840] * gpu_weights[ai];
-		}
-		out[offset + threadIdx.x] = v0;
-		out[offset + threadIdx.x + 256] = v1;
-		out[offset + threadIdx.x + 512] = v2;
-		out[offset + threadIdx.x + 768] = v3;
-		out[offset + threadIdx.x + 1024] = v4;
-		out[offset + threadIdx.x + 1280] = v5;
-		out[offset + threadIdx.x + 1536] = v6;
-		out[offset + threadIdx.x + 1792] = v7;
-		out[offset + threadIdx.x + 2048] = v8;
-		out[offset + threadIdx.x + 2304] = v9;
-		out[offset + threadIdx.x + 2560] = vA;
-		out[offset + threadIdx.x + 2816] = vB;
-		out[offset + threadIdx.x + 3072] = vC;
-		out[offset + threadIdx.x + 3328] = vD;
-		out[offset + threadIdx.x + 3584] = vE;
-		out[offset + threadIdx.x + 3840] = vF;
-		offset+=GVTA_BLOCK_SIZE;
-		i++;
-	}
-}
-
-template<class T, class Z>
-__global__ void gvta_atm_16_2(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq, uint64_t k, T *out)
-{
-	uint64_t i = 0;//data block level
-	uint64_t offset = blockIdx.x * nb * GVTA_BLOCK_SIZE;
-	T v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
-	T v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
-	//__shared__ Z ids[GVTA_BLOCK_SIZE];
 	__shared__ T threshold;
 	__shared__ T heap[32];
 	__shared__ T buffer[256];
@@ -363,20 +301,18 @@ __global__ void gvta_atm_16_2(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq,
 		/*
 		 * Break if suitable threshold reached
 		 */
-		if(heap[k-1] > threshold){
-			//if(threadIdx.x == 0) printf("[%d],%d < %d\n",blockIdx.x,(uint32_t)i);
-			break;
-		}
-		//offset+=GVTA_BLOCK_SIZE;
+		if(heap[k-1] > threshold){ break; }
 		i++;
 	}
 
-	//Store Ascending Descending
+	/*
+	 * Write-back heaps of each partition
+	 */
 	if(threadIdx.x < k){
 		offset = blockIdx.x * k;
-		//if((blockIdx.x & 0x1) == 0) out[offset + (k-1) - threadIdx.x] = heap[threadIdx.x];
-		//else out[offset + threadIdx.x] = heap[threadIdx.x];
-		out[offset + threadIdx.x] = heap[threadIdx.x];
+		if((blockIdx.x & 0x1) == 0) out[offset + (k-1) - threadIdx.x] = heap[threadIdx.x];
+		else out[offset + threadIdx.x] = heap[threadIdx.x];
+		//out[offset + threadIdx.x] = heap[threadIdx.x];
 	}
 }
 
@@ -646,7 +582,7 @@ void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 		cutil::safeCopyToDevice<T,uint64_t>(gout,out,sizeof(T)*this->n, "error copying to gout");
 	#endif
 	this->t.start();
-	gvta_atm_16_2<T,Z><<<atm_16_grid,atm_16_block>>>(this->gblocks,this->num_blocks,qq,k,gout);
+	gvta_atm_16_4096<T,Z><<<atm_16_grid,atm_16_block>>>(this->gblocks,this->num_blocks,qq,k,gout);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gvta_atm_16");
 	this->t.lap("gvta_atm_16_2");
 

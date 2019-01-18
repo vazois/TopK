@@ -20,7 +20,7 @@
 #define VALIDATE false//ENABLE RESULT VALIDATION//
 
 #define UNIFIED_MEMORY 1
-#define USE_DEVICE_MEM true
+#define USE_DEVICE_MEM false
 
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];

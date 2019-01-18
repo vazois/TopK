@@ -324,21 +324,24 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
 		v0 = (threadIdx.x & k) == 0 ? v0 : 0;
 
-//		/*
-//		 * Sort 16
-//		 */
+		/*
+		 * Sort 16
+		 */
 		for(level = k; level < 32; level = level << 1){
 			for(step = level; step > 0; step = step >> 1){
 				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
 				v0 = rswap(v0,step,dir);
 			}
 		}
-		//gscores[i] = v0;
 
+		/*
+		 * Write-back heaps of each partition
+		 */
 		if(threadIdx.x < k)
 		{
 			i = blockIdx.x * k;
-			if((blockIdx.x & 0x1) == 0) gscores[i + threadIdx.x] = v0; else gscores[i + (threadIdx.x ^ (k-1))] = v0;
+			if((blockIdx.x & 0x1) == 0) gscores[i + threadIdx.x] = v0;
+			else gscores[i + (threadIdx.x ^ (k-1))] = v0;
 		}
 	}
 }
