@@ -65,13 +65,17 @@ void bench_gvta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t
 	}
 
 	gvta.init();
+	gvta.set_iter(ITER);
 	uint64_t q = 2;
+	//uint64_t q = NUM_DIMS;
 	if(IMP < 3){
 		for(uint64_t k = ks; k <= ke; k*=2){
 			for(uint64_t i = q; i <= f.items();i+=QD){
 				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 				gvta.copy_query(weights,attr[i-q]);
-				gvta.findTopK(k,i);
+				for(uint8_t m = 0; m < ITER;m++){
+					gvta.findTopK(k,i);
+				}
 				gvta.benchmark();
 			}
 		}

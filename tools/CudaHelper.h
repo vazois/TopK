@@ -52,7 +52,7 @@ namespace cutil{
 	template<typename DATA_T, typename SIZE_T>
 	__host__ void safeMallocHost(DATA_T **addr, SIZE_T size, std::string msg);
 	template<typename DATA_T, typename SIZE_T>
-	__host__ void safeAllocHost(DATA_T **addr, SIZE_T size, unsigned int flags, std::string msg);
+	__host__ void safeMallocManaged(DATA_T **addr, SIZE_T size, std::string msg, unsigned int flags = cudaMemAttachGlobal);
 	template<typename DATA_T, typename SIZE_T>
 	__host__ void safeCopyToDevice(DATA_T *to, DATA_T *from, SIZE_T size, std::string msg);
 	template<typename DATA_T, typename SIZE_T>
@@ -130,8 +130,9 @@ namespace cutil{
 	}
 
 	template<typename DATA_T, typename SIZE_T>
-	__host__ void safeAllocHost(DATA_T **addr, SIZE_T size, unsigned int flags, std::string msg){
-		error = cudaMallocHost(&(*addr),size,flags);
+	__host__ void safeMallocManaged(DATA_T **addr, SIZE_T size, std::string msg, unsigned int flags){
+		//error = cudaMallocManaged(&(*addr),size,flags);
+		error = cudaMallocManaged(&(*addr),size);
 		cudaCheckErr(error, "Error Alloc Host "+msg);
 	}
 
@@ -281,15 +282,6 @@ __host__ cudaError_t printDeviceSpecs(bool);
 __host__ void cudaCheckErr(cudaError_t error, std::string comment);
 __host__ void setActiveDevice(int devi);
 __host__ void cudaFinalize();
-
-/*
- * Memory handling wrappers.
- */
-//template<class V> __host__ void safeMalloc(V **addr, unsigned int size, std::string msg);
-//template<class V> __host__ void safeMallocHost(V **addr, unsigned int size, std::string msg);
-//template<typename DATA_T, typename SIZE_T>__host__ void safeAllocHost(DATA_T **addr, SIZE_T size, unsigned int flags, std::string msg);
-//template<class V> __host__ void safeCopyToDevice(V *to, V *from, unsigned int size, std::string msg);
-//template<class V> __host__ void safeCopyToHost(V *to, V *from, unsigned int size, std::string msg);
 
 /*
  * Grid and Block dimension computation.

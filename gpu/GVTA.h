@@ -352,6 +352,7 @@ class GVTA : public GAA<T,Z>{
 		T *cout = NULL;
 		T *gout = NULL;
 		void reorder();
+		void atm_16(uint64_t k, uint64_t qq);
 
 		void clear_mem_counters(){
 			this->gvta_mem = 0;
@@ -365,7 +366,8 @@ class GVTA : public GAA<T,Z>{
 
 template<class T, class Z>
 void GVTA<T,Z>::alloc(){
-	cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
+	//cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
+	cutil::safeMallocManaged<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
 	this->base_mem += sizeof(T)*this->n*this->d;
 }
 
@@ -549,21 +551,25 @@ void GVTA<T,Z>::init()
 		cutil::safeCopyToDevice<gvta_block<T,Z>,uint64_t>(this->gblocks,this->blocks,sizeof(gvta_block<T,Z>)*this->num_blocks,"error copying to gpu gvta_blocks");
 	#else
 		this->gblocks = this->blocks;
+		cudaMemPrefetchAsync(this->gblocks,sizeof(gvta_block<T,Z>)*(this->num_blocks/2), 0, NULL);
 	#endif
 }
 
-template<class T, class Z>
-void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
+template<class T,class Z>
+void GVTA<T,Z>::atm_16(uint64_t k,uint64_t qq)
+{
 	dim3 atm_16_block(256,1,1);
 	dim3 atm_16_grid(GVTA_PARTITIONS, 1, 1);
 	T *out, *gout;
-	cutil::safeMallocHost<T,uint64_t>(&out,sizeof(T)*this->n,"out alloc");
+	cutil::safeMallocHost<T,uint64_t>(&out,sizeof(T) * GVTA_PARTITIONS * k,"out alloc");
 #if USE_DEVICE_MEM
-	cutil::safeMalloc<T,uint64_t>(&gout,sizeof(T)*this->n,"gout alloc");
+	cutil::safeMalloc<T,uint64_t>(&gout,sizeof(T) * GVTA_PARTITIONS * k,"gout alloc");
 #else
 	gout = out;
+	cudaMemPrefetchAsync(this->gblocks,sizeof(gvta_block<T,Z>)*(this->num_blocks/2), 0, NULL);
 #endif
 
+#if VALIDATE
 	T threshold = 0;
 	//this->findTopKtpac(k,(uint8_t)qq,this->weights,this->query);
 	VAGG<T,Z> vagg(this->cdata,this->n,this->d);
@@ -576,26 +582,34 @@ void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	T cpu_gvagg=gvagg.findTopKgvta(k,qq, this->weights,this->query);
 	this->t.lap("gvagg");
 	//gvagg.findTopKgvta2(k,qq, this->weights,this->query);
+#endif
 
-	for(uint32_t i = 0; i < this->n; i++) out[i] = 0;
-	#if USE_DEVICE_MEM
-		cutil::safeCopyToDevice<T,uint64_t>(gout,out,sizeof(T)*this->n, "error copying to gout");
-	#endif
+	/*
+	 * Top-k With Early Stopping
+	 */
+	for(uint32_t i = 0; i < GVTA_PARTITIONS * k; i++) out[i] = 0;
+#if USE_DEVICE_MEM
+	cutil::safeCopyToDevice<T,uint64_t>(gout,out,sizeof(T) * GVTA_PARTITIONS * k, "error copying to gout");
+#endif
 	this->t.start();
 	gvta_atm_16_4096<T,Z><<<atm_16_grid,atm_16_block>>>(this->gblocks,this->num_blocks,qq,k,gout);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gvta_atm_16");
-	this->t.lap("gvta_atm_16_2");
+	this->tt_processing += this->t.lap("gvta_atm_16_2");
 
-	#if USE_DEVICE_MEM
-		cutil::safeCopyToHost<T,uint64_t>(out,gout,sizeof(T)*this->n, "error copying to out");
-	#endif
+#if USE_DEVICE_MEM
+	cutil::safeCopyToHost<T,uint64_t>(out,gout,sizeof(T)*this->n, "error copying to out");
+#endif
 //	for(uint32_t i = 0; i < 128; i+=k)
 //	{
 //		for(uint32_t j = i; j < i + k; j++) std::cout << out[j] << " ";
 //		std::cout << "[" << std::is_sorted(&out[i],(&out[i+k])) << "]" << std::endl;
 //	}
+
+	this->gpu_threshold = out[k-1];
+#if VALIDATE
 	std::sort(out, out + GVTA_PARTITIONS * k,std::greater<T>());
-	threshold = out[k-1];
+	std::cout << "threshold=[" << out[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "]"<< std::endl;
+	std::cout << "[" << atm_16_grid.x << " , " << atm_16_block.x << "]"<< std::endl;
 	if(abs((double)out[k-1] - (double)cpu_gvagg) > (double)0.00000000000001
 			||
 			abs((double)out[k-1] - (double)this->cpu_threshold) > (double)0.00000000000001
@@ -603,13 +617,74 @@ void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 		std::cout << std::fixed << std::setprecision(16);
 		std::cout << "ERROR: {" << out[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "}" << std::endl; exit(1);
 	}
+#endif
 	#if USE_DEVICE_MEM
 		cudaFree(gout);
 	#else
 		cudaFreeHost(out);
 	#endif
-	std::cout << "threshold=[" << threshold << "," << this->cpu_threshold << "," << cpu_gvagg << "]"<< std::endl;
-	std::cout << "[" << atm_16_grid.x << " , " << atm_16_block.x << "]"<< std::endl;
+}
+
+template<class T, class Z>
+void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
+	this->atm_16(k,qq);
+
+//	dim3 atm_16_block(256,1,1);
+//	dim3 atm_16_grid(GVTA_PARTITIONS, 1, 1);
+//	T *out, *gout;
+//	cutil::safeMallocHost<T,uint64_t>(&out,sizeof(T)*this->n,"out alloc");
+//#if USE_DEVICE_MEM
+//	cutil::safeMalloc<T,uint64_t>(&gout,sizeof(T)*this->n,"gout alloc");
+//#else
+//	gout = out;
+//#endif
+//
+//	T threshold = 0;
+//	//this->findTopKtpac(k,(uint8_t)qq,this->weights,this->query);
+//	VAGG<T,Z> vagg(this->cdata,this->n,this->d);
+//	this->t.start();
+//	this->cpu_threshold = vagg.findTopKtpac(k, qq,this->weights,this->query);
+//	this->t.lap("vagg");
+//
+//	GVAGG<T,Z> gvagg(this->blocks,this->n,this->d,GVTA_BLOCK_SIZE,GVTA_PARTITIONS,this->num_blocks);
+//	this->t.start();
+//	T cpu_gvagg=gvagg.findTopKgvta(k,qq, this->weights,this->query);
+//	this->t.lap("gvagg");
+//	//gvagg.findTopKgvta2(k,qq, this->weights,this->query);
+//
+//	for(uint32_t i = 0; i < this->n; i++) out[i] = 0;
+//	#if USE_DEVICE_MEM
+//		cutil::safeCopyToDevice<T,uint64_t>(gout,out,sizeof(T)*this->n, "error copying to gout");
+//	#endif
+//	this->t.start();
+//	gvta_atm_16_4096<T,Z><<<atm_16_grid,atm_16_block>>>(this->gblocks,this->num_blocks,qq,k,gout);
+//	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gvta_atm_16");
+//	this->t.lap("gvta_atm_16_2");
+//
+//	#if USE_DEVICE_MEM
+//		cutil::safeCopyToHost<T,uint64_t>(out,gout,sizeof(T)*this->n, "error copying to out");
+//	#endif
+////	for(uint32_t i = 0; i < 128; i+=k)
+////	{
+////		for(uint32_t j = i; j < i + k; j++) std::cout << out[j] << " ";
+////		std::cout << "[" << std::is_sorted(&out[i],(&out[i+k])) << "]" << std::endl;
+////	}
+//	std::sort(out, out + GVTA_PARTITIONS * k,std::greater<T>());
+//	threshold = out[k-1];
+//	if(abs((double)out[k-1] - (double)cpu_gvagg) > (double)0.00000000000001
+//			||
+//			abs((double)out[k-1] - (double)this->cpu_threshold) > (double)0.00000000000001
+//			) {
+//		std::cout << std::fixed << std::setprecision(16);
+//		std::cout << "ERROR: {" << out[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "}" << std::endl; exit(1);
+//	}
+//	#if USE_DEVICE_MEM
+//		cudaFree(gout);
+//	#else
+//		cudaFreeHost(out);
+//	#endif
+//	std::cout << "threshold=[" << threshold << "," << this->cpu_threshold << "," << cpu_gvagg << "]"<< std::endl;
+//	std::cout << "[" << atm_16_grid.x << " , " << atm_16_block.x << "]"<< std::endl;
 }
 
 #endif

@@ -18,8 +18,6 @@
 #define U64_BYTES_PER_TUPLE 12
 
 #define VALIDATE false//ENABLE RESULT VALIDATION//
-
-#define UNIFIED_MEMORY 1
 #define USE_DEVICE_MEM false
 
 __constant__ float gpu_weights[NUM_DIMS];
@@ -233,7 +231,7 @@ class GAA{
 			std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
 			std::cout << "tt_init: " << this->tt_init << std::endl;
 			std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
-			std::cout << "tuples_per_second: " << (this->tt_processing == 0 ? 0 : WORKLOAD/(this->tt_processing/1000)) << std::endl;
+			//std::cout << "tuples_per_second: " << (this->tt_processing == 0 ? 0 : WORKLOAD/(this->tt_processing/1000)) << std::endl;
 			std::cout << "tuple_count: " << this->tuple_count << std::endl;
 			std::cout << "cpu_threshold: " << this->cpu_threshold << std::endl;
 			std::cout << "gpu_threshold: " << this->gpu_threshold << std::endl;
