@@ -361,6 +361,7 @@ class GVTA : public GAA<T,Z>{
 		T *gout = NULL;
 		void reorder();
 		void atm_16(uint64_t k, uint64_t qq);
+		void atm_16_dm_driver(uint64_t k, uint64_t qq);
 
 		void clear_mem_counters(){
 			this->gvta_mem = 0;
@@ -377,8 +378,8 @@ class GVTA : public GAA<T,Z>{
 
 template<class T, class Z>
 void GVTA<T,Z>::alloc(){
-	//cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
-	cutil::safeMallocManaged<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
+	cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
+	//cutil::safeMallocManaged<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
 	this->base_mem += sizeof(T)*this->n*this->d;
 }
 
@@ -403,6 +404,7 @@ void GVTA<T,Z>::reorder()
 	this->tuples_per_part = ((this->n - 1)/GVTA_PARTITIONS) + 1;
 	this->num_blocks = ((this->tuples_per_part - 1) / GVTA_BLOCK_SIZE) + 1;
 	cutil::safeMallocHost<gvta_block<T,Z>,uint64_t>(&(this->blocks),sizeof(gvta_block<T,Z>)*this->num_blocks,"alloc gvta_blocks");
+	//this->blocks = (gvta_block<T,Z>*)malloc(sizeof(gvta_block<T,Z>)*this->num_blocks);
 	std::cout << this->n << " = p,psz(" << GVTA_PARTITIONS <<"," << this->tuples_per_part << ") - " << "b,bsz(" << this->num_blocks << "," << GVTA_BLOCK_SIZE << ")" << std::endl;
 	for(uint64_t i = 0; i< this->num_blocks; i++)//TODO:safemalloc
 	{
@@ -558,7 +560,7 @@ void GVTA<T,Z>::init()
 	this->tt_init = this->t.lap();
 
 	#if USE_DEVICE_MEM
-		cutil::safeMallocManaged<gvta_block<T,Z>,uint64_t>(&(this->gblocks),sizeof(gvta_block<T,Z>)*this->num_blocks,"alloc gpu gvta_blocks");
+		cutil::safeMalloc<gvta_block<T,Z>,uint64_t>(&(this->gblocks),sizeof(gvta_block<T,Z>)*this->num_blocks,"alloc gpu gvta_blocks");
 		cutil::safeCopyToDevice<gvta_block<T,Z>,uint64_t>(this->gblocks,this->blocks,sizeof(gvta_block<T,Z>)*this->num_blocks,"error copying to gpu gvta_blocks");
 	#else
 		this->gblocks = this->blocks;
@@ -574,6 +576,45 @@ void GVTA<T,Z>::init()
 		gout = cout;
 		//cudaMemPrefetchAsync(this->gblocks,sizeof(gvta_block<T,Z>)*(this->num_blocks/2), 0, NULL);
 	#endif
+}
+
+template<class T,class Z>
+void GVTA<T,Z>::atm_16_dm_driver(uint64_t k, uint64_t qq){
+//	dim3 atm_16_block(256,1,1);
+//	dim3 atm_16_grid(GVTA_PARTITIONS, 1, 1);
+//
+//	this->t.start();
+//	gvta_atm_16_4096<T,Z><<<atm_16_grid,atm_16_block,256*sizeof(T),s0>>>(this->gblocks,this->num_blocks,qq,k,gout);
+//	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gvta_atm_16");
+//	this->tt_processing += this->t.lap("gvta_atm_16_dm");
+//
+//	cutil::safeCopyToHost<T,uint64_t>(cout,gout,sizeof(T) * GVTA_PARTITIONS * k, "error copying from gout to out");
+//	std::sort(cout, cout + GVTA_PARTITIONS * k,std::greater<T>());
+//	this->gpu_threshold = cout[k-1];
+
+#if VALIDATE
+	Time<msecs> t;
+	GVAGG<T,Z> gvagg(this->blocks,this->n,this->d,GVTA_BLOCK_SIZE,GVTA_PARTITIONS,this->num_blocks);
+	t.start();
+	T cpu_gvagg=gvagg.findTopKgvta(k,qq, this->weights,this->query);
+	t.lap("cpu gvagg");
+	this->cpu_threshold = cpu_gvagg;
+
+	VAGG<T,Z> vagg(this->cdata,this->n,this->d);
+	t.start();
+	this->cpu_threshold = vagg.findTopKtpac(k, qq,this->weights,this->query);
+	t.lap("cpu vagg");
+
+//	std::sort(cout, cout + GVTA_PARTITIONS * k,std::greater<T>());
+//	std::cout << "threshold=[" << cout[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "]"<< std::endl;
+//	if(abs((double)cout[k-1] - (double)cpu_gvagg) > (double)0.00000000000001
+//			||
+//			abs((double)cout[k-1] - (double)this->cpu_threshold) > (double)0.00000000000001
+//			) {
+//		std::cout << std::fixed << std::setprecision(16);
+//		std::cout << "ERROR: {" << cout[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "}" << std::endl; exit(1);
+//	}
+#endif
 }
 
 template<class T,class Z>
@@ -649,9 +690,8 @@ void GVTA<T,Z>::atm_16(uint64_t k,uint64_t qq)
 
 template<class T, class Z>
 void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
-	this->atm_16(k,qq);
-	cudaDeviceSynchronize();
-	usleep(10000);
+	//this->atm_16(k,qq);
+	this->atm_16_dm_driver(k,qq);
 }
 
 #endif

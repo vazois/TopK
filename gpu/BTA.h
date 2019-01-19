@@ -725,7 +725,6 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	#else
 		gsvector = csvector;
 		gsvector_out = this->csvector_out;
-		cudaMemPrefetchAsync(this->cdata,sizeof(T)*this->n*this->d, 0, NULL);
 	#endif
 
 	/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

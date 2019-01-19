@@ -72,7 +72,7 @@ void bench_gvta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t
 	gvta.init();
 	gvta.set_iter(ITER);
 	gvta.reset_stats();
-	uint64_t q = 8;
+	uint64_t q = 2;
 	if(IMP < 3){
 		for(uint64_t k = ks; k <= ke; k*=2){
 			//for(int64_t i = f.items(); i >= q;i-=QD){

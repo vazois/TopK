@@ -3,8 +3,8 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((4*1024*1024))
-END_N=$((4*1024*1024))
+START_N=$((8*1024*1024))
+END_N=$((8*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=16
@@ -140,11 +140,8 @@ else
   			#nvprof --devices 0 ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 			#echo "./gpu_run -f=data/$fname -n=$n -d=$DIMS"
 			set -e
-			for (( x=0; x<1; x+=1 ))
-			do
-				./gpu_run -f=data/$fname -n=$n -d=$DIMS
-				#nvprof ./gpu_run -f=data/$fname -n=$n -d=$DIMS
-			done
+			./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#nvprof ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 		fi
 		
 		if [ $? -eq 1 ]
