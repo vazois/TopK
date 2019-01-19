@@ -480,7 +480,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 
 	vta.init();
 	vta.set_iter(ITER);
-	uint8_t q = 2;
+	uint8_t q = 8;
 	if(IMP < 3){
 		for(uint64_t k = ks; k <= ke; k*=2){
 			for(uint8_t i = q; i <= f.items();i+=QD){
