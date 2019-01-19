@@ -3,8 +3,8 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((8*1024*1024))
-END_N=$((8*1024*1024))
+START_N=$((1*1024*1024))
+END_N=$((1*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=16
@@ -96,7 +96,7 @@ TPAc_B=0
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
-VTA_B=1
+VTA_B=0
 #PTA Benchmark
 PTA_B=0
 #SLA Benchmark

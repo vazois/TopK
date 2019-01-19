@@ -61,9 +61,10 @@ double Time<M>::lap(){
 template<class M>
 double Time<M>::lap(std::string comment){
 	this->tp2 = std::chrono::high_resolution_clock::now();
-	M time_span = std::chrono::duration_cast<M>(this->tp2 - this->tp1);
+	//M time_span = std::chrono::duration_cast<M>(this->tp2 - this->tp1);
+	M time_span = this->tp2 - this->tp1;
 
-	double tt= time_span.count();
+	double tt = time_span.count();
 	if ( comment != "" ) std::cout << "Elapsed Time ( " << comment << " ): " << tt << std::endl;
 	this->tp1 = std::chrono::high_resolution_clock::now();
 

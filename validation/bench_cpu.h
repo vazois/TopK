@@ -106,7 +106,7 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
-			ta.findTopK(k,i,weights,attr[i-q]);
+			ta.findTopK(k,i,weights,attr[i-q]);//2 3 4 5 6 7 8 // 0 1 2 3 4 5 6 //
 			ta.reset_clocks();
 			//Benchmark
 			for(uint8_t m = 0; m < ITER;m++){
@@ -480,7 +480,7 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 
 	vta.init();
 	vta.set_iter(ITER);
-	uint8_t q = 8;
+	uint8_t q = 2;
 	if(IMP < 3){
 		for(uint64_t k = ks; k <= ke; k*=2){
 			for(uint8_t i = q; i <= f.items();i+=QD){
