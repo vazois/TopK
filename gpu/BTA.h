@@ -725,6 +725,7 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	#else
 		gsvector = csvector;
 		gsvector_out = this->csvector_out;
+		cudaMemPrefetchAsync(this->cdata,sizeof(T)*this->n*this->d, 0, NULL);
 	#endif
 
 	/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -783,9 +784,9 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 		agg_lsort_atm_16<T><<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, gsvector);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_atm_16");
 		tt_processing = this->t.lap();
+		this->tt_processing += tt_processing;
 		std::cout << "agg_lsort_atm_16: " << tt_processing << std::endl;
 		std::cout << "agg_lsort_atm_16 (GB/s): " << ((this->n * qq * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
-		this->tt_processing += tt_processing;
 		uint64_t remainder = (agg_lsort_grid.x * k);
 
 		/////////
@@ -826,7 +827,7 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 		this->tt_processing += tt_processing;
 
 		#if USE_DEVICE_MEM
-			cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*remainder, "copy from iscores to csvector");
+			cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*remainder,"copy from iscores to csvector");
 		#else
 			csvector = gsvector;
 		#endif
@@ -865,13 +866,6 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 //			cutil::safeCopyToHost<T,uint64_t>(this->csvector,this->gsvector,sizeof(T)*this->n, "copy from gsvector to csvector ");
 //		#endif
 	}
-
-//	cudaFreeHost(this->csvector);  this->csvector = NULL;
-//	cudaFreeHost(this->csvector_out); this->csvector = NULL;
-//	#if USE_DEVICE_MEM
-//		cudaFree(this->gsvector);
-//		cudaFree(this->gsvector);
-//	#endif
 }
 
 #endif

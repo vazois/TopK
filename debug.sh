@@ -3,8 +3,8 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((32*1024*1024))
-END_N=$((32*1024*1024))
+START_N=$((4*1024*1024))
+END_N=$((4*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=16
@@ -55,13 +55,13 @@ fi
 #CPU:0,GPU:1
 device=1
 #QM 0:Reverse query attribute, 1:Forward query attributes
-QM=0
+QM=1
 #QD Dimension interval for testing
 QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
 IMP=1
 #ITER Testing iterations
-ITER=10
+ITER=1
 #Multiple Thread Count
 MQTHREADS=16
 #Gather object evaluation statistics
@@ -143,7 +143,7 @@ else
 			for (( x=0; x<1; x+=1 ))
 			do
 				./gpu_run -f=data/$fname -n=$n -d=$DIMS
-				#nvprof --devices 0 ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+				#nvprof ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 			done
 		fi
 		

@@ -17,8 +17,10 @@
 #define U32_BYTES_PER_TUPLE 8
 #define U64_BYTES_PER_TUPLE 12
 
+#include <unistd.h>
+
 #define VALIDATE false//ENABLE RESULT VALIDATION//
-#define USE_DEVICE_MEM false
+#define USE_DEVICE_MEM true
 
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];
@@ -228,7 +230,8 @@ class GAA{
 
 		void benchmark(){
 			std::cout << std::fixed << std::setprecision(4);
-			std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
+ 			std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
+ 			std::cout << "Accessing data from {" << (USE_DEVICE_MEM ? "Device Memory" : "Host Memory")  << "}"<< std::endl;
 			std::cout << "tt_init: " << this->tt_init << std::endl;
 			std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
 			//std::cout << "tuples_per_second: " << (this->tt_processing == 0 ? 0 : WORKLOAD/(this->tt_processing/1000)) << std::endl;
@@ -240,7 +243,7 @@ class GAA{
 		}
 
 		void reset_stats(){
-			this->tt_init = 0;
+			//this->tt_init = 0;
 			this->tt_processing = 0;
 
 			this->pred_count = 0;

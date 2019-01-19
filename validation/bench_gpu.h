@@ -34,13 +34,18 @@ void bench_bta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 
 	std::cout << "Calculating top-k ... " << std::endl;
 	bta.init();
-	uint64_t q = 2;
+	bta.set_iter(ITER);
+	bta.reset_stats();
+	uint64_t q = 8;
 	if(IMP < 3){
 		for(uint64_t k = ks; k <= ke; k*=2){
 			for(uint64_t i = q; i <= f.items();i+=QD){
-				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+			//for(uint64_t i = q; i <= q;i+=QD){
 				bta.copy_query(weights,attr[i-q]);
 				bta.findTopK(k,i);
+				bta.reset_stats();
+				for(uint8_t m = 0; m < ITER;m++){ bta.findTopK(k,i); }
+				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 				bta.benchmark();
 			}
 		}
@@ -66,16 +71,18 @@ void bench_gvta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t
 
 	gvta.init();
 	gvta.set_iter(ITER);
-	uint64_t q = 2;
-	//uint64_t q = NUM_DIMS;
+	gvta.reset_stats();
+	uint64_t q = 8;
 	if(IMP < 3){
 		for(uint64_t k = ks; k <= ke; k*=2){
+			//for(int64_t i = f.items(); i >= q;i-=QD){
 			for(uint64_t i = q; i <= f.items();i+=QD){
-				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+			//for(uint64_t i = q; i <= q;i+=QD){
 				gvta.copy_query(weights,attr[i-q]);
-				for(uint8_t m = 0; m < ITER;m++){
-					gvta.findTopK(k,i);
-				}
+				gvta.findTopK(k,i);
+				gvta.reset_stats();
+				for(uint8_t m = 0; m < ITER;m++){ gvta.findTopK(k,i); }
+				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 				gvta.benchmark();
 			}
 		}
