@@ -10,7 +10,7 @@ DIMS=8
 KKS=16
 KKE=16
 #LD 0:load from file(debugging), 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=1
+LD=0
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i

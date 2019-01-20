@@ -213,7 +213,6 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 		}
 	}
 	this->tt_processing += this->t.lap();
-
 	while(q.size() > k){ q.pop(); }
 	T threshold = q.top().score;
 	while(!q.empty()){
@@ -319,7 +318,7 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			if(q.size() >= k && q.top().score >= threshold) break;
+			if(q.size() >= k && q.top().score >= threshold){ i = VPARTITIONS; break; }
 		}
 	}
 	this->tt_processing += this->t.lap();
@@ -475,7 +474,7 @@ void VTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			if(q[tid].size() >= k && q[tid].top().score >= threshold) break;
+			if(q[tid].size() >= k && q[tid].top().score >= threshold){ i = VPARTITIONS; break; }
 		}
 	}
 	if(STATS_EFF) tt_count[tid] = tuple_count;

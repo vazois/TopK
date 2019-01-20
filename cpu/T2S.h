@@ -126,7 +126,10 @@ void T2S<T,Z>::init()
 			uint64_t jj;
 			for(jj = 0; jj < parts[i].blocks[bnum].tuple_num; jj++){//For each block//
 				Z id = order[j+jj].id;//Get next tuple in order
-				for(uint8_t m = 0; m < this->d; m++){ parts[i].blocks[bnum].tuples[m*TBLOCK_SIZE + jj] = this->cdata[m*this->n + (poffset + id)]; }
+				for(uint8_t m = 0; m < this->d; m++){
+					//parts[i].blocks[bnum].tuples[m*TBLOCK_SIZE + jj] = this->cdata[m*this->n + (poffset + id)];
+					parts[i].blocks[bnum].tuples[jj*this->d + m] = this->cdata[m*this->n + (poffset + id)];
+				}
 			}
 			Z pos = order[j+jj-1].pos;
 			for(uint8_t m = 0; m < this->d; m++){ parts[i].blocks[bnum].tarray[m] = lists[m][pos].score; }
@@ -152,10 +155,37 @@ void T2S<T,Z>::findTopK(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
 	this->t.start();
+	for(uint64_t i = 0; i < TPARTITIONS; i++){
+		for(uint64_t b = 0; b < parts[i].block_num; b++){
+			Z tuple_num = parts[i].blocks[b].tuple_num;
+			T *tuples = parts[i].blocks[b].tuples;
+			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
+			for(uint64_t t = 0; t < tuple_num; t++){
+				id+=t;
+				T score00 = 0;
+				for(uint8_t m = 0; m < qq; m++){
+					T weight = weights[attr[m]];
+					//uint32_t offset = attr[m]*VBLOCK_SIZE + t;
+					uint32_t offset = t*this->d + attr[m];
+					score00+=tuples[offset]*weight;
+				}
+				if(q.size() < k){
+					q.push(tuple_<T,Z>(id,score00));
+				}else if(q.top().score < score00){
+					q.pop(); q.push(tuple_<T,Z>(id,score00));
+				}
+				if(STATS_EFF) this->tuple_count++;
+			}
+			T threshold = 0;
+			T *tarray = parts[i].blocks[b].tarray;
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+			//if(q.size() >= k && q.top().score >= threshold){ i = TPARTITIONS;break; }
+		}
+	}
 
 	this->tt_processing += this->t.lap();
 	while(q.size() > k){ q.pop(); }
-	T threshold = q.emtpy() ? 1313 : q.top().score;
+	T threshold = q.empty() ? 1313 : q.top().score;
 	while(!q.empty()){
 		//std::cout << this->algo <<" : " << q.top().tid << "," << q.top().score << std::endl;
 		this->res.push_back(q.top());
