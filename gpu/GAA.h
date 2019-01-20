@@ -19,7 +19,7 @@
 
 #include <unistd.h>
 
-#define VALIDATE true//ENABLE RESULT VALIDATION//
+#define VALIDATE false//ENABLE RESULT VALIDATION//
 #define USE_DEVICE_MEM true
 
 __constant__ float gpu_weights[NUM_DIMS];

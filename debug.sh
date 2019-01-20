@@ -3,8 +3,8 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((8*1024*1024))
-END_N=$((8*1024*1024))
+START_N=$((256*1024*1024))
+END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=16
@@ -61,7 +61,7 @@ QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
 IMP=1
 #ITER Testing iterations
-ITER=1
+ITER=10
 #Multiple Thread Count
 MQTHREADS=16
 #Gather object evaluation statistics
@@ -140,8 +140,9 @@ else
   			#nvprof --devices 0 ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 			#echo "./gpu_run -f=data/$fname -n=$n -d=$DIMS"
 			set -e
-			./gpu_run -f=data/$fname -n=$n -d=$DIMS
-			#nvprof ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			nvprof --kernels "gvta_atm|agg_lsort_atm_16" --metrics branch_efficiency,dram_read_throughput,dram_utilization,sysmem_read_utilization,gld_throughput,local_memory_overhead,stall_memory_dependency,stall_sync,issued_ipc,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS 
+			#nvprof --kernels "gvta_atm" ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 		fi
 		
 		if [ $? -eq 1 ]

@@ -41,7 +41,7 @@ void bench_bta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 		for(uint64_t k = ks; k <= ke; k*=2){
 			for(uint64_t i = q; i <= f.items();i+=QD){
 			//for(uint64_t i = q; i <= q;i+=QD){
-				bta.copy_query(weights,attr[i-q]);
+				bta.copy_query(weights,attr[i-2]);
 				bta.findTopK(k,i);
 				bta.reset_stats();
 				for(uint8_t m = 0; m < ITER;m++){ bta.findTopK(k,i); }
@@ -72,13 +72,13 @@ void bench_gvta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t
 	gvta.init();
 	gvta.set_iter(ITER);
 	gvta.reset_stats();
-	uint64_t q = 2;
+	uint64_t q = 8;
 	if(IMP < 3){
 		for(uint64_t k = ks; k <= ke; k*=2){
 			//for(int64_t i = f.items(); i >= q;i-=QD){
 			for(uint64_t i = q; i <= f.items();i+=QD){
 			//for(uint64_t i = q; i <= q;i+=QD){
-				gvta.copy_query(weights,attr[i-q]);
+				gvta.copy_query(weights,attr[i-2]);
 				gvta.findTopK(k,i);
 				gvta.reset_stats();
 				for(uint8_t m = 0; m < ITER;m++){ gvta.findTopK(k,i); }

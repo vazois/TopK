@@ -55,7 +55,7 @@ struct gpta_pos{
 	Z pos;
 };
 
-#define GVTA_PARTITIONS 16
+#define GVTA_PARTITIONS 256
 //at least 8 partitions//
 #define GVTA_BLOCK_SIZE 4096
 
