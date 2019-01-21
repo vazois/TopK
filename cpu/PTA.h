@@ -302,49 +302,52 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 			T *tuples = this->parts[p].blocks[b].tuples;
 			if(STATS_EFF) this->accesses+=2;
 			//std::cout << b <<"< tuple_num: " << this->parts[p].blocks[b].tuple_num << std::endl;
-			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=8){
+			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=1){
 				id+=t;
-				T score00 = 0; T score01 = 0;
-				T score02 = 0; T score03 = 0;
-				T score04 = 0; T score05 = 0;
-				T score06 = 0; T score07 = 0;
-				if(STATS_EFF) this->accesses+=8;
+				T score00 = 0;
+//				T score01 = 0;
+//				T score02 = 0;
+//				T score03 = 0;
+//				T score04 = 0;
+//				T score05 = 0;
+//				T score06 = 0;
+//				T score07 = 0;
 				for(uint8_t m = 0; m < qq; m++){
 					T weight = weights[attr[m]];
 					uint32_t offset = attr[m]*PBLOCK_SIZE + t;
 					score00+=tuples[offset]*weight;
-					score01+=tuples[offset+1]*weight;
-					score02+=tuples[offset+2]*weight;
-					score03+=tuples[offset+3]*weight;
-					score04+=tuples[offset+4]*weight;
-					score05+=tuples[offset+5]*weight;
-					score06+=tuples[offset+6]*weight;
-					score07+=tuples[offset+7]*weight;
+//					score01+=tuples[offset+1]*weight;
+//					score02+=tuples[offset+2]*weight;
+//					score03+=tuples[offset+3]*weight;
+//					score04+=tuples[offset+4]*weight;
+//					score05+=tuples[offset+5]*weight;
+//					score06+=tuples[offset+6]*weight;
+//					score07+=tuples[offset+7]*weight;
 				}
-				if(STATS_EFF) this->accesses+=qq*12;
+				if(STATS_EFF) this->accesses+=qq*4;
 				if(STATS_EFF) this->accesses+=1;
 				if(q.size() < k){
 					q.push(tuple_<T,Z>(id,score00));
-					q.push(tuple_<T,Z>(id+1,score01));
-					q.push(tuple_<T,Z>(id+2,score02));
-					q.push(tuple_<T,Z>(id+3,score03));
-					q.push(tuple_<T,Z>(id+4,score04));
-					q.push(tuple_<T,Z>(id+5,score05));
-					q.push(tuple_<T,Z>(id+6,score06));
-					q.push(tuple_<T,Z>(id+7,score07));
-					if(STATS_EFF) this->accesses+=8;
+//					q.push(tuple_<T,Z>(id+1,score01));
+//					q.push(tuple_<T,Z>(id+2,score02));
+//					q.push(tuple_<T,Z>(id+3,score03));
+//					q.push(tuple_<T,Z>(id+4,score04));
+//					q.push(tuple_<T,Z>(id+5,score05));
+//					q.push(tuple_<T,Z>(id+6,score06));
+//					q.push(tuple_<T,Z>(id+7,score07));
+					if(STATS_EFF) this->accesses+=4;
 				}else{
 					if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(id,score00)); }
-					if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(id+1,score01)); }
-					if(q.top().score < score02){ q.pop(); q.push(tuple_<T,Z>(id+2,score02)); }
-					if(q.top().score < score03){ q.pop(); q.push(tuple_<T,Z>(id+3,score03)); }
-					if(q.top().score < score04){ q.pop(); q.push(tuple_<T,Z>(id+4,score04)); }
-					if(q.top().score < score05){ q.pop(); q.push(tuple_<T,Z>(id+5,score05)); }
-					if(q.top().score < score06){ q.pop(); q.push(tuple_<T,Z>(id+6,score06)); }
-					if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(id+7,score07)); }
-					if(STATS_EFF) this->accesses+=8*2;
+//					if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(id+1,score01)); }
+//					if(q.top().score < score02){ q.pop(); q.push(tuple_<T,Z>(id+2,score02)); }
+//					if(q.top().score < score03){ q.pop(); q.push(tuple_<T,Z>(id+3,score03)); }
+//					if(q.top().score < score04){ q.pop(); q.push(tuple_<T,Z>(id+4,score04)); }
+//					if(q.top().score < score05){ q.pop(); q.push(tuple_<T,Z>(id+5,score05)); }
+//					if(q.top().score < score06){ q.pop(); q.push(tuple_<T,Z>(id+6,score06)); }
+//					if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(id+7,score07)); }
+					if(STATS_EFF) this->accesses+=1*2;
 				}
-				if(STATS_EFF) this->tuple_count+=8;
+				if(STATS_EFF) this->tuple_count+=1;
 			}
 
 			T threshold = 0;
@@ -379,48 +382,79 @@ void PTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	if(this->res.size() > 0) this->res.clear();
 
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
-	float score[16] __attribute__((aligned(32)));
+	float score[32] __attribute__((aligned(32)));
 	this->t.start();
 	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	for(uint64_t p = 0; p < PPARTITIONS; p++){
+		if(STATS_EFF) this->accesses+=1;
 		if(this->parts[p].size == 0) continue;
 		Z poffset = this->parts[p].offset;
 		//uint32_t count = 0;
 		for(uint64_t b = 0; b < this->parts[p].block_num; b++){
+			if(STATS_EFF) this->accesses+=1;
 			__builtin_prefetch(score,1,3);
 			Z id = this->parts[p].offset + poffset;
 			T *tuples = this->parts[p].blocks[b].tuples;
-			//std::cout << b <<"< tuple_num: " << this->parts[p].blocks[b].tuple_num << std::endl;
-			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=16){
+			if(STATS_EFF) this->accesses+=1;
+			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=32){
 				id+=t;
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
+				__m256 score02 = _mm256_setzero_ps();
+				__m256 score03 = _mm256_setzero_ps();
+//				__m256 score04 = _mm256_setzero_ps();
+//				__m256 score05 = _mm256_setzero_ps();
+//				__m256 score06 = _mm256_setzero_ps();
+//				__m256 score07 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){
 					T weight = weights[attr[m]];
 					uint32_t offset = attr[m]*PBLOCK_SIZE + t;
+//					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+//					__m256 load00 = _mm256_load_ps(&tuples[offset]);
+//					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+//					load00 = _mm256_mul_ps(load00,_weight);
+//					load01 = _mm256_mul_ps(load01,_weight);
+//					score00 = _mm256_add_ps(score00,load00);
+//					score01 = _mm256_add_ps(score01,load01);
 					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
-					__m256 load00 = _mm256_load_ps(&tuples[offset]);
-					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
-					load00 = _mm256_mul_ps(load00,_weight);
-					load01 = _mm256_mul_ps(load01,_weight);
-					score00 = _mm256_add_ps(score00,load00);
-					score01 = _mm256_add_ps(score01,load01);
+					score00 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_load_ps(&tuples[offset]),_weight));
+					score01 = _mm256_add_ps(score01,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+8]),_weight));
+					score02 = _mm256_add_ps(score02,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+16]),_weight));
+					score03 = _mm256_add_ps(score03,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+24]),_weight));
+//					score04 = _mm256_add_ps(score04,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+32]),_weight));
+//					score05 = _mm256_add_ps(score05,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+40]),_weight));
+//					score06 = _mm256_add_ps(score06,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+48]),_weight));
+//					score07 = _mm256_add_ps(score07,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+56]),_weight));
 				}
+				if(STATS_EFF) this->accesses+=qq*35;//3 accesses plus 32
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
-				for(uint8_t l = 0; l < 16; l++){
+				_mm256_store_ps(&score[16],score02);
+				_mm256_store_ps(&score[24],score03);
+//				_mm256_store_ps(&score[32],score04);
+//				_mm256_store_ps(&score[40],score05);
+//				_mm256_store_ps(&score[48],score06);
+//				_mm256_store_ps(&score[56],score07);
+				if(STATS_EFF) this->accesses+=32;
+				for(uint8_t l = 0; l < 32; l++){
 					if(q.size() < k){
 						q.push(tuple_<T,Z>(id,score[l]));
+						if(STATS_EFF) this->accesses+=1;
 					}else if(q.top().score < score[l]){
 						q.pop(); q.push(tuple_<T,Z>(id,score[l]));
+						if(STATS_EFF) this->accesses+=2;
 					}
+					if(STATS_EFF) this->accesses+=1;
 				}
-				if(STATS_EFF) this->tuple_count+=16;
+				if(STATS_EFF) this->tuple_count+=32;
 			}
 
 			T threshold = 0;
 			T *tarray = this->parts[p].blocks[b].tarray;
+			if(STATS_EFF) this->accesses+=2;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+			if(STATS_EFF) this->accesses+=qq*4;
+			if(STATS_EFF) this->accesses+=2;
 			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 	}

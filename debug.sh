@@ -59,12 +59,12 @@ QM=0
 #QD Dimension interval for testing
 QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
-IMP=0
+IMP=1
 #ITER Testing iterations
 ITER=1
 #Multiple Thread Count
 MQTHREADS=4
-#Gather object evaluation statistics
+#Gather execution statistics
 STATS_EFF=true
 #Choose workload for multi-query evaluation
 WORKLOAD=$((1024*128))
@@ -76,29 +76,29 @@ fi
 
 ######CHOOSE CPU ALGORITHM######
 #TA Benchmark
-TA_B=1
+TA_B=0
 #NRA Benchmark
-NRA_B=1
+NRA_B=0
 #BPA Benchmark
-BPA_B=1
+BPA_B=0
 #HL Index Benchmark
-HLi_B=1
+HLi_B=0
 #T2S Without Views
-T2S_B=1
+T2S_B=0
 #Onion Benchmark
 Onion_B=0
 #DL Benchmark
-DL_B=1
+DL_B=0
 #LARA Benchnmark
-LARA_B=1
+LARA_B=0
 #TPAc Benchmark
-TPAc_B=1
+TPAc_B=0
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
-VTA_B=0
+VTA_B=1
 #PTA Benchmark
-PTA_B=0
+PTA_B=1
 #SLA Benchmark
 SLA_B=0
 #####################################################################################	

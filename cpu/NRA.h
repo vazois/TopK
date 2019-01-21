@@ -80,15 +80,19 @@ void NRA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			Z id = lists[idx_a][i].id;
 			T aa = lists[idx_a][i].score;
 			T weight = weights[idx_a];
+			if(STATS_EFF) this->accesses+=6;
 
 			auto it = obj.find(id);
+			if(STATS_EFF) this->accesses+=2;
 			if(it == obj.end())//if object is not seen before
 			{
 				nra_pair<T> nrap(0,weight * aa,(1<<m));//upper bound = 0, initialize lower bound, set seen of attribute to 1
 				obj.emplace(id,nrap);//insert object to map
+				if(STATS_EFF) this->accesses+=2;
 			}else{//if object was seen
 				it->second.lb += weight * aa;// update lower bound
 				it->second.seen |= (1 << m);// set seen object for attribute.
+				if(STATS_EFF) this->accesses+=2;
 			}
 		}
 
@@ -96,6 +100,7 @@ void NRA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 		std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> _q;
 		for(auto it = obj.begin(); it!=obj.end(); ++it)//Update all upper bounds
 		{
+			if(STATS_EFF) this->accesses+=1;
 			nra_pair<T> *np = &(it->second);
 			T ub = np->lb;
 			for(uint8_t m = 0; m < qq; m++)
@@ -104,6 +109,7 @@ void NRA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 				{
 					uint8_t idx_a = attr[m];
 					ub += lists[idx_a][i].score * weights[idx_a];// add upper bound score //
+					if(STATS_EFF) this->accesses+=3;
 				}
 			}
 			np->ub = ub;// update upper bound
@@ -111,13 +117,16 @@ void NRA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 
 			if(_q.size() < k)//Update priority queue with lower bounds//
 			{
+				if(STATS_EFF) this->accesses+=2;
 				_q.push(tuple_<T,Z>(it->first,np->lb));
 			}else if(_q.top().score < np->lb){
 				_q.pop();
 				_q.push(tuple_<T,Z>(it->first,np->lb));
+				if(STATS_EFF) this->accesses+=3;
 			}
 		}
 		_q.swap(q);
+		if(STATS_EFF) this->accesses+=3;
 		if(q.size() == k && mx_ub<=q.top().score){
 			this->lvl = i;
 			break;

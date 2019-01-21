@@ -374,10 +374,13 @@ void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	for(uint64_t l = 0; l < this->layer_num; l++){
 		if ( l  > k ) break;
 		Z poffset = this->parts[l].offset;
+		if(STATS_EFF) this->accesses+=1;
 		for(uint64_t b = 0; b < this->parts[l].block_num; b++){
 			Z id = this->parts[l].offset + poffset;
 			T *tuples = this->parts[l].blocks[b].tuples;
+			if(STATS_EFF) this->accesses+=2;
 
+			if(STATS_EFF) this->accesses+=3;
 			for(uint64_t t = 0; t < this->parts[l].blocks[b].tuple_num; t+=16){
 				id+=t;
 				__m256 score00 = _mm256_setzero_ps();
@@ -393,22 +396,29 @@ void SLA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 					score00 = _mm256_add_ps(score00,load00);
 					score01 = _mm256_add_ps(score01,load01);
 				}
+				if(STATS_EFF) this->accesses+=qq*19;
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
+				if(STATS_EFF) this->accesses+=16;
 
 				for(uint8_t l = 0; l < 16; l++){
 					if(q.size() < k){
 						q.push(tuple_<T,Z>(id,score[l]));
+						if(STATS_EFF) this->accesses+=1;
 					}else if(q.top().score < score[l]){
 						q.pop(); q.push(tuple_<T,Z>(id,score[l]));
+						if(STATS_EFF) this->accesses+=3;
 					}
+					if(STATS_EFF) this->accesses+=1;
 				}
 				if(STATS_EFF) this->tuple_count+=16;
 			}
 
 			T threshold = 0;
 			T *tarray = this->parts[l].blocks[b].tarray;
+			if(STATS_EFF) this->accesses+=2;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+			if(STATS_EFF) this->accesses+=qq*2;
 			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 	}

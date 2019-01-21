@@ -243,7 +243,7 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	if(this->res.size() > 0) this->res.clear();
 
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
-	float score[16] __attribute__((aligned(32)));
+	float score[32] __attribute__((aligned(32)));
 	__builtin_prefetch(score,1,3);
 	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 //	__m256 _weight00,_weight01,_weight02,_weight03,_weight04,_weight05,_weight06,_weight07;
@@ -258,71 +258,59 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 			Z tuple_num = parts[i].blocks[b].tuple_num;
 			T *tuples = parts[i].blocks[b].tuples;
 			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
-			for(uint64_t t = 0; t < tuple_num; t+=16){
+			if(STATS_EFF) this->accesses+=3;
+			for(uint64_t t = 0; t < tuple_num; t+=32){
 				id+=t;
 				__m256 score00 = _mm256_setzero_ps();
 				__m256 score01 = _mm256_setzero_ps();
-//				__m256 score02 = _mm256_setzero_ps();
-//				__m256 score03 = _mm256_setzero_ps();
+				__m256 score02 = _mm256_setzero_ps();
+				__m256 score03 = _mm256_setzero_ps();
+//				__m256 score04 = _mm256_setzero_ps();
+//				__m256 score05 = _mm256_setzero_ps();
+//				__m256 score06 = _mm256_setzero_ps();
+//				__m256 score07 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){
 					T weight = weights[attr[m]];
 					uint64_t offset = attr[m]*VBLOCK_SIZE + t;
 					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
-					__m256 load00 = _mm256_load_ps(&tuples[offset]);
-					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
-//					__m256 load02 = _mm256_load_ps(&tuples[offset+16]);
-//					__m256 load03 = _mm256_load_ps(&tuples[offset+24]);
-//					__m256 load00 = reinterpret_cast<const __m256>(_mm256_stream_load_si256((__m256i *) &tuples[offset]));
-//					__m256 load01 = reinterpret_cast<const __m256>(_mm256_stream_load_si256((__m256i *) &tuples[offset+8]));
+//					__m256 load00 = _mm256_load_ps(&tuples[offset]);
+//					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
+//
+//					load00 = _mm256_mul_ps(load00,_weight);
+//					load01 = _mm256_mul_ps(load01,_weight);
+//					score00 = _mm256_add_ps(score00,load00);
+//					score01 = _mm256_add_ps(score01,load01);
 
-					load00 = _mm256_mul_ps(load00,_weight);
-					load01 = _mm256_mul_ps(load01,_weight);
-					score00 = _mm256_add_ps(score00,load00);
-					score01 = _mm256_add_ps(score01,load01);
-//					score00 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_load_ps(&tuples[offset]),_weight));
-//					score01 = _mm256_add_ps(score01,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+8]),_weight));
+					score00 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_load_ps(&tuples[offset]),_weight));
+					score01 = _mm256_add_ps(score01,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+8]),_weight));
+					score02 = _mm256_add_ps(score02,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+16]),_weight));
+					score03 = _mm256_add_ps(score03,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+24]),_weight));
+//					score04 = _mm256_add_ps(score04,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+32]),_weight));
+//					score05 = _mm256_add_ps(score05,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+40]),_weight));
+//					score06 = _mm256_add_ps(score06,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+48]),_weight));
+//					score07 = _mm256_add_ps(score07,_mm256_mul_ps(_mm256_load_ps(&tuples[offset+56]),_weight));
 				}
-
+				if(STATS_EFF) this->accesses+=qq*35;//32 + 3
 				_mm256_store_ps(&score[0],score00);
 				_mm256_store_ps(&score[8],score01);
-				//_mm256_stream_ps(&score[0],score00);
-				//_mm256_stream_ps(&score[8],score00);
-				if(q.size() < k){//insert if empty space in queue
-					q.push(tuple_<T,Z>(id,score[0]));
-					q.push(tuple_<T,Z>(id+1,score[1]));
-					q.push(tuple_<T,Z>(id+2,score[2]));
-					q.push(tuple_<T,Z>(id+3,score[3]));
-					q.push(tuple_<T,Z>(id+4,score[4]));
-					q.push(tuple_<T,Z>(id+5,score[5]));
-					q.push(tuple_<T,Z>(id+6,score[6]));
-					q.push(tuple_<T,Z>(id+7,score[7]));
-					q.push(tuple_<T,Z>(id+8,score[8]));
-					q.push(tuple_<T,Z>(id+9,score[9]));
-					q.push(tuple_<T,Z>(id+10,score[10]));
-					q.push(tuple_<T,Z>(id+11,score[11]));
-					q.push(tuple_<T,Z>(id+12,score[12]));
-					q.push(tuple_<T,Z>(id+13,score[13]));
-					q.push(tuple_<T,Z>(id+14,score[14]));
-					q.push(tuple_<T,Z>(id+15,score[15]));
-				}else{//delete smallest element if current score is bigger
-					if(q.top().score < score[0]){ q.pop(); q.push(tuple_<T,Z>(id,score[0])); }
-					if(q.top().score < score[1]){ q.pop(); q.push(tuple_<T,Z>(id+1,score[1])); }
-					if(q.top().score < score[2]){ q.pop(); q.push(tuple_<T,Z>(id+2,score[2])); }
-					if(q.top().score < score[3]){ q.pop(); q.push(tuple_<T,Z>(id+3,score[3])); }
-					if(q.top().score < score[4]){ q.pop(); q.push(tuple_<T,Z>(id+4,score[4])); }
-					if(q.top().score < score[5]){ q.pop(); q.push(tuple_<T,Z>(id+5,score[5])); }
-					if(q.top().score < score[6]){ q.pop(); q.push(tuple_<T,Z>(id+6,score[6])); }
-					if(q.top().score < score[7]){ q.pop(); q.push(tuple_<T,Z>(id+7,score[7])); }
-					if(q.top().score < score[8]){ q.pop(); q.push(tuple_<T,Z>(id+8,score[8])); }
-					if(q.top().score < score[9]){ q.pop(); q.push(tuple_<T,Z>(id+9,score[9])); }
-					if(q.top().score < score[10]){ q.pop(); q.push(tuple_<T,Z>(id+10,score[10])); }
-					if(q.top().score < score[11]){ q.pop(); q.push(tuple_<T,Z>(id+11,score[11])); }
-					if(q.top().score < score[12]){ q.pop(); q.push(tuple_<T,Z>(id+12,score[12])); }
-					if(q.top().score < score[13]){ q.pop(); q.push(tuple_<T,Z>(id+13,score[13])); }
-					if(q.top().score < score[14]){ q.pop(); q.push(tuple_<T,Z>(id+14,score[14])); }
-					if(q.top().score < score[15]){ q.pop(); q.push(tuple_<T,Z>(id+15,score[15])); }
+				_mm256_store_ps(&score[16],score02);
+				_mm256_store_ps(&score[24],score03);
+//				_mm256_store_ps(&score[32],score04);
+//				_mm256_store_ps(&score[40],score05);
+//				_mm256_store_ps(&score[48],score06);
+//				_mm256_store_ps(&score[56],score07);
+				if(STATS_EFF) this->accesses+=32;
+				for(uint8_t l = 0; l < 32; l++){
+					if(q.size() < k){
+						q.push(tuple_<T,Z>(id,score[l]));
+						if(STATS_EFF) this->accesses+=1;
+					}else if(q.top().score < score[l]){
+						q.pop(); q.push(tuple_<T,Z>(id,score[l]));
+						if(STATS_EFF) this->accesses+=2;
+					}
+					if(STATS_EFF) this->accesses+=1;
 				}
-				if(STATS_EFF) this->tuple_count+=16;
+				if(STATS_EFF) this->tuple_count+=32;
 			}
 
 			T threshold = 0;

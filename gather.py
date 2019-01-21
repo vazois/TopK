@@ -64,7 +64,21 @@ if __name__ == "__main__":
 #             print v
     
     algo = ""
-    print "threshold tt_init tt_processing accesses tuple_count candidate_count"
+    if len(mm["threshold"]) > 0:
+        print "threshold",
+    if len(mm["tt_init"]) > 0:
+        print "tt_init",
+    if len(mm["tt_procesing"]) > 0:
+        print "tt_procesing",
+    if len(mm["accesses"]) > 0:
+        print "accesses",
+    if len(mm["tuple_count"]):
+        print "tuple_count",
+    if len(mm["candidate_count"]) > 0:
+        print "candidate_count",
+    print "" 
+
+#    print "threshold tt_init tt_processing accesses tuple_count candidate_count"
     for i in range(len(mm["tt_init"])):
         if(mm["algo"][i] != algo):
             algo = mm["algo"][i]
@@ -75,7 +89,20 @@ if __name__ == "__main__":
         #print mm["tuples_per_second"][i]
         #print "{0:0.4f}".format(mm["threshold"][i]),mm["stop_level"][i],"{0:0.4f}".format(mm["tt_init"][i]),"{0:0.4f}".format(mm["tt_procesing"][i]),mm["tuple_count"][i],mm["candidate_count"][i]
         #print "{0:0.4f}".format(mm["threshold"][i]),"{0:0.4f}".format(mm["tt_init"][i]),"{0:0.4f}".format(mm["tt_procesing"][i]),mm["tuple_count"][i],mm["candidate_count"][i]
-        print "{0:0.4f}".format(mm["threshold"][i]),"{0:0.4f}".format(mm["tt_init"][i]),"{0:0.4f}".format(mm["tt_procesing"][i]),mm["accesses"][i],mm["tuple_count"][i],mm["candidate_count"][i]
+        #print "{0:0.4f}".format(mm["threshold"][i]),"{0:0.4f}".format(mm["tt_init"][i]),"{0:0.4f}".format(mm["tt_procesing"][i]),mm["accesses"][i],mm["tuple_count"][i],mm["candidate_count"][i]
+        if i < len(mm["threshold"]):
+            print "{0:0.4f}".format(mm["threshold"][i]),
+        if i < len(mm["tt_init"]):
+            print "{0:0.4f}".format(mm["tt_init"][i]),
+        if i < len(mm["tt_procesing"]):
+            print "{0:0.4f}".format(mm["tt_procesing"][i]),
+        if i < len(mm["accesses"]):
+            print mm["accesses"][i],
+        if i < len(mm["tuple_count"]):
+            print mm["tuple_count"][i],
+        if i < len(mm["candidate_count"]):
+            print mm["candidate_count"][i],        
+        print ""
 
     
     
