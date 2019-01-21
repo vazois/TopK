@@ -58,6 +58,7 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 		uint64_t offset5 = attr[0] * this->n + i + 5;
 		uint64_t offset6 = attr[0] * this->n + i + 6;
 		uint64_t offset7 = attr[0] * this->n + i + 7;
+		if(STATS_EFF) this->accesses+=8;
 
 		for(uint8_t m = 0; m < qq; m++){
 			T weight = weights[attr[m]];
@@ -79,7 +80,8 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			offset6+=this->n;
 			offset7+=this->n;
 		}
-
+		if(STATS_EFF) this->accesses+=qq*2;
+		if(STATS_EFF) this->accesses+=1;
 		if(q.size() < k){
 			q.push(tuple_<T,Z>(i,score00));
 			q.push(tuple_<T,Z>(i+1,score01));
@@ -89,6 +91,7 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			q.push(tuple_<T,Z>(i+5,score05));
 			q.push(tuple_<T,Z>(i+6,score06));
 			q.push(tuple_<T,Z>(i+7,score07));
+			if(STATS_EFF) this->accesses+=8;
 		}else{
 			if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(i,score00)); }
 			if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(i+1,score01)); }
@@ -98,10 +101,12 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			if(q.top().score < score05){ q.pop(); q.push(tuple_<T,Z>(i+5,score05)); }
 			if(q.top().score < score06){ q.pop(); q.push(tuple_<T,Z>(i+6,score06)); }
 			if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(i+7,score07)); }
+			if(STATS_EFF) this->accesses+=8*3;
 		}
 	}
 	this->tt_processing += this->t.lap();
 	if(STATS_EFF) this->tuple_count=this->n;
+	if(STATS_EFF) this->candidate_count=k;
 
 	while(q.size() > k){ q.pop(); }
 	T threshold = q.top().score;
@@ -194,6 +199,7 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	}
 	this->tt_processing += this->t.lap();
 	if(STATS_EFF) this->tuple_count=this->n;
+	if(STATS_EFF) this->candidate_count=k;
 
 	while(q.size() > k){ q.pop(); }
 	T threshold = q.top().score;
@@ -345,6 +351,7 @@ void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr
 		}
 	}
 	this->tt_processing += this->t.lap();
+	if(STATS_EFF) this->candidate_count=k*THREADS;
 
 	while(_q.size() > k){ _q.pop(); }
 	T threshold = _q.top().score;

@@ -296,9 +296,11 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 		if(this->parts[p].size == 0) continue;
 		Z poffset = this->parts[p].offset;
 		//uint32_t count = 0;
+		if(STATS_EFF) this->accesses+=1;
 		for(uint64_t b = 0; b < this->parts[p].block_num; b++){
 			Z id = this->parts[p].offset + poffset;
 			T *tuples = this->parts[p].blocks[b].tuples;
+			if(STATS_EFF) this->accesses+=2;
 			//std::cout << b <<"< tuple_num: " << this->parts[p].blocks[b].tuple_num << std::endl;
 			for(uint64_t t = 0; t < this->parts[p].blocks[b].tuple_num; t+=8){
 				id+=t;
@@ -306,6 +308,7 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 				T score02 = 0; T score03 = 0;
 				T score04 = 0; T score05 = 0;
 				T score06 = 0; T score07 = 0;
+				if(STATS_EFF) this->accesses+=8;
 				for(uint8_t m = 0; m < qq; m++){
 					T weight = weights[attr[m]];
 					uint32_t offset = attr[m]*PBLOCK_SIZE + t;
@@ -318,6 +321,8 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 					score06+=tuples[offset+6]*weight;
 					score07+=tuples[offset+7]*weight;
 				}
+				if(STATS_EFF) this->accesses+=qq*12;
+				if(STATS_EFF) this->accesses+=1;
 				if(q.size() < k){
 					q.push(tuple_<T,Z>(id,score00));
 					q.push(tuple_<T,Z>(id+1,score01));
@@ -327,6 +332,7 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 					q.push(tuple_<T,Z>(id+5,score05));
 					q.push(tuple_<T,Z>(id+6,score06));
 					q.push(tuple_<T,Z>(id+7,score07));
+					if(STATS_EFF) this->accesses+=8;
 				}else{
 					if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(id,score00)); }
 					if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(id+1,score01)); }
@@ -336,14 +342,18 @@ void PTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 					if(q.top().score < score05){ q.pop(); q.push(tuple_<T,Z>(id+5,score05)); }
 					if(q.top().score < score06){ q.pop(); q.push(tuple_<T,Z>(id+6,score06)); }
 					if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(id+7,score07)); }
+					if(STATS_EFF) this->accesses+=8*2;
 				}
 				if(STATS_EFF) this->tuple_count+=8;
 			}
 
 			T threshold = 0;
 			T *tarray = this->parts[p].blocks[b].tarray;
+			if(STATS_EFF) this->accesses+=1;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			//if(q.size() >= k && q.top().score >= threshold){ break; }
+			if(STATS_EFF) this->accesses+=1;
+			if(q.size() >= k && q.top().score >= threshold){ break; }
+			if(STATS_EFF) this->accesses+=2;
 		}
 		//std::cout << "p: " <<p << " = " << count << std::endl;
 	}

@@ -7,14 +7,14 @@ START_N=$((1*1024*1024))
 END_N=$((1*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=16
-KKE=16
+KKS=128
+KKE=128
 #LD 0:load from file(debugging), 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
 LD=0
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
-#randdataset3: higher precission , randdataset: lower precission
+#randdaaset3: higher precission , randdataset: lower precission
 script=randdataset3
 
 ######################
@@ -59,7 +59,7 @@ QM=0
 #QD Dimension interval for testing
 QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
-IMP=1
+IMP=0
 #ITER Testing iterations
 ITER=1
 #Multiple Thread Count
@@ -76,23 +76,23 @@ fi
 
 ######CHOOSE CPU ALGORITHM######
 #TA Benchmark
-TA_B=0
+TA_B=1
 #NRA Benchmark
-NRA_B=0
+NRA_B=1
 #BPA Benchmark
-BPA_B=0
+BPA_B=1
 #HL Index Benchmark
-HLi_B=0
+HLi_B=1
 #T2S Without Views
-T2S_B=0
+T2S_B=1
 #Onion Benchmark
 Onion_B=0
 #DL Benchmark
-DL_B=0
+DL_B=1
 #LARA Benchnmark
-LARA_B=0
+LARA_B=1
 #TPAc Benchmark
-TPAc_B=0
+TPAc_B=1
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark

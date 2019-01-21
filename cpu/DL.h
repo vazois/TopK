@@ -279,17 +279,20 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			uint8_t aa = attr[mm];
 			score += weights[aa] * this->layer_blocks[0].data[j*this->d + aa];
 		}
+		if(STATS_EFF) this->accesses+=qq*4;
 		if(STATS_EFF) this->tuple_count++;
 		qpair<T,Z> p;
 		p.id = j;
 		p.score = score;
 		if(cl.size() < k)
 		{
+			if(STATS_EFF) this->accesses+=1;
 			cl.push(p);
 			this->candidate_count+=1;
 		}else if(cl.top().score<p.score){
 			cl.pop();
 			cl.push(p);
+			if(STATS_EFF) this->accesses+=1;
 			this->candidate_count+=1;
 		}
 
@@ -306,53 +309,69 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 		cl.pop_back();
 		q.push(p);// Get first object from cl queue
 
+		if(STATS_EFF) this->accesses+=4;
 		//std::cout << p.id << "," << p.score << std::endl;
 		rs.insert(p.id);// object from cl now in rs
+		if(STATS_EFF) this->accesses+=1;
 		//for(auto it=rs.begin(); it!= rs.end(); ++it)// For every object in rs
 		{
 			//auto plm = layer_map.find(*it);//find which layer i belong to//
 			auto plm = layer_map.find(p.id);//find which layer i belong to//
+			if(STATS_EFF) this->accesses+=1;
 			if(plm == layer_map.end()) continue;
 			auto clist = this->fwd[plm->second].find(plm->first);
+			if(STATS_EFF) this->accesses+=4;
 			if(clist == this->fwd[plm->second].end()) continue;
+			if(STATS_EFF) this->accesses+=2;
 			if(STATS_EFF) this->candidate_count+=clist->second.size();
+			if(STATS_EFF) this->accesses+=2;
 			for(auto child = clist->second.begin(); child!= clist->second.end(); ++child)
 			{
 				Z child_id = *child;
 				this->candidate_count+=1;
+				if(STATS_EFF) this->accesses+=2;
 				if(rs.find(child_id) != rs.end()) continue;
 				auto clm = layer_map.find(child_id);
+				if(STATS_EFF) this->accesses+=1;
 				if(clm == layer_map.end()) continue;
+				if(STATS_EFF) this->accesses+=4;
 				auto plist = this->bwd[clm->second].find(clm->first);
 				if(plist == this->bwd[clm->second].end()) continue;
 				if(plist->second.size() > k) break;
 
 				bool parents  = true;
+				if(STATS_EFF) this->accesses+=2;
 				for(auto parent = plist->second.begin(); parent != plist->second.end(); ++parent)
 				{
 					parents &= (rs.find(*parent) != rs.end());
+					if(STATS_EFF) this->accesses+=1;
 				}
 
 				if(parents)
 				{
 					Z offset = child_id - this->layer_blocks[clm->second].offset;//local offset in DL_BLOCK
 					T score = 0;
+					if(STATS_EFF) this->accesses+=2;
 					for(uint8_t mm = 0; mm < qq; mm++){
 						uint8_t aa = attr[mm];
 						score += weights[aa] * this->layer_blocks[clm->second].data[offset*this->d + aa];
 					}
+					if(STATS_EFF) this->accesses+=qq*5;
 
 					if(STATS_EFF) this->tuple_count++;
 
 					qpair<T,Z> pp;
 					pp.id = child_id;
 					pp.score = score;
+					if(STATS_EFF) this->accesses+=1;
 					if(cl.size() < k)
 					{
 						cl.push(pp);
+						if(STATS_EFF) this->accesses+=1;
 					}else if(cl.top().score<pp.score){
 						cl.pop();
 						cl.push(pp);
+						if(STATS_EFF) this->accesses+=2;
 					}
 				}
 			}

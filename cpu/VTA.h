@@ -170,6 +170,7 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 			Z tuple_num = parts[i].blocks[b].tuple_num;
 			T *tuples = parts[i].blocks[b].tuples;
 			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
+			if(STATS_EFF) this->accesses+=3;
 			for(uint64_t t = 0; t < tuple_num; t+=8){
 				id+=t;
 				T score00 = 0; T score01 = 0; T score02 = 0; T score03 = 0; T score04 = 0; T score05 = 0; T score06 = 0; T score07 = 0;
@@ -185,6 +186,9 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 					score06+=tuples[offset+6]*weight;
 					score07+=tuples[offset+7]*weight;
 				}
+				if(STATS_EFF) this->accesses+=qq*11;
+
+				if(STATS_EFF) this->accesses+=1;
 				if(q.size() < k){
 					q.push(tuple_<T,Z>(id,score00));
 					q.push(tuple_<T,Z>(id+1,score01));
@@ -194,7 +198,9 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 					q.push(tuple_<T,Z>(id+5,score05));
 					q.push(tuple_<T,Z>(id+6,score06));
 					q.push(tuple_<T,Z>(id+7,score07));
+					if(STATS_EFF) this->accesses+=7;
 				}else{
+					if(STATS_EFF) this->accesses+=14;
 					if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(id,score00)); }
 					if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(id+1,score01)); }
 					if(q.top().score < score02){ q.pop(); q.push(tuple_<T,Z>(id+2,score02)); }
@@ -208,11 +214,15 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 			}
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
+			if(STATS_EFF) this->accesses+=1;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
+			if(STATS_EFF) this->accesses+=qq*2;
 			if(q.size() >= k && q.top().score >= threshold){ break; }
+			if(STATS_EFF) this->accesses+=2;
 		}
 	}
 	this->tt_processing += this->t.lap();
+	if(STATS_EFF) this->candidate_count=k;
 	while(q.size() > k){ q.pop(); }
 	T threshold = q.top().score;
 	while(!q.empty()){
@@ -318,7 +328,7 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			if(q.size() >= k && q.top().score >= threshold){ i = VPARTITIONS; break; }
+			if(q.size() >= k && q.top().score >= threshold){ break; }
 		}
 	}
 	this->tt_processing += this->t.lap();

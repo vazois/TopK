@@ -118,7 +118,10 @@ void NRA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			}
 		}
 		_q.swap(q);
-		if(q.size() == k && mx_ub<=q.top().score){ break; }// break if maximum upper bound smaller or equal to minimum lower bound
+		if(q.size() == k && mx_ub<=q.top().score){
+			this->lvl = i;
+			break;
+		}// break if maximum upper bound smaller or equal to minimum lower bound
 	}
 	this->tt_processing += this->t.lap();
 	if(STATS_EFF) this->tuple_count=obj.size();

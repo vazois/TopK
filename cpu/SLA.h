@@ -293,10 +293,11 @@ void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 	for(uint64_t l = 0; l < this->layer_num; l++){
 		if ( l  > k ) break;
 		Z poffset = this->parts[l].offset;
+		if(STATS_EFF) this->accesses+=1;
 		for(uint64_t b = 0; b < this->parts[l].block_num; b++){
 			Z id = this->parts[l].offset + poffset;
 			T *tuples = this->parts[l].blocks[b].tuples;
-
+			if(STATS_EFF) this->accesses+=2;
 			for(uint64_t t = 0; t < this->parts[l].blocks[b].tuple_num; t+=8){
 				id+=t;
 				T score00 = 0; T score01 = 0;
@@ -315,6 +316,8 @@ void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 					score06+=tuples[offset+6]*weight;
 					score07+=tuples[offset+7]*weight;
 				}
+				if(STATS_EFF) this->accesses+=qq*11;
+
 				if(q.size() < k){
 					q.push(tuple_<T,Z>(id,score00));
 					q.push(tuple_<T,Z>(id+1,score01));
@@ -324,6 +327,7 @@ void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 					q.push(tuple_<T,Z>(id+5,score05));
 					q.push(tuple_<T,Z>(id+6,score06));
 					q.push(tuple_<T,Z>(id+7,score07));
+					if(STATS_EFF) this->accesses+=8*2;
 				}else{
 					if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(id,score00)); }
 					if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(id+1,score01)); }
@@ -333,14 +337,18 @@ void SLA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 					if(q.top().score < score05){ q.pop(); q.push(tuple_<T,Z>(id+5,score05)); }
 					if(q.top().score < score06){ q.pop(); q.push(tuple_<T,Z>(id+6,score06)); }
 					if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(id+7,score07)); }
+					if(STATS_EFF) this->accesses+=8*3;
 				}
 				if(STATS_EFF) this->tuple_count+=8;
 			}
 
 			T threshold = 0;
 			T *tarray = this->parts[l].blocks[b].tarray;
+			if(STATS_EFF) this->accesses+=1;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			if(q.size() >= k && q.top().score >= threshold){ break; }
+			if(STATS_EFF) this->accesses+=qq*2;
+			if(q.size() >= k && q.top().score >= threshold){ l = this->layer_num; break; }
+			if(STATS_EFF) this->accesses+=2;
 		}
 	}
 	this->tt_processing += this->t.lap();

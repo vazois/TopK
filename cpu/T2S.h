@@ -160,6 +160,8 @@ void T2S<T,Z>::findTopK(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 			Z tuple_num = parts[i].blocks[b].tuple_num;
 			T *tuples = parts[i].blocks[b].tuples;
 			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
+			if(STATS_EFF) this->accesses+=7;
+
 			for(uint64_t t = 0; t < tuple_num; t++){
 				id+=t;
 				T score00 = 0;
@@ -169,9 +171,12 @@ void T2S<T,Z>::findTopK(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 					uint32_t offset = t*this->d + attr[m];
 					score00+=tuples[offset]*weight;
 				}
+				if(STATS_EFF) this->accesses+=qq*3;
 				if(q.size() < k){
+					if(STATS_EFF) this->accesses+=1;
 					q.push(tuple_<T,Z>(id,score00));
 				}else if(q.top().score < score00){
+					if(STATS_EFF) this->accesses+=2;
 					q.pop(); q.push(tuple_<T,Z>(id,score00));
 				}
 				if(STATS_EFF) this->tuple_count++;
@@ -179,9 +184,11 @@ void T2S<T,Z>::findTopK(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 			T threshold = 0;
 			T *tarray = parts[i].blocks[b].tarray;
 			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			//if(q.size() >= k && q.top().score >= threshold){ i = TPARTITIONS;break; }
+			if(STATS_EFF) this->accesses+=qq*2;
+			if(q.size() >= k && q.top().score >= threshold){ i = TPARTITIONS; break; }
 		}
 	}
+	if(STATS_EFF) this->candidate_count=k;
 
 	this->tt_processing += this->t.lap();
 	while(q.size() > k){ q.pop(); }

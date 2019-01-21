@@ -104,13 +104,15 @@ void bench_ta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke
 	uint8_t q = 2;
 	for(uint64_t k = ks; k <= ke; k*=2){
 		for(uint8_t i = q; i <= f.items();i+=QD){
+		//for(uint8_t i = q; i <= q;i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
-			ta.findTopK(k,i,weights,attr[i-q]);//2 3 4 5 6 7 8 // 0 1 2 3 4 5 6 //
+			ta.set_qq(i);
+			ta.findTopK(k,i,weights,attr[i-2]);//2 3 4 5 6 7 8 // 0 1 2 3 4 5 6 //
 			ta.reset_clocks();
 			//Benchmark
 			for(uint8_t m = 0; m < ITER;m++){
-				ta.findTopK(k,i,weights,attr[i-q]);
+				ta.findTopK(k,i,weights,attr[i-2]);
 			}
 			ta.benchmark();
 		}
@@ -137,11 +139,12 @@ void bench_lara(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
-			lara.findTopK(k,i,weights,attr[i-q]);
+			lara.set_qq(i);
+			lara.findTopK(k,i,weights,attr[i-2]);
 			lara.reset_clocks();
 			//Benchmark
 			for(uint8_t m = 0; m < ITER;m++){
-				lara.findTopK(k,i,weights,attr[i-q]);
+				lara.findTopK(k,i,weights,attr[i-2]);
 			}
 			lara.benchmark();
 		}
@@ -169,6 +172,7 @@ void bench_onion(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
+			onion.set_qq(i);
 			onion.findTopK(k,i,weights,attr[i-q]);
 			onion.reset_clocks();
 			//Benchmark
@@ -201,11 +205,12 @@ void bench_hli(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
-			hli.findTopK(k,i,weights,attr[i-q]);
+			hli.set_qq(i);
+			hli.findTopK(k,i,weights,attr[i-2]);
 			hli.reset_clocks();
 			//Benchmark
 			for(uint8_t m = 0; m < ITER;m++){
-				hli.findTopK(k,i,weights,attr[i-q]);
+				hli.findTopK(k,i,weights,attr[i-2]);
 			}
 			hli.benchmark();
 		}
@@ -233,11 +238,12 @@ void bench_t2s(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
-			t2s.findTopK(k,i,weights,attr[i-q]);
+			t2s.set_qq(i);
+			t2s.findTopK(k,i,weights,attr[i-2]);
 			t2s.reset_clocks();
 			//Benchmark
 			for(uint8_t m = 0; m < ITER;m++){
-				t2s.findTopK(k,i,weights,attr[i-q]);
+				t2s.findTopK(k,i,weights,attr[i-2]);
 			}
 			t2s.benchmark();
 		}
@@ -264,11 +270,12 @@ void bench_nra(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
-			nra.findTopK(k,i,weights,attr[i-q]);
+			nra.set_qq(i);
+			nra.findTopK(k,i,weights,attr[i-2]);
 			nra.reset_clocks();
 			//Benchmark
 			for(uint8_t m = 0; m < ITER;m++){
-				nra.findTopK(k,i,weights,attr[i-q]);
+				nra.findTopK(k,i,weights,attr[i-2]);
 			}
 			nra.benchmark();
 		}
@@ -293,8 +300,10 @@ void bench_bpa(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 	uint8_t q = 2;
 	for(uint64_t k = ks; k <= ke; k*=2){
 		for(uint8_t i = q; i <= f.items();i+=QD){
+		//for(uint8_t i = q; i <= q;i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
+			bpa.set_qq(i);
 			bpa.findTopK(k,i,weights,attr[i-q]);
 			bpa.reset_clocks();
 			//Benchmark
@@ -326,6 +335,7 @@ void bench_dl(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t ke
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
+			dl.set_qq(i);
 			dl.findTopK(k,i,weights,attr[i-q]);
 			dl.reset_clocks();
 			//Benchmark
@@ -357,6 +367,7 @@ void bench_tpar(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
+			tpar.set_qq(i);
 			if (IMP == 0){
 				tpar.findTopKscalar(k,i,weights,attr[i-q]);
 			}else if(IMP == 1){
@@ -402,6 +413,7 @@ void bench_tpac(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 			for(uint8_t i = q; i <= f.items();i+=QD){
 				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 				//Warm up
+				tpac.set_qq(i);
 				if (IMP == 0){
 					tpac.findTopKscalar(k,i,weights,attr[i-q]);
 				}else if(IMP == 1){
@@ -487,22 +499,23 @@ void bench_vta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 			for(uint8_t i = q; i <= f.items();i+=QD){
 				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 				//Warm up
+				vta.set_qq(i);
 				if (IMP == 0){
-					vta.findTopKscalar(k,i,weights,attr[i-q]);
+					vta.findTopKscalar(k,i,weights,attr[i-2]);
 				}else if(IMP == 1){
-					vta.findTopKsimd(k,i,weights, attr[i-q]);
+					vta.findTopKsimd(k,i,weights, attr[i-2]);
 				}else if(IMP == 2){
-					vta.findTopKthreads2(k,i,weights,attr[i-q]);
+					vta.findTopKthreads2(k,i,weights,attr[i-2]);
 				}
 				vta.reset_clocks();
 				//Benchmark
 				for(uint8_t m = 0; m < ITER;m++){
 					if (IMP == 0){
-						vta.findTopKscalar(k,i,weights,attr[i-q]);
+						vta.findTopKscalar(k,i,weights,attr[i-2]);
 					}else if(IMP == 1){
-						vta.findTopKsimd(k,i,weights,attr[i-q]);
+						vta.findTopKsimd(k,i,weights,attr[i-2]);
 					}else if(IMP == 2){
-						vta.findTopKthreads2(k,i,weights,attr[i-q]);
+						vta.findTopKthreads2(k,i,weights,attr[i-2]);
 					}
 				}
 				vta.benchmark();
@@ -572,22 +585,23 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 			for(uint8_t i = q; i <= f.items();i+=QD){
 				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 				//Warm up
+				pta.set_qq(i);
 				if (IMP == 0){
-					pta.findTopKscalar(k,i,weights,attr[i-q]);
+					pta.findTopKscalar(k,i,weights,attr[i-2]);
 				}else if(IMP == 1){
-					pta.findTopKsimd(k,i,weights,attr[i-q]);
+					pta.findTopKsimd(k,i,weights,attr[i-2]);
 				}else if(IMP == 2){
-					pta.findTopKthreads2(k,i,weights,attr[i-q]);
+					pta.findTopKthreads2(k,i,weights,attr[i-2]);
 				}
 				pta.reset_clocks();
 				//Benchmark
 				for(uint8_t m = 0; m < ITER;m++){
 					if (IMP == 0){
-						pta.findTopKscalar(k,i,weights,attr[i-q]);
+						pta.findTopKscalar(k,i,weights,attr[i-2]);
 					}else if(IMP == 1){
-						pta.findTopKsimd(k,i,weights,attr[i-q]);
+						pta.findTopKsimd(k,i,weights,attr[i-2]);
 					}else if(IMP == 2){
-						pta.findTopKthreads2(k,i,weights,attr[i-q]);
+						pta.findTopKthreads2(k,i,weights,attr[i-2]);
 					}
 				}
 				pta.benchmark();
@@ -653,22 +667,23 @@ void bench_sla(std::string fname,uint64_t n, uint64_t d, uint64_t ks,uint64_t ke
 		for(uint8_t i = q; i <= f.items();i+=QD){
 			std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 			//Warm up
+			sla.set_qq(i);
 			if (IMP == 0){
-				sla.findTopKscalar(k,i,weights,attr[i-q]);
+				sla.findTopKscalar(k,i,weights,attr[i-2]);
 			}else if(IMP == 1){
-				sla.findTopKsimd(k,i,weights,attr[i-q]);
+				sla.findTopKsimd(k,i,weights,attr[i-2]);
 			}else if(IMP == 2){
-				sla.findTopKthreads2(k,i,weights,attr[i-q]);
+				sla.findTopKthreads2(k,i,weights,attr[i-2]);
 			}
 			sla.reset_clocks();
 			//Benchmark
 			for(uint8_t m = 0; m < ITER;m++){
 				if (IMP == 0){
-					sla.findTopKscalar(k,i,weights,attr[i-q]);
+					sla.findTopKscalar(k,i,weights,attr[i-2]);
 				}else if(IMP == 1){
-					sla.findTopKsimd(k,i,weights,attr[i-q]);
+					sla.findTopKsimd(k,i,weights,attr[i-2]);
 				}else if(IMP == 2){
-					sla.findTopKthreads2(k,i,weights,attr[i-q]);
+					sla.findTopKthreads2(k,i,weights,attr[i-2]);
 				}
 			}
 			sla.benchmark();

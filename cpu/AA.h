@@ -184,6 +184,8 @@ class AA{
 
 		void set_iter(uint32_t iter){this->iter = iter;}
 
+		void set_qq(uint8_t qq){this->qq=qq;}
+		void set_stop_level(uint64_t lvl){this->lvl = lvl;}
 		void reset_clocks(){
 			this->tt_processing = 0;
 			this->tt_ranking = 0;
@@ -196,6 +198,9 @@ class AA{
 		T *cdata;
 		uint64_t n;
 		uint64_t d;
+		uint8_t qq;
+		uint64_t lvl;
+		uint64_t accesses;
 
 		bool initp;// Parallel Initialize
 		bool topkp;// Parallel TopK Calculation
@@ -244,6 +249,7 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->ax_bytes=0;
 	for(int i = 0; i < MQTHREADS; i++) this->tt_array[i] = 0;
 	this->queries_per_second = 0;
+	this->accesses = 0;
 }
 
 template<class T,class Z>
@@ -299,6 +305,7 @@ void AA<T,Z>::benchmark(){
 	if(this->topkp) exec_policy = "parallel";
 	std::cout << std::fixed << std::setprecision(8);
 	std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
+	std::cout << "threshold: " << this->threshold << std::endl;
 	std::cout << "tt_init: " << this->tt_init << std::endl;
 	if(IMP < 3){
 		std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
@@ -316,8 +323,11 @@ void AA<T,Z>::benchmark(){
 
 	if(STATS_EFF){
 		//std::cout << "pred_count: " << this->pred_count << std::endl;
+		std::cout << "accesses: " << this->accesses << std::endl;
+		std::cout << "stop_level: " << this->lvl << std::endl;
 		std::cout << "tuple_count: " << this->tuple_count << std::endl;
 		std::cout << "candidate_count: " << this->candidate_count << std::endl;
+		std::cout << "bandwidth: " << (((double)this->tuple_count*4*this->qq)/((this->tt_processing/this->iter)/1000))/(1024*1024*1024) << std::endl;
 		//std::cout << "pop_count: " << this->pop_count << std::endl;
 		//std::cout << "stop_pos: " << this->stop_pos << std::endl;
 		//std::cout << "Base Table Footprint (MB): " << ((float)this->bt_bytes)/(1024*1024) << std::endl;
