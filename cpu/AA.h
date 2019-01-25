@@ -54,6 +54,13 @@ struct MaxCMP{
 	}
 };
 
+template<class T,class Z>
+struct MinCMP{
+	bool operator() (const tuple_<T,Z>& lhs, const tuple_<T,Z>& rhs) const{
+		return (lhs.score<rhs.score);
+	}
+};
+
 template<class T, class Z>
 struct qpair
 {
@@ -93,7 +100,7 @@ class pqueue{
 		void pop_back();
 
 		uint64_t size(){return this->queue.size();}
-		bool empty(){return (this->queue.size() > 0);}
+		bool empty(){return (this->queue.size() <= 0);}
 		const qpair<T,Z>& top();
 		const qpair<T,Z>& bottom();
 
@@ -250,6 +257,7 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 	for(int i = 0; i < MQTHREADS; i++) this->tt_array[i] = 0;
 	this->queries_per_second = 0;
 	this->accesses = 0;
+	this->lvl = 0;
 }
 
 template<class T,class Z>

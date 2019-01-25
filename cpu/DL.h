@@ -54,6 +54,7 @@ class DL : public AA<T,Z>
 
 		void init();
 		void findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
+		void findTopK2(uint64_t k,uint8_t qq, T *weights, uint8_t *attr);
 
 	private:
 		std::vector<std::vector<Z>> layers;
@@ -70,6 +71,7 @@ class DL : public AA<T,Z>
 
 		void make_blocks();
 		void build_edges();
+		void build_edges2();
 		bool DT(T *p, T *q);
 };
 
@@ -86,43 +88,6 @@ T** DL<T,Z>::sky_data(T **cdata)
 		}
 	}
 	return cdata;
-}
-
-template<class T, class Z>
-void DL<T,Z>::create_layers(T **cdata)
-{
-	Z *offset = (Z*)malloc(sizeof(Z)*this->n);
-	for(uint64_t i = 0; i < this->n; i++) offset[i]=i;
-	uint64_t first = 0;
-	uint64_t last = this->n;
-
-	while(last > 100)
-	{
-		SkylineI* skyline = new Hybrid( HLI_THREADS, (uint64_t)(last), (uint64_t)(this->d), SLA_ALPHA, SLA_QSIZE );
-		skyline->Init( cdata );
-		std::vector<uint64_t> layer = skyline->Execute();//Find ids of tuples that belong to the skyline
-		delete skyline;
-
-		std::unordered_set<uint64_t> layer_set;
-		for(uint64_t i = 0; i <layer.size(); i++){
-			layer_set.insert(layer[i]);
-			layer[i] = offset[layer[i]];//Real tuple id
-		}
-
-		last = this->partition_table(first, last, layer_set, cdata, offset);// Push dominated tables at the bottom//
-		this->layers.push_back(layer);
-		std::cout << "layer info: (" << this->layers.size() - 1<< ") = " << layer.size() << std::endl;
-	}
-
-	if( last > 0 ){
-		std::vector<uint64_t> layer;
-		for(uint64_t i = 0; i < last; i++) layer.push_back(offset[i]);
-		this->layers.push_back(layer);
-		//std::cout << "layer info: (" << this->layers.size() - 1<< ") = " << layer.size() << std::endl;
-	}
-	this->layer_num = this->layers.size();
-	//std::cout << "Layer count: " << this->layer_num << std::endl;
-	free(offset);
 }
 
 template<class T, class Z>
@@ -145,16 +110,74 @@ uint64_t DL<T,Z>::partition_table(uint64_t first, uint64_t last, std::unordered_
 }
 
 template<class T, class Z>
+void DL<T,Z>::create_layers(T **cdata)
+{
+	Z *offset = (Z*)malloc(sizeof(Z)*this->n);
+	for(uint64_t i = 0; i < this->n; i++) offset[i]=i;
+	uint64_t first = 0;
+	uint64_t last = this->n;
+
+	while(last > 100)
+	{
+		SkylineI* skyline = new Hybrid( DL_THREADS, (uint64_t)(last), (uint64_t)(this->d), SLA_ALPHA, SLA_QSIZE );
+		skyline->Init( cdata );
+		std::vector<uint64_t> layer = skyline->Execute();//Find ids of tuples that belong to the skyline
+		delete skyline;
+
+		std::unordered_set<uint64_t> layer_set;
+		for(uint64_t i = 0; i <layer.size(); i++){
+			layer_set.insert(layer[i]);
+			layer[i] = offset[layer[i]];//Real tuple id
+		}
+
+		last = this->partition_table(first, last, layer_set, cdata, offset);// Push dominated tables at the bottom//
+		this->layers.push_back(layer);
+		//std::cout << "layer info: (" << this->layers.size() - 1<< ") = " << layer.size() << std::endl;
+	}
+
+	if( last > 0 ){
+		std::vector<uint64_t> layer;
+		for(uint64_t i = 0; i < last; i++) layer.push_back(offset[i]);
+		this->layers.push_back(layer);
+		//std::cout << "layer info: (" << this->layers.size() - 1<< ") = " << layer.size() << std::endl;
+	}
+	this->layer_num = this->layers.size();
+	//std::cout << "Layer count: " << this->layer_num << std::endl;
+	free(offset);
+}
+
+template<class T, class Z>
 void DL<T,Z>::make_blocks()
 {
 	for(uint64_t i = 0; i < this->layers.size(); i++)
 	{
-		uint64_t size = 0;
 		for(uint64_t j = 0; j < this->layers[i].size(); j++){
 			Z id = this->layers[i][j];
-			std::memcpy(&this->layer_blocks[i].data[size*this->d],&this->cdata[id*this->d],sizeof(T)*this->d);
-			size++;
+			std::memcpy(&this->layer_blocks[i].data[j*this->d],&this->cdata[id*this->d],sizeof(T)*this->d);
 		}
+	}
+}
+
+template<class T, class Z>
+bool DL<T,Z>::DT(T *p, T *q)
+{
+	//pb = ( p[i] < q[i] ) | pb;//At least one dimension better
+	//qb = ( p[i] > q[i] ) | qb;//No dimensions better
+	bool g0;
+	bool g1;
+	switch(this->d)
+	{
+		case 3:
+			g0 = (p[0] > q[0]) || (p[1] > q[1]) || (p[2] > q[2]);
+			g1 = (p[0] < q[0]) || (p[1] < q[1]) || (p[2] < q[2]);
+			return (g0 & ~g1);
+		case 8:
+			g0 = (p[0] > q[0]) || (p[1] > q[1]) || (p[2] > q[2]) || (p[3] > q[3]) || (p[4] > q[4]) || (p[5] > q[5]) || (p[6] > q[6]) || (p[7] > q[7]);
+			g1 = (p[0] < q[0]) || (p[1] < q[1]) || (p[2] < q[2]) || (p[3] < q[3]) || (p[4] < q[4]) || (p[5] < q[5]) || (p[6] < q[6]) || (p[7] < q[7]);
+			return (~g1 & g0);
+		default:
+			perror("Dimension size not supported!!!");//TODO
+			exit(1);
 	}
 }
 
@@ -195,28 +218,63 @@ void DL<T,Z>::build_edges()
 }
 
 template<class T, class Z>
-bool DL<T,Z>::DT(T *p, T *q)
+void DL<T,Z>::build_edges2()
 {
-	//pb = ( p[i] < q[i] ) | pb;//At least one dimension better
-	//qb = ( q[i] < p[i] ) | qb;//No dimensions better
-	bool g0;
-	bool g1;
-	switch(this->d)
+	uint64_t id = this->layer_blocks[0].offset;
+	for(uint64_t i = 0; i < this->layer_num; i++)
 	{
-		case 8:
-			g0 = (p[0] > q[0]) | (p[1] > q[1]) | (p[2] > q[2]) | (p[3] > q[3]) | (p[4] > q[4]) | (p[5] > q[5]) | (p[6] > q[6]) | (p[7] > q[7]);
-			g1 = (p[0] < q[0]) | (p[1] < q[1]) | (p[2] < q[2]) | (p[3] < q[3]) | (p[4] < q[4]) | (p[5] < q[5]) | (p[6] < q[6]) | (p[7] < q[7]);
-			return (~g1 & g0);
-		default:
-			perror("Dimension size not supported!!!");//TODO
-			exit(1);
+		id = this->layer_blocks[i].offset;
+		for(uint64_t j = 0; j < this->layer_blocks[i].size; j++){
+			layer_map.emplace(id+j,i);
+			this->fwd[i].emplace(id+j,std::vector<Z>());
+		}//initialize forward edge for layer i }
+		if(i == this->layer_num - 1) continue;
+		id = this->layer_blocks[i+1].offset;
+		for(uint64_t j = 0; j < this->layer_blocks[i+1].size; j++){ this->bwd[i+1].emplace(id+j,std::vector<Z>()); }//initialize backward edge for layer i+1
+
+		for(auto parent_it = this->fwd[i].begin(); parent_it != this->fwd[i].end(); ++parent_it)
+		{
+			Z parent_id = parent_it->first - this->layer_blocks[i].offset;
+			T *parent_data = this->layer_blocks[i].data;
+			//parent_data[parent_id * this->d];
+//			std::cout << std::fixed << std::setprecision(4);
+//			std::cout << "{ ";
+//			for(uint64_t m = 0; m < this->d; m++)
+//			{
+//				std::cout << parent_data[parent_id * this->d + m] << " ";
+//			}
+//			std::cout << "}" << std::endl;
+			for(auto child_it = this->bwd[i+1].begin(); child_it != this->bwd[i+1].end(); ++child_it)
+			{
+				Z child_id = child_it->first - this->layer_blocks[i+1].offset;
+				T *child_data = this->layer_blocks[i+1].data;
+				//std::cout << "   " << child_id << std::endl;
+				//child_data[child_id * this->d]
+
+				if(DT(&parent_data[parent_id * this->d],&child_data[child_id * this->d]))
+				{
+					parent_it->second.push_back(child_id + this->layer_blocks[i+1].offset);
+					child_it->second.push_back(parent_id + this->layer_blocks[i].offset);
+//					std::cout << "< ";
+//					for(uint64_t m = 0; m < this->d; m++)
+//					{
+//						std::cout << child_data[child_id * this->d + m] << " ";
+//					}
+//					std::cout << std::endl;
+					//break;
+				}
+			}
+			//break;
+		}
+		//std::cout << "(" << i <<")------------------------------------------------------" << std::endl;
+		//break;
 	}
 }
 
 template<class T, class Z>
 void DL<T,Z>::init()
 {
-	normalize_transpose<T,Z>(this->cdata, this->n, this->d);
+	normalize<T,Z>(this->cdata, this->n, this->d);
 	T **cdata = NULL;
 	cdata = this->sky_data(cdata);
 
@@ -227,18 +285,19 @@ void DL<T,Z>::init()
 	this->tt_init += this->t.lap();
 	free(cdata);
 
-	//reordered data into blocks
+	//allocate for data layers
+	uint64_t offset = 0;
 	this->layer_blocks = (DL_BLOCK<T,Z>*)malloc(sizeof(DL_BLOCK<T,Z>)*this->layers.size());// Reorder skyline in blocks
 	for(uint64_t i = 0; i < this->layers.size(); i++)
 	{
 		this->layer_blocks[i].size = this->layers[i].size();
 		this->layer_blocks[i].data = (T*)malloc(sizeof(T)*this->layers[i].size()*this->d);
+		this->layer_blocks[i].offset = offset;
+		offset += this->layer_blocks[i].size;
 	}
-
-	//initialize edges between layers
+	//allocate memory for edges between layers
 	this->fwd = new std::unordered_map<Z,std::vector<Z>>[this->layers.size()];
 	this->bwd = new std::unordered_map<Z,std::vector<Z>>[this->layers.size()];
-
 
 	this->t.start();
 	std::cout << "MAKE BLOCKS\n";
@@ -248,7 +307,7 @@ void DL<T,Z>::init()
 	free(this->cdata);
 	this->cdata = NULL;
 	std::cout << "MAKE EDGES\n";
-	this->build_edges();
+	this->build_edges2();
 	std::cout << "FINISH EDGES\n";
 	this->tt_init = this->t.lap();
 }
@@ -394,5 +453,189 @@ void DL<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 
 	std::cout << "FINISH TOPK\n";
 }
+
+template<class T,class Z>
+void DL<T,Z>::findTopK2(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
+{
+	std::cout << "START TOPK\n";
+	std::cout << this->algo << " find top-" << k << " (" << (int)qq << "D) ...";
+	std::vector<std::unordered_set<Z>> eset_vec;
+	if(this->res.size() > 0) this->res.clear();
+	if(STATS_EFF) this->pred_count=0;
+	if(STATS_EFF) this->tuple_count = 0;
+	if(STATS_EFF) this->pop_count=0;
+	if(STATS_EFF) this->candidate_count=0;
+
+	pqueue<T,Z,pqueue_desc<T,Z>> q;
+	pqueue<T,Z,pqueue_asc<T,Z>> cl;
+	std::unordered_set<Z> rs;
+	this->t.start();
+
+//	for(auto parent_it = this->fwd[0].begin(); parent_it != this->fwd[0].end(); ++parent_it)
+//	{
+//		Z parent_id = parent_it->first - this->layer_blocks[0].offset;
+//		T *parent_data = this->layer_blocks[0].data;
+//		//std::cout << parent_id << "," << parent_it->second.size();
+//		auto ll = parent_it->second;
+//		if(ll.size() > 0)
+//		{
+//			std::cout << std::fixed << std::setprecision(4);
+//			std::cout << "{ ";
+//			for(uint64_t m = 0; m < this->d; m++)
+//			{
+//				std::cout << parent_data[parent_id * this->d + m] << " ";
+//			}
+//			std::cout << "}" << std::endl;
+//
+//			for(uint64_t j = 0; j < ll.size(); j++)
+//			{
+//				Z child_id = ll[j] - this->layer_blocks[1].offset;
+//				T *child_data = this->layer_blocks[1].data;
+//				std::cout << "     ["<< child_id <<"] ";
+//				for(uint64_t m = 0; m < this->d; m++)
+//				{
+//					std::cout << child_data[child_id * this->d + m] << " ";
+//				}
+//				std::cout << std::endl;
+//			}
+//		}
+//	}
+
+	//1: Evaluate first layer
+	for(uint64_t i = 0; i < this->layer_blocks[0].size; i++)
+	{
+		T score = 0;
+		for(uint8_t m = 0; m < qq; m++){
+			score += this->layer_blocks[0].data[i * this->d + attr[m]] * weights[attr[m]];//M{4}
+		}
+		if(STATS_EFF) this->tuple_count+=1;
+		if(STATS_EFF) this->accesses+=4*qq;
+
+		qpair<T,Z> p;
+		p.id = i;
+		p.score = score;
+		if(STATS_EFF) this->accesses+=1;
+		if(q.size() < k){//insert if empty space in queue//M{1}
+			q.push(p);//M{1}
+			if(STATS_EFF) this->accesses+=1;
+		}else if(q.top().score<score){//delete smallest element if current score is bigger//M{1}
+			q.pop();//M{1}
+			q.push(p);//M{1}
+			if(STATS_EFF) this->accesses+=2;
+		}
+	}
+
+	//2: Build candidate list
+	while(q.size() > 0){
+		qpair<T,Z> p = q.top();//M{1}
+		cl.push(p);//M{1}
+		q.pop();//M{1}
+		if(STATS_EFF) this->accesses+=2;
+	}
+	if(STATS_EFF) this->candidate_count=cl.size();
+
+	//3:Parse candidate list
+	while(cl.size()>0)
+	{
+		qpair<T,Z> p = cl.top();//a: Get next candidate//M{1}
+		rs.insert(p.id);//M{1}
+		//std::cout <<cl.size() << " - " << p.id << "," << p.score << std::endl;
+		Z lid = this->layer_map.find(p.id)->second;//b: find layer id//M{2}
+//		auto ll = this->fwd[lid].find(p.id)->second;//c: find list in layer id
+		if(STATS_EFF) this->accesses+=6;
+		if(this->fwd[lid].find(p.id) != this->fwd[lid].end()){//M{2}
+			auto ll = this->fwd[lid].find(p.id)->second;//M{2}
+			if(STATS_EFF) this->accesses+=2;
+			for(uint64_t j = 0; j < ll.size(); j++)
+			{
+				Z cid = ll[j];//d: for each child
+				//std::cout << "child: " << cid << ",parent: " << p.id << std::endl;
+				Z clid = this->layer_map.find(cid)->second;//e:find child layer id//M{2}
+//				auto cll = this->bwd[clid].find(cid)->second;
+				if(STATS_EFF) this->accesses+=4;
+				if(this->bwd[clid].find(cid) != this->bwd[clid].end()){//M{2}
+					auto cll = this->bwd[clid].find(cid)->second;//M{2}
+					bool parent_in_rs = true;
+					if(STATS_EFF) this->accesses+=2;
+					for(uint64_t w = 0; w < cll.size(); w++)
+					{
+						Z pid = cll[w];//M{1}
+						parent_in_rs &= (rs.find(pid) != rs.end());//M{1}
+						if(STATS_EFF) this->accesses+=2;
+					}
+
+					if(parent_in_rs)
+					{
+						Z offset = cid - this->layer_blocks[clid].offset;//M{1}
+						T *data = this->layer_blocks[clid].data;//M{1}
+						T score = 0;
+						if(STATS_EFF) this->accesses+=2;
+						for(uint8_t m = 0; m < qq; m++){
+							score += data[offset * this->d + attr[m]] * weights[attr[m]];//M{4}
+						}
+						if(STATS_EFF) this->accesses+=4;
+						if(STATS_EFF) this->tuple_count+=1;
+
+						qpair<T,Z> pp;
+						pp.id = cid;
+						pp.score = score;
+						cl.push(pp);//M{1}
+						if(STATS_EFF) this->candidate_count+=1;
+						if(STATS_EFF) this->accesses+=1;
+					}
+				}
+			}
+		}
+		//break;
+//		if(q.size() < k){//insert if empty space in queue
+//			q.push(p);
+//		}else if(q.top().score<p.score){//delete smallest element if current score is bigger
+//			q.pop();
+//			q.push(p);
+//		}
+		q.push(p);//M{1}
+		if(STATS_EFF) this->accesses+=2;
+		if(q.size() == k) break;//M{1}
+		cl.pop();//M{1}
+		if(STATS_EFF) this->accesses+=1;
+	}
+
+//	uint64_t id = 0;
+//	for(uint64_t i = 0; i < this->layer_num; i++)
+//	{
+//		T *data = this->layer_blocks[i].data;
+//		for(uint64_t j = 0; j < this->layer_blocks[i].size ; j++)
+//		{
+//			T score = 0;
+//			for(uint8_t m = 0; m < qq; m++){
+//				score+=data[j * this->d + attr[m]] * weights[attr[m]];
+//			}
+//
+//			qpair<T,Z> p;
+//			p.id = i;
+//			p.score = score;
+//			if(q.size() < k){//insert if empty space in queue
+//				q.push(p);
+//			}else if(q.top().score<score){//delete smallest element if current score is bigger
+//				q.pop();
+//				q.push(p);
+//			}
+//		}
+//		id+=this->layer_blocks[i].size;
+//	}
+
+	this->tt_processing += this->t.lap();
+	T threshold = q.size() > 0 ? q.top().score : 1313;
+	while(!q.empty()){
+		qpair<T,Z> p = q.top();
+		this->res.push_back(tuple_<T,Z>(p.id,p.score));
+		q.pop();
+	}
+	std::cout << std::fixed << std::setprecision(4);
+	std::cout << " threshold=[" << threshold <<"] (" << this->res.size() << ")" << std::endl;
+	this->threshold = threshold;
+}
+
+
 
 #endif

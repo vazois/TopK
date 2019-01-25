@@ -167,16 +167,16 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 	this->t.start();
 	for(uint64_t i = 0; i < VPARTITIONS; i++){
 		for(uint64_t b = 0; b < parts[i].block_num; b++){
-			Z tuple_num = parts[i].blocks[b].tuple_num;
-			T *tuples = parts[i].blocks[b].tuples;
-			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
-			if(STATS_EFF) this->accesses+=3;
+			Z tuple_num = parts[i].blocks[b].tuple_num;//M{1}
+			T *tuples = parts[i].blocks[b].tuples;//M{1}
+			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;//M{2}
+			if(STATS_EFF) this->accesses+=4;
 			for(uint64_t t = 0; t < tuple_num; t+=8){
 				id+=t;
 				T score00 = 0; T score01 = 0; T score02 = 0; T score03 = 0; T score04 = 0; T score05 = 0; T score06 = 0; T score07 = 0;
 				for(uint8_t m = 0; m < qq; m++){
-					T weight = weights[attr[m]];
-					uint32_t offset = attr[m]*VBLOCK_SIZE + t;
+					T weight = weights[attr[m]];//M{2}
+					uint32_t offset = attr[m]*VBLOCK_SIZE + t;//M{1}
 					score00+=tuples[offset]*weight;
 					score01+=tuples[offset+1]*weight;
 					score02+=tuples[offset+2]*weight;
@@ -189,7 +189,7 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 				if(STATS_EFF) this->accesses+=qq*11;
 
 				if(STATS_EFF) this->accesses+=1;
-				if(q.size() < k){
+				if(q.size() < k){//M{1}
 					q.push(tuple_<T,Z>(id,score00));
 					q.push(tuple_<T,Z>(id+1,score01));
 					q.push(tuple_<T,Z>(id+2,score02));
@@ -198,10 +198,10 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 					q.push(tuple_<T,Z>(id+5,score05));
 					q.push(tuple_<T,Z>(id+6,score06));
 					q.push(tuple_<T,Z>(id+7,score07));
-					if(STATS_EFF) this->accesses+=7;
+					if(STATS_EFF) this->accesses+=8;
 				}else{
-					if(STATS_EFF) this->accesses+=14;
-					if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(id,score00)); }
+					if(STATS_EFF) this->accesses+=3*8;
+					if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(id,score00)); }//M{3}
 					if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(id+1,score01)); }
 					if(q.top().score < score02){ q.pop(); q.push(tuple_<T,Z>(id+2,score02)); }
 					if(q.top().score < score03){ q.pop(); q.push(tuple_<T,Z>(id+3,score03)); }
@@ -213,12 +213,12 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 				if(STATS_EFF) this->tuple_count+=8;
 			}
 			T threshold = 0;
-			T *tarray = parts[i].blocks[b].tarray;
+			T *tarray = parts[i].blocks[b].tarray;//M{1}
 			if(STATS_EFF) this->accesses+=1;
-			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			if(STATS_EFF) this->accesses+=qq*2;
-			if(q.size() >= k && q.top().score >= threshold){ break; }
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];//M{4}
+			if(STATS_EFF) this->accesses+=qq*4;
 			if(STATS_EFF) this->accesses+=2;
+			if(q.size() >= k && q.top().score >= threshold){ break; }//M{2}
 		}
 	}
 	this->tt_processing += this->t.lap();
@@ -255,9 +255,9 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	this->t.start();
 	for(uint64_t i = 0; i < VPARTITIONS; i++){
 		for(uint64_t b = 0; b < parts[i].block_num; b++){
-			Z tuple_num = parts[i].blocks[b].tuple_num;
-			T *tuples = parts[i].blocks[b].tuples;
-			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
+			Z tuple_num = parts[i].blocks[b].tuple_num;//M{1}
+			T *tuples = parts[i].blocks[b].tuples;//M{1}
+			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;//M{1}
 			if(STATS_EFF) this->accesses+=3;
 			for(uint64_t t = 0; t < tuple_num; t+=32){
 				id+=t;
@@ -270,8 +270,8 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 //				__m256 score06 = _mm256_setzero_ps();
 //				__m256 score07 = _mm256_setzero_ps();
 				for(uint8_t m = 0; m < qq; m++){
-					T weight = weights[attr[m]];
-					uint64_t offset = attr[m]*VBLOCK_SIZE + t;
+					T weight = weights[attr[m]];//M{2}
+					uint64_t offset = attr[m]*VBLOCK_SIZE + t;//M{1}
 					__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
 //					__m256 load00 = _mm256_load_ps(&tuples[offset]);
 //					__m256 load01 = _mm256_load_ps(&tuples[offset+8]);
@@ -301,11 +301,11 @@ void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 //				_mm256_store_ps(&score[56],score07);
 				if(STATS_EFF) this->accesses+=32;
 				for(uint8_t l = 0; l < 32; l++){
-					if(q.size() < k){
-						q.push(tuple_<T,Z>(id,score[l]));
+					if(q.size() < k){//M{1}
+						q.push(tuple_<T,Z>(id,score[l]));//M{1}
 						if(STATS_EFF) this->accesses+=1;
-					}else if(q.top().score < score[l]){
-						q.pop(); q.push(tuple_<T,Z>(id,score[l]));
+					}else if(q.top().score < score[l]){//M{1}
+						q.pop(); q.push(tuple_<T,Z>(id,score[l]));//M{2}
 						if(STATS_EFF) this->accesses+=2;
 					}
 					if(STATS_EFF) this->accesses+=1;

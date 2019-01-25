@@ -76,58 +76,60 @@ void NRA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	{
 		for(uint8_t m = 0; m < qq; m++)
 		{
-			uint8_t idx_a = attr[m];
-			Z id = lists[idx_a][i].id;
-			T aa = lists[idx_a][i].score;
-			T weight = weights[idx_a];
-			if(STATS_EFF) this->accesses+=6;
+			uint8_t idx_a = attr[m];//M{1}
+			Z id = lists[idx_a][i].id;//M{1}
+			T aa = lists[idx_a][i].score;//M{1}
+			T weight = weights[idx_a];//M{1}
+			if(STATS_EFF) this->accesses+=4;
 
-			auto it = obj.find(id);
+			auto it = obj.find(id);//M{1}
 			if(STATS_EFF) this->accesses+=2;
-			if(it == obj.end())//if object is not seen before
+			if(it == obj.end())//if object is not seen before//M{1}
 			{
 				nra_pair<T> nrap(0,weight * aa,(1<<m));//upper bound = 0, initialize lower bound, set seen of attribute to 1
-				obj.emplace(id,nrap);//insert object to map
-				if(STATS_EFF) this->accesses+=2;
+				obj.emplace(id,nrap);//insert object to map//M{1}
+				if(STATS_EFF) this->accesses+=1;
 			}else{//if object was seen
-				it->second.lb += weight * aa;// update lower bound
-				it->second.seen |= (1 << m);// set seen object for attribute.
+				it->second.lb += weight * aa;// update lower bound//M{1}
+				it->second.seen |= (1 << m);// set seen object for attribute.//M{1}
 				if(STATS_EFF) this->accesses+=2;
 			}
 		}
 
 		T mx_ub = 0;
 		std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> _q;
-		for(auto it = obj.begin(); it!=obj.end(); ++it)//Update all upper bounds
+		for(auto it = obj.begin(); it!=obj.end(); ++it)//Update all upper bounds//M{2}
 		{
-			if(STATS_EFF) this->accesses+=1;
-			nra_pair<T> *np = &(it->second);
-			T ub = np->lb;
+			if(STATS_EFF) this->accesses+=2;
+			nra_pair<T> *np = &(it->second);//M{1}
+			T ub = np->lb;//M{1}
+			if(STATS_EFF) this->accesses+=2;
 			for(uint8_t m = 0; m < qq; m++)
 			{
 				if(((np->seen >> m) & 0x1) == 0x0)//if flag seen is not set
 				{
-					uint8_t idx_a = attr[m];
-					ub += lists[idx_a][i].score * weights[idx_a];// add upper bound score //
+					uint8_t idx_a = attr[m];//M{1}
+					ub += lists[idx_a][i].score * weights[idx_a];// add upper bound score ////M{2}
 					if(STATS_EFF) this->accesses+=3;
 				}
 			}
-			np->ub = ub;// update upper bound
+			np->ub = ub;// update upper bound//M{1}
 			mx_ub = std::max(mx_ub,ub);//find maximum upper bound
 
-			if(_q.size() < k)//Update priority queue with lower bounds//
+			if(STATS_EFF) this->accesses+=1;
+			if(_q.size() < k)//Update priority queue with lower bounds////M{1}
 			{
-				if(STATS_EFF) this->accesses+=2;
-				_q.push(tuple_<T,Z>(it->first,np->lb));
-			}else if(_q.top().score < np->lb){
-				_q.pop();
-				_q.push(tuple_<T,Z>(it->first,np->lb));
 				if(STATS_EFF) this->accesses+=3;
+				_q.push(tuple_<T,Z>(it->first,np->lb));//M{3}
+			}else if(_q.top().score < np->lb){
+				_q.pop();//M{1}
+				_q.push(tuple_<T,Z>(it->first,np->lb));//M{3}
+				if(STATS_EFF) this->accesses+=4;
 			}
 		}
-		_q.swap(q);
+		_q.swap(q);//M{1}
 		if(STATS_EFF) this->accesses+=3;
-		if(q.size() == k && mx_ub<=q.top().score){
+		if(q.size() == k && mx_ub<=q.top().score){//M{2}
 			this->lvl = i;
 			break;
 		}// break if maximum upper bound smaller or equal to minimum lower bound
@@ -138,7 +140,7 @@ void NRA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 
 	//T threshold = q.top().score;
 	T threshold = 0;
-	for(uint8_t m = 0; m < qq; m++) threshold+=this->cdata[q.top().tid * this->d + attr[m]] * weights[attr[m]];
+	for(uint8_t m = 0; m < qq; m++) threshold+=this->cdata[q.top().tid * this->d + attr[m]] * weights[attr[m]];//M{4}
 	int i = 0;
 	while(!q.empty())
 	{

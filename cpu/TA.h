@@ -72,31 +72,32 @@ void TA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	for(uint64_t i = 0; i < this->n;i++){
 		T threshold=0;
 		for(uint8_t mm = 0; mm < qq; mm++){
-			pred<T,Z> p = this->alists[attr[mm]][i];
-			T weight = weights[attr[mm]];
-			threshold+=p.attr*weight;
+			pred<T,Z> p = this->alists[attr[mm]][i];//M(2)
+			T weight = weights[attr[mm]];//M(2)
+			threshold+=p.attr*weight;//M(1)
 
-			if(STATS_EFF) this->accesses+=4;
-			if(eset.find(p.tid) == eset.end()){
+			if(STATS_EFF) this->accesses+=6;//2 + 2 + 1 + 2
+			if(eset.find(p.tid) == eset.end()){//M(2)
 				T score00 = 0;
-				for(uint8_t m = 0; m < qq; m++){
-					score00+=this->cdata[p.tid * this->d + attr[m]] * weights[attr[m]];
-				}
+				for(uint8_t m = 0; m < qq; m++){ score00+=this->cdata[p.tid * this->d + attr[m]] * weights[attr[m]]; }//M(4)
 
 				if(STATS_EFF) this->accesses+=qq*4;
 				if(STATS_EFF) this->pred_count+=this->d;
 				if(STATS_EFF) this->tuple_count+=1;
-				eset.insert(p.tid);
-				if(q.size() < k){//insert if empty space in queue
-					q.push(tuple_<T,Z>(p.tid,score00));
+				eset.insert(p.tid);//M(1)
+				if(STATS_EFF) this->accesses+=1;
+				if(q.size() < k){//insert if empty space in queue//M(1)
+					q.push(tuple_<T,Z>(p.tid,score00));//M(1)
+					if(STATS_EFF) this->accesses+=1;
 				}else if(q.top().score<score00){//delete smallest element if current score is bigger
-					q.pop();
-					q.push(tuple_<T,Z>(p.tid,score00));
+					q.pop();//M(1)
+					q.push(tuple_<T,Z>(p.tid,score00));//M(1)
+					if(STATS_EFF) this->accesses+=2;
 				}
 			}
 		}
 		if(STATS_EFF) this->accesses+=2;
-		if(q.size() >= k && ((q.top().score) >= threshold) ){
+		if(q.size() >= k && ((q.top().score) >= threshold) ){//M(2)
 			this->lvl = i;
 			break;
 		}

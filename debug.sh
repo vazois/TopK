@@ -3,8 +3,8 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((1*1024*1024))
-END_N=$((1*1024*1024))
+START_N=$((1*1*1024))
+END_N=$((1*32*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=128
@@ -76,7 +76,7 @@ fi
 
 ######CHOOSE CPU ALGORITHM######
 #TA Benchmark
-TA_B=0
+TA_B=1
 #NRA Benchmark
 NRA_B=0
 #BPA Benchmark
@@ -88,17 +88,17 @@ T2S_B=0
 #Onion Benchmark
 Onion_B=0
 #DL Benchmark
-DL_B=0
+DL_B=1
 #LARA Benchnmark
 LARA_B=0
 #TPAc Benchmark
-TPAc_B=0
+TPAc_B=1
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
-VTA_B=1
+VTA_B=0
 #PTA Benchmark
-PTA_B=1
+PTA_B=0
 #SLA Benchmark
 SLA_B=0
 #####################################################################################	

@@ -80,26 +80,26 @@ void BPA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	for(uint64_t i = 0; i < this->n;i++){
 		for(uint8_t m = 0; m < qq; m++)
 		{
-			Z id = lists[attr[m]][i].id;
+			Z id = lists[attr[m]][i].id;//M{1}
 			T score = 0;
 			if(STATS_EFF) this->accesses+=1;
-			if(eset.find(id) == eset.end()){
+			if(eset.find(id) == eset.end()){//M{1}
 				for(uint8_t mm = 0; mm < qq; mm++){
-					uint8_t idx_a = attr[mm];
-					Z p = pos[idx_a].find(id)->second;//find position in list
+					uint8_t idx_a = attr[mm];//M{1}
+					Z p = pos[idx_a].find(id)->second;//find position in list//M{3}
 					//score+=lists[idx_a][p].score; * weights[attr[mm]];// find score for position
-					score+=this->cdata[id * this->d + attr[mm]] * weights[attr[mm]];
-					seen[mm][(p >> 5)] |=  (1 << (p & 31));// set bit vector to indicate seen position
+					score+=this->cdata[id * this->d + attr[mm]] * weights[attr[mm]];//M{4}
+					seen[mm][(p >> 5)] |=  (1 << (p & 31));// set bit vector to indicate seen position//M{1}
 				}
-				if(STATS_EFF) this->accesses+=qq*8;
-				eset.insert(id);
-				if(STATS_EFF) this->accesses+=1;
-				if(q.size() < k){//insert if empty space in queue
-					q.push(tuple_<T,Z>(id,score));
+				if(STATS_EFF) this->accesses+=qq*9;
+				eset.insert(id);//M{1}
+				if(STATS_EFF) this->accesses+=2;
+				if(q.size() < k){//insert if empty space in queue//M{1}
+					q.push(tuple_<T,Z>(id,score));//M{1}
 					if(STATS_EFF) this->accesses+=1;
 				}else if(q.top().score<score){//delete smallest element if current score is bigger
-					q.pop();
-					q.push(tuple_<T,Z>(id,score));
+					q.pop();//M{1}
+					q.push(tuple_<T,Z>(id,score));//M{1}
 					if(STATS_EFF) this->accesses+=2;
 				}
 				if(STATS_EFF) this->tuple_count++;
@@ -110,24 +110,24 @@ void BPA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 		uint64_t mn = this->n;
 		for(uint8_t m = 0; m < qq; m++){
 			//while(bp[m] < this->n && ( ( ( (seen[m][(bp[m] >> 5)] >> (bp[m] & 31)) & 0x1) == 0x1) ) ) bp[m]++;
-			uint32_t p = bp[m] >> 5;
-			uint32_t d = bp[m] & 31;
+			uint32_t p = bp[m] >> 5;//M{1}
+			uint32_t d = bp[m] & 31;//M{1}
 			if(STATS_EFF) this->accesses+=2;
-			while(bp[m] < this->n && (((seen[m][p] >> d) & 0x1 ) == 0x1))
+			while(bp[m] < this->n && (((seen[m][p] >> d) & 0x1 ) == 0x1))//M{2}
 			{
-				bp[m]++; p = bp[m] >> 5; d = bp[m] & 31;
-				if(STATS_EFF) this->accesses+=3;
+				bp[m]++; p = bp[m] >> 5; d = bp[m] & 31;//M{3}
+				if(STATS_EFF) this->accesses+=5;
 			}
 			//std::cout << "( " <<i << "," << bp[m]-1 << " ) | ";
-			threshold+=lists[attr[m]][bp[m]-1].score * weights[attr[m]];
-			if(STATS_EFF) this->accesses+=4;
+			threshold+=lists[attr[m]][bp[m]-1].score * weights[attr[m]];//M{6}
+			if(STATS_EFF) this->accesses+=6;
 			mn = std::min(bp[m]-1,mn);
 		}
 		//std::cout << std::endl;
 		//std::cout << q.top().score << ">=" <<threshold<< std::endl;
 		i=mn;
 		if(STATS_EFF) this->accesses+=2;
-		if(q.size() >= k && ((q.top().score) >= threshold) ){
+		if(q.size() >= k && ((q.top().score) >= threshold) ){//M{2}
 			this->lvl = i;
 			break;
 		}

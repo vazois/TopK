@@ -80,9 +80,9 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			offset6+=this->n;
 			offset7+=this->n;
 		}
-		if(STATS_EFF) this->accesses+=qq*2;
+		if(STATS_EFF) this->accesses+=qq*8;
 		if(STATS_EFF) this->accesses+=1;
-		if(q.size() < k){
+		if(q.size() < k){//M{1}
 			q.push(tuple_<T,Z>(i,score00));
 			q.push(tuple_<T,Z>(i+1,score01));
 			q.push(tuple_<T,Z>(i+2,score02));
@@ -93,7 +93,7 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			q.push(tuple_<T,Z>(i+7,score07));
 			if(STATS_EFF) this->accesses+=8;
 		}else{
-			if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(i,score00)); }
+			if(q.top().score < score00){ q.pop(); q.push(tuple_<T,Z>(i,score00)); }//M{1}
 			if(q.top().score < score01){ q.pop(); q.push(tuple_<T,Z>(i+1,score01)); }
 			if(q.top().score < score02){ q.pop(); q.push(tuple_<T,Z>(i+2,score02)); }
 			if(q.top().score < score03){ q.pop(); q.push(tuple_<T,Z>(i+3,score03)); }
@@ -101,7 +101,7 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			if(q.top().score < score05){ q.pop(); q.push(tuple_<T,Z>(i+5,score05)); }
 			if(q.top().score < score06){ q.pop(); q.push(tuple_<T,Z>(i+6,score06)); }
 			if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(i+7,score07)); }
-			if(STATS_EFF) this->accesses+=8*3;
+			if(STATS_EFF) this->accesses+=8*2;
 		}
 	}
 	this->tt_processing += this->t.lap();
@@ -127,75 +127,44 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	if(this->res.size() > 0) this->res.clear();
 
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
-	float score[16] __attribute__((aligned(32)));
+	float score[32] __attribute__((aligned(32)));
 	this->t.start();
 	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	__builtin_prefetch(score,1,3);
-	for(uint64_t i = 0; i < this->n; i+=16){
+	for(uint64_t i = 0; i < this->n; i+=32){
 		__m256 score00 = _mm256_setzero_ps();
 		__m256 score01 = _mm256_setzero_ps();
+		__m256 score02 = _mm256_setzero_ps();
+		__m256 score03 = _mm256_setzero_ps();
 		for(uint8_t m = 0; m < qq; m++){
-			uint64_t offset00 = attr[m] * this->n + i;
-			uint64_t offset01 = attr[m] * this->n + i + 8;
-			T weight = weights[attr[m]];
+			uint64_t offset00 = attr[m] * this->n + i;//M{1}
+			uint64_t offset01 = attr[m] * this->n + i + 8;//M{1}
+			uint64_t offset02 = attr[m] * this->n + i + 16;//M{1}
+			uint64_t offset03 = attr[m] * this->n + i + 24;//M{1}
+			T weight = weights[attr[m]];//M{2}
 			__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
-			__m256 load00 = _mm256_load_ps(&this->cdata[offset00]);
-			__m256 load01 = _mm256_load_ps(&this->cdata[offset01]);
-			load00 = _mm256_mul_ps(load00,_weight);
-			load01 = _mm256_mul_ps(load01,_weight);
-			score00 = _mm256_add_ps(score00,load00);
-			score01 = _mm256_add_ps(score01,load01);
-			#if LD == 2
-				score00 = _mm256_div_ps(score00,dim_num);
-				score01 = _mm256_div_ps(score01,dim_num);
-			#endif
+
+			score00 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset00]),_weight));//M{8}
+			score01 = _mm256_add_ps(score01,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset01]),_weight));//M{8}
+			score02 = _mm256_add_ps(score02,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset02]),_weight));//M{8}
+			score03 = _mm256_add_ps(score03,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset03]),_weight));//M{8}
 		}
+		if(STATS_EFF) this->accesses+=(6+32)*qq;
 		_mm256_store_ps(&score[0],score00);
 		_mm256_store_ps(&score[8],score01);
+		_mm256_store_ps(&score[16],score02);
+		_mm256_store_ps(&score[24],score03);
 
-		if(q.size() < k){//insert if empty space in queue
-			q.push(tuple_<T,Z>(i,score[0]));
-			q.push(tuple_<T,Z>(i+1,score[1]));
-			q.push(tuple_<T,Z>(i+2,score[2]));
-			q.push(tuple_<T,Z>(i+3,score[3]));
-			q.push(tuple_<T,Z>(i+4,score[4]));
-			q.push(tuple_<T,Z>(i+5,score[5]));
-			q.push(tuple_<T,Z>(i+6,score[6]));
-			q.push(tuple_<T,Z>(i+7,score[7]));
-			q.push(tuple_<T,Z>(i+8,score[8]));
-			q.push(tuple_<T,Z>(i+9,score[9]));
-			q.push(tuple_<T,Z>(i+10,score[10]));
-			q.push(tuple_<T,Z>(i+11,score[11]));
-			q.push(tuple_<T,Z>(i+12,score[12]));
-			q.push(tuple_<T,Z>(i+13,score[13]));
-			q.push(tuple_<T,Z>(i+14,score[14]));
-			q.push(tuple_<T,Z>(i+15,score[15]));
-		}else{//delete smallest element if current score is bigger
-			if(q.top().score < score[0]){ q.pop(); q.push(tuple_<T,Z>(i,score[0])); }
-			if(q.top().score < score[1]){ q.pop(); q.push(tuple_<T,Z>(i+1,score[1])); }
-			if(q.top().score < score[2]){ q.pop(); q.push(tuple_<T,Z>(i+2,score[2])); }
-			if(q.top().score < score[3]){ q.pop(); q.push(tuple_<T,Z>(i+3,score[3])); }
-			if(q.top().score < score[4]){ q.pop(); q.push(tuple_<T,Z>(i+4,score[4])); }
-			if(q.top().score < score[5]){ q.pop(); q.push(tuple_<T,Z>(i+5,score[5])); }
-			if(q.top().score < score[6]){ q.pop(); q.push(tuple_<T,Z>(i+6,score[6])); }
-			if(q.top().score < score[7]){ q.pop(); q.push(tuple_<T,Z>(i+7,score[7])); }
-			if(q.top().score < score[8]){ q.pop(); q.push(tuple_<T,Z>(i+8,score[8])); }
-			if(q.top().score < score[9]){ q.pop(); q.push(tuple_<T,Z>(i+9,score[9])); }
-			if(q.top().score < score[10]){ q.pop(); q.push(tuple_<T,Z>(i+10,score[10])); }
-			if(q.top().score < score[11]){ q.pop(); q.push(tuple_<T,Z>(i+11,score[11])); }
-			if(q.top().score < score[12]){ q.pop(); q.push(tuple_<T,Z>(i+12,score[12])); }
-			if(q.top().score < score[13]){ q.pop(); q.push(tuple_<T,Z>(i+13,score[13])); }
-			if(q.top().score < score[14]){ q.pop(); q.push(tuple_<T,Z>(i+14,score[14])); }
-			if(q.top().score < score[15]){ q.pop(); q.push(tuple_<T,Z>(i+15,score[15])); }
+		for(uint8_t l = 0; l < 32; l++){
+			if(q.size() < k){//M{1}
+				q.push(tuple_<T,Z>(i,score[l]));//M{1}
+				if(STATS_EFF) this->accesses+=1;
+			}else if(q.top().score < score[l]){//M{1}
+				q.pop(); q.push(tuple_<T,Z>(i,score[l]));//M{2}
+				if(STATS_EFF) this->accesses+=2;
+			}
+			if(STATS_EFF) this->accesses+=1;
 		}
-
-//		for(uint8_t l = 0; l < 16; l++){
-//			if(q.size() < k){
-//				q.push(tuple_<T,Z>(l,score[l]));
-//			}else if(q.top().score < score[l]){
-//				q.pop(); q.push(tuple_<T,Z>(l,score[l]));
-//			}
-//		}
 	}
 	this->tt_processing += this->t.lap();
 	if(STATS_EFF) this->tuple_count=this->n;

@@ -81,51 +81,53 @@ void LARA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 		T threshold = 0;
 		for(uint8_t m = 0; m < qq; m++)
 		{
-			uint8_t idx_a = attr[m];
-			Z id = lists[idx_a][i].id;
-			T aa = lists[idx_a][i].score;
-			T weight = weights[idx_a];
+			uint8_t idx_a = attr[m];//M{1}
+			Z id = lists[idx_a][i].id;//M{1}
+			T aa = lists[idx_a][i].score;//M{1}
+			T weight = weights[idx_a];//M{1}
 			threshold+= weight * aa;
 			if(STATS_EFF) this->accesses+=4;
 
 			////////////////
 			//Update score//
-			auto it = lbmap.find(id);
-			if(STATS_EFF) this->accesses+=1;
-			if (it == lbmap.end()){
+			auto it = lbmap.find(id);//M{1}
+			if(STATS_EFF) this->accesses+=2;
+			if (it == lbmap.end()){//M{1}
 				lara_candidate<T> lc;
 				lc.score = 0;
 				lc.seen = 0;
-				it = lbmap.emplace(id,lc).first;
+				it = lbmap.emplace(id,lc).first;//M{1
 				if(STATS_EFF) this->accesses+=1;
 			}
-			it->second.score+=weight * aa;//aggregate upper bound
-			it->second.seen|=(1<<idx_a);//flag seen location
+			it->second.score+=weight * aa;//aggregate upper bound//M{1}
+			it->second.seen|=(1<<idx_a);//flag seen location//M{1}
 			if(STATS_EFF) this->accesses+=2;
 
 			qpair<T,Z> p;
 			p.id = id;
 			p.score = it->second.score;
-			if(STATS_EFF) this->accesses+=1;
-			if(c.find(id) == c.end())//if object is not in Wk
+			if(STATS_EFF) this->accesses+=2;
+			if(c.find(id) == c.end())//if object is not in Wk//M{1}
 			{
+				if(STATS_EFF) this->accesses+=1;
 				if(q.size() < k){//insert if empty space in queue
-					q.push(p);
-					c.insert(id);
-					if(STATS_EFF) this->accesses+=1;
-				}else if(q.top().score<p.score){//delete smallest element if current score is larger
-					c.erase(q.top().id);
-					c.insert(id);
-					q.pop();
-					q.push(p);
+					q.push(p);//M{1}
+					c.insert(id);//M{1}
+					if(STATS_EFF) this->accesses+=2;
+				}else if(q.top().score<p.score){//delete smallest element if current score is larger//M{1}
+					c.erase(q.top().id);//M{1}
+					c.insert(id);//M{1}
+					q.pop();//M{1}
+					q.push(p);//M{1}
 					if(STATS_EFF) this->accesses+=4;
 				}
 			}else{
 				if(STATS_EFF) this->accesses+=1;
-				q.update(p);//update score in queue and rebalance
+				q.update(p);//update score in queue and rebalance//M{1}
 			}
 		}
-		if(q.size() >= k && ((q.top().score) >= threshold) ){ break; }
+		if(STATS_EFF) this->accesses+=2;
+		if(q.size() >= k && ((q.top().score) >= threshold) ){ break; }//M{2}
 	}
 	if(STATS_EFF) this->tuple_count = lbmap.size();
 	if(STATS_EFF) this->candidate_count = lbmap.size();
@@ -133,24 +135,25 @@ void LARA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	T trank[NUM_DIMS];//Initialize last ranks
 	for(uint8_t m = 0; m < qq; m++)
 	{
-		uint8_t idx_a = attr[m];
-		Z id = lists[idx_a][i-1].id;
-		T aa = lists[idx_a][i-1].score;
-		T weight = weights[idx_a];
-		trank[idx_a] = weight * aa;
-		if(STATS_EFF) this->accesses+=3;
+		uint8_t idx_a = attr[m];//M{1}
+		Z id = lists[idx_a][i-1].id;//M{2}
+		T aa = lists[idx_a][i-1].score;//M{2}
+		T weight = weights[idx_a];//M{1}
+		trank[idx_a] = weight * aa;//M{1}
+		if(STATS_EFF) this->accesses+=7;
 	}
 
 	//Initialize latice lower bounds
 	uint32_t latt_size = (1 << NUM_DIMS);
 	T uparray[latt_size];
 	T lbarray[latt_size];
-	std::memset(lbarray,0,sizeof(T)*latt_size);
+	std::memset(lbarray,0,sizeof(T)*latt_size);//M{latt_size}
+	if(STATS_EFF) this->accesses+=latt_size;
 	for(auto it = lbmap.begin(); it!=lbmap.end(); ++it)
 	{
-		uint8_t seen = it->second.seen;
-		T lbscore = it->second.score;
-		lbarray[seen] = std::max(lbarray[seen],lbscore);
+		uint8_t seen = it->second.seen;//M{1}
+		T lbscore = it->second.score;//M{1}
+		lbarray[seen] = std::max(lbarray[seen],lbscore);//M{1}
 		if(STATS_EFF) this->accesses+=3;
 	}
 
@@ -161,45 +164,47 @@ void LARA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	{
 		for(uint8_t m = 0; m < qq; m++)
 		{
-			uint8_t idx_a = attr[m];
-			Z id = lists[idx_a][i].id;
-			T aa = lists[idx_a][i].score;
-			T weight = weights[idx_a];
+			uint8_t idx_a = attr[m];//M{1}
+			Z id = lists[idx_a][i].id;//M{1}
+			T aa = lists[idx_a][i].score;//M{1}
+			T weight = weights[idx_a];//M{1}
 			trank[idx_a] = weight * aa;
 			if(STATS_EFF) this->accesses+=4;
 
-			auto it = lbmap.find(id);
-			if(STATS_EFF) this->accesses+=1;
-			if(it != lbmap.end())
+			auto it = lbmap.find(id);//M{1}
+			if(STATS_EFF) this->accesses+=2;
+			if(it != lbmap.end())//M{1}
 			{
-				uint8_t seen = it->second.seen;
-				T lbscore = it->second.score + trank[idx_a];
-				if(STATS_EFF) this->accesses+=2;
+				uint8_t seen = it->second.seen;//M{1}
+				T lbscore = it->second.score + trank[idx_a];//M{2}
+				if(STATS_EFF) this->accesses+=3;
 
-				it->second.seen |= (1 << idx_a);
-				it->second.score = lbscore;
-				lbarray[it->second.seen] = std::max(lbarray[it->second.seen], lbscore);
-				if(STATS_EFF) this->accesses+=2;
+				it->second.seen |= (1 << idx_a);//M{1}
+				it->second.score = lbscore;//M{1}
+				lbarray[it->second.seen] = std::max(lbarray[it->second.seen], lbscore);//M{1}
+				if(STATS_EFF) this->accesses+=3;
 
 				qpair<T,Z> p;
 				p.id = id;
 				p.score = it->second.score;
 				if(STATS_EFF) this->accesses+=1;
-				if(c.find(id) == c.end())//if object is not in Wk
+				if(c.find(id) == c.end())//if object is not in Wk//M{1}
 				{
-					if(q.size() < k){//insert if empty space in queue
-						q.push(p);
-						c.insert(id);
+					if(STATS_EFF) this->accesses+=1;
+					if(q.size() < k){//insert if empty space in queue//M{1}
+						q.push(p);//M{1}
+						c.insert(id);//M{1}
 						if(STATS_EFF) this->accesses+=2;
 					}else if(q.top().score<p.score){//delete smallest element if current score is larger
-						c.erase(q.top().id);
-						c.insert(id);
-						q.pop();
-						q.push(p);
+						c.erase(q.top().id);//M{1}
+						c.insert(id);//M{1}
+						q.pop();//M{1}
+						q.push(p);//M{1}
 						if(STATS_EFF) this->accesses+=4;
 					}
 				}else{
-					q.update(p);//update score in queue and rebalance
+					if(STATS_EFF) this->accesses+=1;
+					q.update(p);//update score in queue and rebalance//M{1}
 				}
 
 				T max_ub = 0;
@@ -211,14 +216,15 @@ void LARA<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 					{
 						if(ll & (1 << mm))
 						{
-							add+= weights[mm]*attr[mm];
+							add+= weights[mm]*attr[mm];//M{1}
 						}
 					}
-					max_ub = std::max(lbarray[j] + add,max_ub);
-					if(STATS_EFF) this->accesses+=1;
+					max_ub = std::max(lbarray[j] + add,max_ub);//M{1}
+					if(STATS_EFF) this->accesses+=(1 + qq);
 				}
 
-				if(max_ub <= q.top().score){
+				if(STATS_EFF) this->accesses+=(1 + qq);
+				if(max_ub <= q.top().score){//M{1}
 					i = this->n;
 					this->lvl = i;
 					break;

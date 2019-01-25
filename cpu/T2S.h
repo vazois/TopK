@@ -3,9 +3,10 @@
 
 #include "AA.h"
 
-#define TBLOCK_SIZE 1024
+#define TBLOCK_SIZE NUM_DIMS
 #define TSPLITS 2
-#define TPARTITIONS (IMP == 2 ? (THREADS) : 1)
+#define TPARTITIONS 1
+//#define TPARTITIONS (IMP == 2 ? (THREADS) : 1)
 
 template<class T,class Z>
 struct t2s_pair{
@@ -157,35 +158,37 @@ void T2S<T,Z>::findTopK(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
 	this->t.start();
 	for(uint64_t i = 0; i < TPARTITIONS; i++){
 		for(uint64_t b = 0; b < parts[i].block_num; b++){
-			Z tuple_num = parts[i].blocks[b].tuple_num;
-			T *tuples = parts[i].blocks[b].tuples;
-			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;
-			if(STATS_EFF) this->accesses+=7;
+			Z tuple_num = parts[i].blocks[b].tuple_num;//M{1}
+			T *tuples = parts[i].blocks[b].tuples;//M{1}
+			uint64_t id = parts[i].offset + parts[i].blocks[b].offset;//M{2}
+			if(STATS_EFF) this->accesses+=3;
 
 			for(uint64_t t = 0; t < tuple_num; t++){
 				id+=t;
 				T score00 = 0;
 				for(uint8_t m = 0; m < qq; m++){
-					T weight = weights[attr[m]];
+					T weight = weights[attr[m]];//M{2}
 					//uint32_t offset = attr[m]*VBLOCK_SIZE + t;
-					uint32_t offset = t*this->d + attr[m];
-					score00+=tuples[offset]*weight;
+					uint32_t offset = t*this->d + attr[m];//M{1}
+					score00+=tuples[offset]*weight;//M{1}
 				}
-				if(STATS_EFF) this->accesses+=qq*3;
+				if(STATS_EFF) this->accesses+=qq*4;
 				if(q.size() < k){
 					if(STATS_EFF) this->accesses+=1;
-					q.push(tuple_<T,Z>(id,score00));
+					q.push(tuple_<T,Z>(id,score00));//M{1}
 				}else if(q.top().score < score00){
 					if(STATS_EFF) this->accesses+=2;
-					q.pop(); q.push(tuple_<T,Z>(id,score00));
+					q.pop(); q.push(tuple_<T,Z>(id,score00));//M{2}
 				}
 				if(STATS_EFF) this->tuple_count++;
 			}
 			T threshold = 0;
-			T *tarray = parts[i].blocks[b].tarray;
-			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];
-			if(STATS_EFF) this->accesses+=qq*2;
-			if(q.size() >= k && q.top().score >= threshold){ i = TPARTITIONS; break; }
+			T *tarray = parts[i].blocks[b].tarray;//M{1}
+			if(STATS_EFF) this->accesses+=1;
+			for(uint8_t m = 0; m < qq; m++) threshold+=tarray[attr[m]]*weights[attr[m]];//M{4}
+			if(STATS_EFF) this->accesses+=qq*4;
+			if(STATS_EFF) this->accesses+=2;
+			if(q.size() >= k && q.top().score >= threshold){ i = TPARTITIONS; break; }//M{1}
 		}
 	}
 	if(STATS_EFF) this->candidate_count=k;

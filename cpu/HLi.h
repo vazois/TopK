@@ -162,36 +162,36 @@ void HLi<T,Z>::findTopK(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 		for(uint64_t i = 0; i < nn; i++){
 			T threshold = 0;
 			for(uint8_t mm = 0; mm < qq; mm++){
-				uint8_t aa = attr[mm];
-				Z id = lists[aa][i].tid;
-				T a = lists[aa][i].attr;
-				threshold+= weights[aa] * a;
+				uint8_t aa = attr[mm];//M{1}
+				Z id = lists[aa][i].tid;//M{1}
+				T a = lists[aa][i].attr;//M{1}
+				threshold+= weights[aa] * a;//M{1}
 				if(STATS_EFF) this->accesses+=4;
 
-				if(STATS_EFF) this->accesses+=3;
-				if(eset_vec[j].find(id) == eset_vec[j].end())
+				if(STATS_EFF) this->accesses+=2;
+				if(eset_vec[j].find(id) == eset_vec[j].end())//M{2}
 				{
-					eset_vec[j].insert(id);
+					eset_vec[j].insert(id);//M{2}
 					if(STATS_EFF) this->accesses+=2;
 					T score = 0;
-					for(uint8_t m = 0; m <qq; m++) score += weights[attr[m]] * this->cdata[id * this->d + attr[m]];
+					for(uint8_t m = 0; m <qq; m++) score += weights[attr[m]] * this->cdata[id * this->d + attr[m]];//M{4}
 					if(STATS_EFF) this->pred_count+=this->d;
 					if(STATS_EFF) this->tuple_count+=1;
 					if(STATS_EFF) this->accesses+=qq*4;
 
 					if(STATS_EFF) this->accesses+=1;
-					if(q.size() < k){//insert if empty space in queue
+					if(q.size() < k){//insert if empty space in queue//M{1}
 						if(STATS_EFF) this->accesses+=1;
-						q.push(tuple_<T,Z>(id,score));
+						q.push(tuple_<T,Z>(id,score));//M{1}
 					}else if(q.top().score<score){//delete smallest element if current score is bigger
-						q.pop();
-						q.push(tuple_<T,Z>(id,score));
+						q.pop();//M{1}
+						q.push(tuple_<T,Z>(id,score));//M{1}
 						if(STATS_EFF) this->accesses+=2;
 					}
 				}
 			}
-			if(q.size() >= k && ((q.top().score) >= threshold) ){ break; }
 			if(STATS_EFF) this->accesses+=2;
+			if(q.size() >= k && ((q.top().score) >= threshold) ){ break; }//M{2}
 		}
 	}
 	if(STATS_EFF) this->candidate_count=k;
