@@ -775,7 +775,10 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	 */
 	dim3 agg_lsort_block(256,1,1);
 	dim3 agg_lsort_grid((this->n-1)/BTA_TUPLES_PER_BLOCK + 1,1,1);
+	this->parts = agg_lsort_grid.x;
+	#if VALIDATE
 	std::cout << "[" << agg_lsort_grid.x << " , " << agg_lsort_block.x << "]"<< std::endl;
+	#endif
 	gclear_driver(gsvector,this->n);
 	gclear_driver(gsvector_out,this->n);
 	if( k < 32 ){
@@ -784,8 +787,10 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_atm_16");
 		tt_processing = this->t.lap();
 		this->tt_processing += tt_processing;
+		#if VALIDATE
 		std::cout << "agg_lsort_atm_16: " << tt_processing << std::endl;
 		std::cout << "agg_lsort_atm_16 (GB/s): " << ((this->n * qq * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
+		#endif
 		uint64_t remainder = (agg_lsort_grid.x * k);
 
 		/////////
@@ -809,8 +814,9 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 		{
 			//gclear_driver(gsvector_out,this->n);//TODO:DEBUG
 			agg_lsort_grid.x = ((remainder - 1) /BTA_TUPLES_PER_BLOCK) + 1;
+			#if VALIDATE
 			std::cout << "remainder:{" << remainder << "," << agg_lsort_grid.x << "}" << std::endl;
-
+			#endif
 			this->t.start();
 			reduce_rebuild_atm_16<T><<<agg_lsort_grid,agg_lsort_block>>>(gsvector,remainder,k,gsvector_out);
 			cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing reduce_rebuild_atm_16");
@@ -821,8 +827,10 @@ void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 			std::swap(gsvector,gsvector_out);
 			//break;
 		}
+		#if VALIDATE
 		std::cout << "reduce_rebuild_atm_16: " << tt_processing << std::endl;
 		std::cout << "reduce_rebuild_atm_16 (GB/s): " << ((items * 4) / (tt_processing/1000))/(1024*1024*1024) << std::endl;
+		#endif
 		this->tt_processing += tt_processing;
 
 		#if USE_DEVICE_MEM

@@ -141,8 +141,7 @@ else
 			#echo "./gpu_run -f=data/$fname -n=$n -d=$DIMS"
 			set -e
 			#./gpu_run -f=data/$fname -n=$n -d=$DIMS
-			nvprof --kernels "gvta_atm|agg_lsort_atm_16" --metrics branch_efficiency,dram_read_throughput,dram_utilization,sysmem_read_utilization,gld_throughput,local_memory_overhead,stall_memory_dependency,stall_sync,issued_ipc,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS 
-			#nvprof --kernels "gvta_atm" ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			nvprof --kernels "gvta_atm|agg_lsort_atm_16" --metrics branch_efficiency,dram_read_throughput,dram_write_throughput,dram_utilization,gld_throughput,gst_throughput,stall_inst_fetch,stall_memory_throttle,stall_memory_dependency,stall_sync,issued_ipc,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS 
 		fi
 		
 		if [ $? -eq 1 ]

@@ -200,6 +200,7 @@ class GAA{
 			this->gpu_threshold = 0;
 
 			this->iter = 1;
+			this->parts = 0;
 			this->tt_init = 0;
 			this->tt_processing = 0;
 			this->pred_count = 0;
@@ -227,10 +228,11 @@ class GAA{
 		void set_gdata(T *gdata){ this->gdata = gdata; }
 
 		void set_iter(uint64_t iter){ this->iter = iter; }
+		void set_partitions(uint64_t parts){ this->parts = parts; }
 
 		void benchmark(){
 			std::cout << std::fixed << std::setprecision(4);
- 			std::cout << "< Benchmark for " << this->algo << " algorithm >" << std::endl;
+ 			std::cout << "< Benchmark for " << this->algo <<"("<< this->parts <<") algorithm >" << std::endl;
  			std::cout << "Accessing data from {" << (USE_DEVICE_MEM ? "Device Memory" : "Host Memory")  << "}"<< std::endl;
 			std::cout << "tt_init: " << this->tt_init << std::endl;
 			std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
@@ -238,7 +240,7 @@ class GAA{
 			std::cout << "tuple_count: " << this->tuple_count << std::endl;
 			std::cout << "cpu_threshold: " << this->cpu_threshold << std::endl;
 			std::cout << "gpu_threshold: " << this->gpu_threshold << std::endl;
-			//std::cout << "< ---------------------------------------------- >" << std::endl;
+			std::cout << "_______________________________________________________________" << std::endl;
 			this->reset_stats();
 		}
 
@@ -274,6 +276,7 @@ class GAA{
 		uint32_t *query;
 
 		uint64_t iter;//experiment count
+		uint64_t parts;
 		double tt_init;
 		double tt_processing;
 		uint64_t pred_count;//count predicate evaluations
