@@ -367,6 +367,7 @@ class GVTA : public GAA<T,Z>{
 		void reorder();
 		void atm_16(uint64_t k, uint64_t qq);
 		void atm_16_dm_driver(uint64_t k, uint64_t qq);
+		void atm_16_hm_driver(uint64_t k, uint64_t qq);
 
 		void clear_mem_counters(){
 			this->gvta_mem = 0;
@@ -513,9 +514,9 @@ void GVTA<T,Z>::reorder()
 		offset += this->tuples_per_part;
 	}
 
-//	//DEBUG//
+	//DEBUG//
 //	std::cout << std::fixed << std::setprecision(6);
-//	//if(GVTA_PARTITIONS == 2){
+//	if(GVTA_PARTITIONS == 2){
 //		std::cout << "<<<< COLUMN MAJOR FINAL ORDERING >>>>" << std::endl;
 //		for(uint64_t b = 0; b < 4; b++){//4 blocks per partition
 //			T *data = this->blocks[b].data;
@@ -527,7 +528,7 @@ void GVTA<T,Z>::reorder()
 //				uint64_t poff = 0;
 //				for(uint64_t j = 0; j < GVTA_BLOCK_SIZE * GVTA_PARTITIONS; j++)
 //				{
-//					//std::cout << data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + j] << " ";
+//					std::cout << data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + j] << " ";
 //					if((j+1) % GVTA_BLOCK_SIZE == 0){
 //						//std::cout << "(" << tvector[ (j % GVTA_BLOCK_SIZE)   +  (j / (GVTA_BLOCK_SIZE * GVTA_PARTITIONS))] <<")";
 //						std::cout << "(" << tvector[poff + m] <<")";
@@ -540,7 +541,40 @@ void GVTA<T,Z>::reorder()
 //			}
 //		}
 //		std::cout << "____________________________________________________________________________________________________________________________\n";
-//	//}
+//	}
+
+//	for(uint64_t i = 0; i < 1; i++){
+//		for(uint64_t b = 0; b < this->num_blocks; b++){
+//			std::cout << std::fixed << std::setprecision(4);
+//			std::cout << "[" << std::setfill('0') << std::setw(3) << b <<  "] ";
+//			for(uint64_t m = 0; m < this->d; m++){
+//				std::cout << this->blocks[b].tvector[ GVTA_PARTITIONS * m  + i] << " ";
+//			}
+//			std::cout << std::endl;
+//		}
+//	}
+
+	for(uint64_t i = 0; i < GVTA_PARTITIONS; i++){
+		for(uint64_t b = 1; b < this->num_blocks; b++){
+			T *data = this->blocks[b].data;
+			T *tvector = this->blocks[b].tvector;
+
+			for(uint64_t m = 0; m < this->d; m++){
+				if( this->blocks[b].tvector[ GVTA_PARTITIONS * m  + i] > this->blocks[b-1].tvector[ GVTA_PARTITIONS * m  + i] )
+				{
+					std::cout << std::fixed << std::setprecision(4);
+					std::cout << "ERROR" << std::endl;
+					std::cout << "[" << std::setfill('0') << std::setw(3) << i << "," << b <<  "] ";
+					for(uint64_t mm = 0; mm < this->d; mm++){ std::cout << this->blocks[b-1].tvector[ GVTA_PARTITIONS * mm  + i] << " "; }
+					std::cout << std::endl << "+++++++++++++++++++++" << std::endl;
+					std::cout << "[" << std::setfill('0') << std::setw(3) << i << "," << b <<  "] ";
+					for(uint64_t mm = 0; mm < this->d; mm++){ std::cout << this->blocks[b].tvector[ GVTA_PARTITIONS * mm  + i] << " "; }
+					std::cout << std::endl;
+					exit(1);
+				}
+			}
+		}
+	}
 
 	/////////////////////////
 	//Free not needed space//
@@ -602,9 +636,6 @@ void GVTA<T,Z>::atm_16_dm_driver(uint64_t k, uint64_t qq){
 	//this->tt_processing += this->t.lap("gvta_atm_16_dm");
 	this->tt_processing += this->t.lap("");
 
-	//print_stop_level<<<1,1>>>();
-	//cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing print_stop_level");
-
 	cutil::safeCopyToHost<T,uint64_t>(cout,gout,sizeof(T) * GVTA_PARTITIONS * k, "error copying from gout to out");
 	//for(int i = 0; i < GVTA_PARTITIONS * k; i+=k){ for(int j = i; j < i+k; j++){ std::cout << cout[j] << " "; } std::cout << std::endl; }
 	std::sort(cout, cout + GVTA_PARTITIONS * k,std::greater<T>());
@@ -628,6 +659,12 @@ void GVTA<T,Z>::atm_16_dm_driver(uint64_t k, uint64_t qq){
 		std::cout << "ERROR: {" << cout[k-1] << "," << this->cpu_threshold << "," << cpu_gvagg << "}" << std::endl; exit(1);
 	}
 	#endif
+}
+
+template<class T, class Z>
+void GVTA<T,Z>::atm_16_hm_driver(uint64_t k, uint64_t qq)
+{
+
 }
 
 template<class T,class Z>

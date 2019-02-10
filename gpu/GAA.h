@@ -22,6 +22,8 @@
 #define VALIDATE false//ENABLE RESULT VALIDATION//
 #define USE_DEVICE_MEM true
 
+#define USE_POLAR_DEV_MEM true // USE DEVICE MEMORY TO COMPUTE POLAR COORDINATES
+
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];
 

@@ -141,17 +141,6 @@ void PTA<T,Z>::polar(){
 		}
 	}
 
-	//Part_id calculate// Old part id calculation//
-//	uint64_t mod = (this->n / PSLITS);
-//	uint64_t mul = 1;
-//	for(uint64_t i = 0; i < this->n; i++) this->part_id[i] = 0;
-//	for(uint32_t m = 0; m < this->d-1; m++){//For each hyperspherical coordinate
-//		for(uint64_t i = 0; i < this->n; i++){ pp[i].id = i; pp[i].score = pdata[m*this->n + i]; }
-//		__gnu_parallel::sort(&pp[0],(&pp[0]) + this->n,cmp_pta_pair_asc<T,Z>);//determine splitting points
-//		for(uint64_t i = 0; i < this->n; i++){ this->part_id[pp[i].id]+=(mul*(i / mod)); }// Assign partition id
-//		mul*=PSLITS;
-//	}
-
 	uint64_t chunk_size = ((this->n - 1) /PSLITS) + 1;
 	uint64_t shift = 0;
 	for(uint64_t i = 0; i < this->n; i++) this->part_id[i] = 0;
@@ -161,7 +150,7 @@ void PTA<T,Z>::polar(){
 		for(uint64_t i = 0; i < this->n; i++){
 			Z id = pp[i].id;
 			uint32_t part = i / chunk_size;
-			this->part_id[id]= this->part_id[id] | (part << shift);
+			this->part_id[id] = this->part_id[id] | (part << shift);
 		}// Assign partition id
 		shift+=PPART_BITS;
 	}
