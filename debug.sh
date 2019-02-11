@@ -53,7 +53,7 @@ fi
 ###### EXPERIMENT PARAMETERS ######
 ###################################
 #CPU:0,GPU:1
-device=1
+device=$1
 #QM 0:Reverse query attribute, 1:Forward query attributes
 QM=0
 #QD Dimension interval for testing
@@ -61,11 +61,11 @@ QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
 IMP=1
 #ITER Testing iterations
-ITER=10
+ITER=1
 #Multiple Thread Count
 MQTHREADS=16
 #Gather object evaluation statistics
-STATS_EFF=false
+STATS_EFF=true
 #Choose workload for multi-query evaluation
 WORKLOAD=$((1024*128))
 

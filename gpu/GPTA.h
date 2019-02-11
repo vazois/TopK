@@ -8,7 +8,7 @@
 #include "../tools/tools.h"
 #include <map>
 
-#define ALPHA 1.0
+#define ALPHA 1.1
 #define GPTA_PI 3.1415926535
 #define GPTA_PI_2 (180.0f/PI)
 
@@ -16,7 +16,7 @@
 #define GPTA_PARTS (((uint64_t)pow(GPTA_SPLITS,NUM_DIMS-1)))
 #define GPTA_PART_BITS ((uint64_t)log2f(GPTA_SPLITS))
 
-#define GPTA_BLOCK_SIZE 1024
+#define GPTA_BLOCK_SIZE 256
 
 template<class T, class Z>
 struct gpta_block{
@@ -156,6 +156,15 @@ void GPTA<T,Z>::polar_partition()
 		next_angle<T><<<polar_grid,polar_block>>>(this->cdata,this->n,m-1,num_vec,angle_vec);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_num_vec");
 
+//		if( m == 1 ){
+//			for(uint32_t i = 0; i < 32; i++)
+//			{
+//				std::cout << std::fixed << std::setprecision(4);
+//				std::cout << "[" << std::setfill('0') << std::setw(8) << i << "] : {" << angle_vec[i] << "} = ";
+//				for(uint64_t mm = 0; mm < this->d; mm++){ std::cout << this->cdata[mm*this->n + i] << " "; } std::cout << std::endl;
+//			}
+//		}
+
 		//b: initialize keys for sorting
 		init_keys<<<polar_grid,polar_block>>>(keys_in,this->n);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_keys");
@@ -182,6 +191,12 @@ void GPTA<T,Z>::polar_partition()
 	#endif
 
 	this->t.start();
+//	for(uint64_t i = 0; i<64; i++){
+//		std::cout << "[" << std::setfill('0') << std::setw(8) << i << "] : {" << std::setfill('0') << std::setw(3) << cpart[i] << "} = ";
+//		std::cout << std::fixed << std::setprecision(4);
+//		for(uint64_t m = 0; m < this->d; m++){ std::cout << this->cdata[m*this->n + i] << " "; } std::cout << std::endl;
+//	}
+
 	max_part_size = 0;
 	for(uint64_t i = 0; i < GPTA_PARTS; i++) part_size[i] = 0;
 	for(uint64_t i = 0; i<this->n; i++){
@@ -190,8 +205,10 @@ void GPTA<T,Z>::polar_partition()
 		if(cpart[i]>=GPTA_PARTS){ std::cout << "ERROR (polar): " << i << "," << cpart[i] << std::endl;  exit(1); }
 	}
 	this->tt_init += this->t.lap();
-	//for(uint64_t i = 0; i < GPTA_PARTS; i++){ std::cout << i << " = " << part_size[i] << std::endl; }
-	//std::cout << "max_part_size: " << this->max_part_size << std::endl;
+//	for(uint64_t i = 0; i < GPTA_PARTS; i++){
+//		std::cout << "g(" << i << "):" << std::setfill('0') << std::setw(8) << part_size[i] << std::endl;
+//	}
+//	std::cout << "max_part_size: " << this->max_part_size << std::endl;
 
 	////////////////
 	//Free buffers//
@@ -339,12 +356,18 @@ void GPTA<T,Z>::reorder_partition(){
 			Z size = (j + GPTA_BLOCK_SIZE) < this->cparts[i].size ? GPTA_BLOCK_SIZE : this->cparts[i].size - j;
 			T *data = this->cparts[i].blocks[b].data;
 			this->cparts[i].blocks[b].offset = j;
-			//std::cout << b << "," << this->cparts[i].bnum << std::endl;
+
+			T mx[NUM_DIMS];
+			for(uint64_t m = 0; m < this->d; m++) mx[m] = 0;
 			for(Z jj = 0; jj < GPTA_BLOCK_SIZE; jj++)
 			{
 				if( jj < size ){
 					Z tid = this->part_tid[part_offset + ctid_vec_out[j + jj]];
-					for(uint64_t m = 0; m < this->d; m++) data[m * GPTA_BLOCK_SIZE + jj] = this->cdata[m * this->n + tid];
+					for(uint64_t m = 0; m < this->d; m++){
+						T v = this->cdata[m * this->n + tid];
+						data[m * GPTA_BLOCK_SIZE + jj] = v;
+						mx[m] = std::max(mx[m],v);
+					}
 				}else{
 					for(uint64_t m = 0; m < this->d; m++) data[m * GPTA_BLOCK_SIZE + jj] = 0;
 				}
@@ -353,14 +376,13 @@ void GPTA<T,Z>::reorder_partition(){
 		}
 		this->tt_init += this->t.lap();
 		part_offset += this->cparts[i].size;
-		//if(i == 0) break;
 	}
 
 	//Calculate thresholds//
-	T mx[NUM_DIMS];
 	this->t.start();
-	for(uint64_t m = 0; m < this->d; m++) mx[m] = 0;
 	for(uint64_t i = 0; i < GPTA_PARTS; i++){
+		T mx[NUM_DIMS];
+		for(uint64_t m = 0; m < this->d; m++) mx[m] = 0;
 		for(uint64_t b = this->cparts[i].bnum - 1; b > 0; b--){
 			T *tvector = this->cparts[i].blocks[b-1].tvector;
 			T *data = this->cparts[i].blocks[b].data;
@@ -373,17 +395,6 @@ void GPTA<T,Z>::reorder_partition(){
 	this->tt_init += this->t.lap();
 
 	//Validate thresholds//
-//	for(uint64_t i = 0; i < 1; i++){
-//		for(uint64_t b = 0; b < this->cparts[i].bnum; b++){
-//			std::cout << std::fixed << std::setprecision(4);
-//			std::cout << "[" << std::setfill('0') << std::setw(3) << b <<  "] ";
-//			for(uint64_t m = 0; m < this->d; m++){
-//				std::cout << this->cparts[i].blocks[b].tvector[ m ] << " ";
-//			}
-//			std::cout << std::endl;
-//		}
-//	}
-
 	for(uint64_t i = 0; i < GPTA_PARTS; i++){
 		for(uint64_t b = 1; b < this->cparts[i].bnum; b++){
 			for(uint64_t m = 0; m < this->d; m++){
@@ -449,7 +460,6 @@ T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 		for(uint64_t b = 0; b < this->cparts[i].bnum; b++)
 		{
 			T *data = blocks[b].data;
-			T *tvector = blocks[b].tvector;
 			for(uint64_t j = 0; j < GPTA_BLOCK_SIZE; j++)
 			{
 				T score = 0;
@@ -467,15 +477,14 @@ T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 				}
 				this->tuple_count+=1;
 			}
+
 			T t = 0;
+			T *tvector = blocks[b].tvector;
 			for(uint64_t m = 0; m < qq; m++){
 				Z ai = this->query[m];
 				t += tvector[ai] * this->weights[ai];
 			}
-			if(q.size() >= k && q.top().score >= t){
-				//std::cout << "{BREAK}: " << i << "," << b << " < " << this->cparts[i].bnum << std::endl;
-				break;
-			}
+			if(q.size() >= k && q.top().score >= t){ break; }
 		}
 	}
 	threshold2 = q.top().score;
@@ -566,7 +575,7 @@ __global__ void next_angle(T *data, uint64_t n, int m, T *num_vec, T *angle_vec)
 		num = num_vec[i];//Load previous numerator
 		dnm = (ALPHA - data[m*n + i]);//Load current denominator
 
-		angle = atan(sqrtf(num)/dnm);//calculate tan(Fj)
+		angle = fabsf(atan(sqrtf(num)/dnm) * GPTA_PI_2);//calculate tan(Fj)
 
 		num_vec[i] += dnm * dnm;
 		angle_vec[i] = angle;

@@ -15,7 +15,7 @@
 #define PI_2 (180.0f/PI)
 #define SIMD_GROUP 16
 
-#define PBLOCK_SIZE 1024
+#define PBLOCK_SIZE 256
 #define PBLOCK_SHF 10
 #define PPARTITIONS (((uint64_t)pow(PSLITS,NUM_DIMS-1)))
 
@@ -144,7 +144,8 @@ void PTA<T,Z>::polar(){
 	uint64_t chunk_size = ((this->n - 1) /PSLITS) + 1;
 	uint64_t shift = 0;
 	for(uint64_t i = 0; i < this->n; i++) this->part_id[i] = 0;
-	for(uint32_t m = 0; m < this->d-1; m++){
+	//for(uint32_t m = 0; m < this->d-1; m++){
+	for(int32_t m = this->d-2; m >= 0; m--){
 		for(uint64_t i = 0; i < this->n; i++){ pp[i].id = i; pp[i].score = pdata[m*this->n + i]; }
 		__gnu_parallel::sort(&pp[0],(&pp[0]) + this->n,cmp_pta_pair_asc<T,Z>);//determine splitting points
 		for(uint64_t i = 0; i < this->n; i++){
@@ -157,9 +158,15 @@ void PTA<T,Z>::polar(){
 
 	//Count and verify number of points inside each partition//
 	std::map<Z,Z> mm;
+//	for(uint64_t i = 0; i<64; i++){
+//		std::cout << "[" << std::setfill('0') << std::setw(8) << i << "] : {" << std::setfill('0') << std::setw(3) << this->part_id[i] << "} = ";
+//		std::cout << std::fixed << std::setprecision(4);
+//		for(uint64_t m = 0; m < this->d; m++){ std::cout << this->cdata[m*this->n + i] << " "; } std::cout << std::endl;
+//	}
+
 	for(uint64_t i = 0; i < PPARTITIONS;i++) mm.insert(std::pair<Z,Z>(i,0));
 	for(uint64_t i = 0; i < this->n; i++){
-		if(this->part_id[i] >= PPARTITIONS) this->part_id[i] = PPARTITIONS - 1;
+		//if(this->part_id[i] >= PPARTITIONS) this->part_id[i] = PPARTITIONS - 1;
 		this->part_id[i]/=PREDUCE;
 		Z pid = this->part_id[i];
 		mm[pid]+=1;
@@ -213,13 +220,10 @@ void PTA<T,Z>::create_partitions(){
 		if(this->parts[i].size == 0) continue;
 		//INITIALIZE//
 		for(uint64_t j = 0; j < this->max_part_size;j++){ pos[j].id = j; pos[j].pos = this->parts[i].size; }//Initialize to max possible position
-		//for(uint32_t m = 0; m < this->d; m++){ for(uint64_t j = 0; j < this->max_part_size;j++){ lists[m][j].id = 0; lists[m][j].score = 0; } }
-
 		for(uint32_t m = 0; m < this->d; m++){//Initialize lists for given partition//
 			for(uint64_t j = 0; j < this->parts[i].size;j++){
 				Z gid = ppos[(gindex + j)].id;//global tuple id
 				lists[m][j].id = j;//local tuple id//
-				//if (gid >= this->n) std::cout << "ERROR: " << gid << std::endl;
 				lists[m][j].score = this->cdata[m*this->n + gid];
 			}
 			__gnu_parallel::sort(lists[m],(lists[m]) + this->parts[i].size,cmp_pta_pair<T,Z>);//Sort to create lists
@@ -271,6 +275,19 @@ void PTA<T,Z>::init(){
 	std::cout << "creating partitions ..." << std::endl;
 	this->create_partitions();
 	this->tt_init = this->t.lap();
+
+//	for(uint64_t p = 0; p < 1; p++){
+//		Z poffset = this->parts[p].offset;
+//		for(uint64_t b = 0; b < this->parts[p].block_num; b++){
+//			T threshold = 0;
+//			T *tarray = this->parts[p].blocks[b].tarray;
+//
+//			std::cout << std::fixed << std::setprecision(4);
+//			std::cout << "[" << std::setfill('0') << std::setw(3) << b <<  "] ";
+//			for(uint64_t m = 0; m < this->d; m++){ std::cout << this->parts[p].blocks[b].tarray[ m ] << " "; }
+//			std::cout << std::endl;
+//		}
+//	}
 }
 
 template<class T, class Z>

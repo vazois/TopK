@@ -114,7 +114,7 @@ void bench_gpta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t
 		for(uint64_t k = ks; k <= ke; k*=2){
 			for(uint64_t i = q; i <= f.items();i+=QD){
 				gpta.copy_query(weights,attr[i-2]);
-				gpta.findTopK(k,i);
+				//gpta.findTopK(k,i);
 				gpta.reset_stats();
 				for(uint8_t m = 0; m < ITER;m++){ gpta.findTopK(k,i); }
 				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;

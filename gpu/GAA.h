@@ -23,7 +23,7 @@
 #define USE_DEVICE_MEM true
 
 //PTA DEVICE MEMORY USAGE//
-#define USE_POLAR_DEV_MEM true // USE DEVICE MEMORY TO COMPUTE POLAR COORDINATES
+#define USE_POLAR_DEV_MEM false // USE DEVICE MEMORY TO COMPUTE POLAR COORDINATES
 #define USE_PART_REORDER_DEV_MEM true
 #define USE_BUILD_PART_DEV_MEM true
 
@@ -249,7 +249,7 @@ class GAA{
 			std::cout << "tuple_count: " << this->tuple_count << std::endl;
 			std::cout << "cpu_threshold: " << this->cpu_threshold << std::endl;
 			std::cout << "gpu_threshold: " << this->gpu_threshold << std::endl;
-			std::cout << "_______________________________________________________________" << std::endl;
+			std::cout << "______________________________________________________" << std::endl;
 			this->reset_stats();
 		}
 

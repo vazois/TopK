@@ -291,21 +291,21 @@ void bench_pta(std::string fname,uint64_t n, uint64_t d, uint64_t ks, uint64_t k
 				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
 				//Warm up
 				if (IMP == 0){
-					pta.findTopKscalar(k,i,weights,attr[i-q]);
+					pta.findTopKscalar(k,i,weights,attr[i-2]);
 				}else if(IMP == 1){
-					pta.findTopKsimd(k,i,weights,attr[i-q]);
+					pta.findTopKsimd(k,i,weights,attr[i-2]);
 				}else if(IMP == 2){
-					pta.findTopKthreads2(k,i,weights,attr[i-q]);
+					pta.findTopKthreads2(k,i,weights,attr[i-2]);
 				}
 				pta.reset_clocks();
 				//Benchmark
 				for(uint8_t m = 0; m < ITER;m++){
 					if (IMP == 0){
-						pta.findTopKscalar(k,i,weights,attr[i-q]);
+						pta.findTopKscalar(k,i,weights,attr[i-2]);
 					}else if(IMP == 1){
-						pta.findTopKsimd(k,i,weights,attr[i-q]);
+						pta.findTopKsimd(k,i,weights,attr[i-2]);
 					}else if(IMP == 2){
-						pta.findTopKthreads2(k,i,weights,attr[i-q]);
+						pta.findTopKthreads2(k,i,weights,attr[i-2]);
 					}
 				}
 				pta.benchmark();
