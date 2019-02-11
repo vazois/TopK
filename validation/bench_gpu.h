@@ -73,7 +73,6 @@ void bench_gvta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t
 	gvta.set_iter(ITER);
 	gvta.reset_stats();
 	uint64_t q = 2;
-	return;
 	if(IMP < 3){
 		for(uint64_t k = ks; k <= ke; k*=2){
 			//for(int64_t i = f.items(); i >= q;i-=QD){
@@ -110,12 +109,10 @@ void bench_gpta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t
 	gpta.init();
 	gpta.set_iter(ITER);
 	gpta.reset_stats();
-	uint64_t q = 8;
+	uint64_t q = 2;
 	if(IMP < 3){
 		for(uint64_t k = ks; k <= ke; k*=2){
-			//for(int64_t i = f.items(); i >= q;i-=QD){
 			for(uint64_t i = q; i <= f.items();i+=QD){
-			//for(uint64_t i = q; i <= q;i+=QD){
 				gpta.copy_query(weights,attr[i-2]);
 				gpta.findTopK(k,i);
 				gpta.reset_stats();

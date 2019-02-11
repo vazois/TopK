@@ -22,7 +22,10 @@
 #define VALIDATE false//ENABLE RESULT VALIDATION//
 #define USE_DEVICE_MEM true
 
+//PTA DEVICE MEMORY USAGE//
 #define USE_POLAR_DEV_MEM true // USE DEVICE MEMORY TO COMPUTE POLAR COORDINATES
+#define USE_PART_REORDER_DEV_MEM true
+#define USE_BUILD_PART_DEV_MEM true
 
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];
@@ -75,6 +78,10 @@ __global__ void max_rvglobal(Z *rvector, Z *dkeys_in, uint64_t n)
 		rvector[obj_id] = min(rvector[obj_id],i);
 	}
 
+}
+
+void wait(){
+	 do { std::cout << '\n' << "Press a key to continue..."; } while (std::cin.get() != '\n');
 }
 
 /*

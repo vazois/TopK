@@ -10,7 +10,7 @@ DIMS=8
 KKS=16
 KKE=16
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=1
+LD=0
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -55,7 +55,7 @@ fi
 #CPU:0,GPU:1
 device=1
 #QM 0:Reverse query attribute, 1:Forward query attributes
-QM=1
+QM=0
 #QD Dimension interval for testing
 QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)

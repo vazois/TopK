@@ -7,6 +7,8 @@ def gather(fname):
     mm = dict()
     mm["algo"]=list()
     mm["threshold"]=list()
+    mm["cpu_threshold"]=list()
+    mm["gpu_threshold"]=list()
     mm["stop_level"]=list()
     mm["tt_procesing"] = list()
     mm["tuple_count"] = list()
@@ -23,6 +25,12 @@ def gather(fname):
         if line.startswith("threshold:"):
             data = line.strip().split(":")
             mm[data[0]].append(float(data[1]))
+        if line.startswith("cpu_threshold:"):
+            data = line.strip().split(":")
+            mm[data[0]].append(float(data[1]))
+        if line.startswith("gpu_threshold:"):
+            data = line.strip().split(":")
+            mm[data[0]].append(float(data[1]))                    
         if line.startswith("stop_level:"):
             data = line.strip().split(":")
             mm[data[0]].append(float(data[1]))
@@ -66,6 +74,10 @@ if __name__ == "__main__":
     algo = ""
     if len(mm["threshold"]) > 0:
         print "threshold",
+    if len(mm["cpu_threshold"]) > 0:
+        print "cpu_threshold",
+    if len(mm["gpu_threshold"]) > 0:
+        print "gpu_threshold",            
     if len(mm["tt_init"]) > 0:
         print "tt_init",
     if len(mm["tt_procesing"]) > 0:
@@ -92,6 +104,10 @@ if __name__ == "__main__":
         #print "{0:0.4f}".format(mm["threshold"][i]),"{0:0.4f}".format(mm["tt_init"][i]),"{0:0.4f}".format(mm["tt_procesing"][i]),mm["accesses"][i],mm["tuple_count"][i],mm["candidate_count"][i]
         if i < len(mm["threshold"]):
             print "{0:0.4f}".format(mm["threshold"][i]),
+        if i < len(mm["cpu_threshold"]):
+            print "{0:0.4f}".format(mm["cpu_threshold"][i]),
+        if i < len(mm["gpu_threshold"]):
+            print "{0:0.4f}".format(mm["gpu_threshold"][i]),                    
         if i < len(mm["tt_init"]):
             print "{0:0.4f}".format(mm["tt_init"][i]),
         if i < len(mm["tt_procesing"]):

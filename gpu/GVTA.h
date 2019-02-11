@@ -3,15 +3,6 @@
 
 #include "GAA.h"
 
-__device__ uint32_t slevel[GVTA_PARTITIONS];
-
-__global__ void print_stop_level(){
-	for(uint32_t i = 0;i < GVTA_PARTITIONS; i++)
-	{
-		printf("[%d] = %d\n",i,slevel[i]);
-	}
-}
-
 /*
  * blocks: data blocks
  * n: tuple number
@@ -307,7 +298,7 @@ __global__ void gvta_atm_16_4096(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t 
 			//if(i == 1)
 			break;
 		}
-		//__syncthreads();
+		__syncthreads();
 		i++;
 	}
 
@@ -337,11 +328,12 @@ class GVTA : public GAA<T,Z>{
 			cudaStreamDestroy(s0);
 			cudaStreamDestroy(s1);
 			if(blocks){ cudaFreeHost(this->blocks); }
-			if(cout){cudaFreeHost(this->blocks);}
+			if(cout){ cudaFreeHost(cout); }
 			#if USE_DEVICE_MEM
-				cudaFree(this->gblocks);
+				if(this->gblocks) cudaFree(this->gblocks);
 				if(gout) cudaFree(gout);
 			#endif
+			std::cout << "CLEAR: {" << this->algo << "}" << std::endl;
 		};
 
 		void alloc();
@@ -385,7 +377,6 @@ class GVTA : public GAA<T,Z>{
 template<class T, class Z>
 void GVTA<T,Z>::alloc(){
 	cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
-	//cutil::safeMallocManaged<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
 	this->base_mem += sizeof(T)*this->n*this->d;
 }
 
@@ -409,13 +400,10 @@ void GVTA<T,Z>::reorder()
 	//1: Allocate space for reordered blocks
 	this->tuples_per_part = ((this->n - 1)/GVTA_PARTITIONS) + 1;
 	this->num_blocks = ((this->tuples_per_part - 1) / GVTA_BLOCK_SIZE) + 1;
-	cutil::safeMallocHost<gvta_block<T,Z>,uint64_t>(&(this->blocks),sizeof(gvta_block<T,Z>)*this->num_blocks,"alloc gvta_blocks");
-	//this->blocks = (gvta_block<T,Z>*)malloc(sizeof(gvta_block<T,Z>)*this->num_blocks);
+	cutil::safeMallocHost<gvta_block<T,Z>,uint64_t>(&(this->blocks),sizeof(gvta_block<T,Z>)*this->num_blocks,"alloc host gvta_blocks");
 	std::cout << this->n << " = p,psz(" << GVTA_PARTITIONS <<"," << this->tuples_per_part << ") - " << "b,bsz(" << this->num_blocks << "," << GVTA_BLOCK_SIZE << ")" << std::endl;
 	for(uint64_t i = 0; i< this->num_blocks; i++)//TODO:safemalloc
 	{
-		//cutil::safeMallocHost<T,uint64_t>(&(this->blocks[i].data),sizeof(T)*GVTA_PARTITIONS*GVTA_BLOCK_SIZE*this->d,"alloc gvta_block data("+std::to_string((unsigned long long)i)+")");
-		//cutil::safeMallocHost<T,uint64_t>(&(this->blocks[i].tvector),sizeof(T)*GVTA_PARTITIONS*this->d,"alloc gvta_block tvector("+std::to_string((unsigned long long)i)+")");
 		this->gvta_mem += sizeof(T)*GVTA_PARTITIONS*GVTA_BLOCK_SIZE*this->d;
 		this->gvta_mem += sizeof(T)*GVTA_PARTITIONS*this->d;
 	}
@@ -489,7 +477,7 @@ void GVTA<T,Z>::reorder()
 					for(uint64_t m = 0; m < this->d; m++)
 					{
 						T v = this->cdata[this->n * m + id];
-						this->blocks[bi].data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + (i *GVTA_BLOCK_SIZE + jj)] = v;
+						this->blocks[bi].data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + (i * GVTA_BLOCK_SIZE + jj)] = v;
 						tvector[m] = std::max(tvector[m],v);
 					}
 				}else{//initialize to negative if block is partially full
@@ -556,9 +544,6 @@ void GVTA<T,Z>::reorder()
 
 	for(uint64_t i = 0; i < GVTA_PARTITIONS; i++){
 		for(uint64_t b = 1; b < this->num_blocks; b++){
-			T *data = this->blocks[b].data;
-			T *tvector = this->blocks[b].tvector;
-
 			for(uint64_t m = 0; m < this->d; m++){
 				if( this->blocks[b].tvector[ GVTA_PARTITIONS * m  + i] > this->blocks[b-1].tvector[ GVTA_PARTITIONS * m  + i] )
 				{
@@ -579,15 +564,15 @@ void GVTA<T,Z>::reorder()
 	/////////////////////////
 	//Free not needed space//
 	cudaFree(d_temp_storage);
-	cudaFree(grvector);
-	cudaFree(grvector_out);
-	cudaFree(dkeys_in);
-	cudaFree(dkeys_out);
-	cudaFree(dvalues_in);
-	cudaFree(dvalues_out);
+	cudaFreeHost(grvector);
+	cudaFreeHost(grvector_out);
+	cudaFreeHost(dkeys_in);
+	cudaFreeHost(dkeys_out);
+	cudaFreeHost(dvalues_in);
+	cudaFreeHost(dvalues_out);
 
 	cudaFreeHost(hkeys);
-	//cudaFreeHost(this->cdata); this->cdata = NULL;//TODO: used by VAGG in findTopK
+	if(!VALIDATE) cudaFreeHost(this->cdata); this->cdata = NULL;//TODO: used by VAGG in findTopK
 }
 
 template<class T, class Z>
@@ -607,13 +592,12 @@ void GVTA<T,Z>::init()
 	this->reorder();
 	this->tt_init = this->t.lap();
 
+
 	#if USE_DEVICE_MEM
 		cutil::safeMalloc<gvta_block<T,Z>,uint64_t>(&(this->gblocks),sizeof(gvta_block<T,Z>)*this->num_blocks,"alloc gpu gvta_blocks");
 		cutil::safeCopyToDevice<gvta_block<T,Z>,uint64_t>(this->gblocks,this->blocks,sizeof(gvta_block<T,Z>)*this->num_blocks,"error copying to gpu gvta_blocks");
 	#else
 		this->gblocks = this->blocks;
-		//cudaMemAdvise(this->gblocks, sizeof(gvta_block<T,Z>)*(this->num_blocks), cudaMemAdviseSetReadMostly, 0);
-		//cudaMemPrefetchAsync(this->gblocks,sizeof(gvta_block<T,Z>)*(this->num_blocks), 0, NULL);
 	#endif
 
 	cutil::safeMallocHost<T,uint64_t>(&cout,sizeof(T) * GVTA_PARTITIONS * KKE,"out alloc");
@@ -621,7 +605,6 @@ void GVTA<T,Z>::init()
 		cutil::safeMalloc<T,uint64_t>(&gout,sizeof(T) * GVTA_PARTITIONS * KKE,"gout alloc");
 	#else
 		gout = cout;
-		//cudaMemPrefetchAsync(this->gblocks,sizeof(gvta_block<T,Z>)*(this->num_blocks/2), 0, NULL);
 	#endif
 }
 
@@ -744,6 +727,7 @@ void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	this->cclear();
 	//this->atm_16(k,qq);
 	this->atm_16_dm_driver(k,qq);
+	cutil::cudaCheckErr(cudaPeekAtLastError(),"AC");
 }
 
 #endif

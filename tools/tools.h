@@ -153,5 +153,4 @@ class GVAGG{
 		uint64_t bsize, pnum, nb;
 };
 
-
 #endif
