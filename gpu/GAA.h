@@ -219,12 +219,13 @@ class GAA{
 		};
 
 		~GAA<T,Z>(){
-			if(this->cdata != NULL){ cudaFreeHost(this->cdata); this->cdata = NULL; }
-			if(this->gdata != NULL){ cudaFree(this->gdata); this->gdata = NULL; }
-			if(this->cids != NULL){ cudaFreeHost(this->cids); this->cids = NULL; }
-			if(this->gids != NULL){ cudaFree(this->gids); this->gids = NULL; }
-			if(this->cscores != NULL){ cudaFreeHost(this->cscores); this->cscores = NULL; }
-			if(this->gscores != NULL){ cudaFree(this->gscores); this->gscores = NULL; }
+			if(this->cdata) cutil::safeCudaFreeHost(this->cdata,"free cdata"); //if(this->cdata != NULL){ cudaFreeHost(this->cdata); this->cdata = NULL; }
+			if(this->cids) cutil::safeCudaFreeHost(this->cids,"free cids"); //if(this->cids != NULL){ cudaFreeHost(this->cids); this->cids = NULL; }
+			if(this->cscores) cutil::safeCudaFreeHost(this->cscores,"free cscores"); //if(this->cscores != NULL){ cudaFreeHost(this->cscores); this->cscores = NULL; }
+
+			if(this->gdata) cutil::safeCudaFree(this->gdata,"free gdata"); //if(this->gdata != NULL){ cudaFree(this->gdata); this->gdata = NULL; }
+			if(this->gids) cutil::safeCudaFree(this->gids,"free gids"); //if(this->gids != NULL){ cudaFree(this->gids); this->gids = NULL; }
+			if(this->gscores) cutil::safeCudaFree(this->gscores,"free gscores"); //if(this->gscores != NULL){ cudaFree(this->gscores); this->gscores = NULL; }
 		};
 
 		void findTopKtpac(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);
@@ -243,7 +244,7 @@ class GAA{
 			std::cout << std::fixed << std::setprecision(4);
 			std::string msg = "| Benchmark for " + this->algo + "(" +
 					std::to_string(this->n) + "," + std::to_string(qq) + "," + std::to_string(k)
-					+ ") - (" +
+					+ ")-(" +
 					std::to_string(this->parts) + "," + std::to_string(this->block_size) + ") algorithm |";
 			for(uint32_t i = 0; i < msg.size(); i++) std::cout << "-";
  			std::cout << std::endl << msg << std::endl;
@@ -262,9 +263,7 @@ class GAA{
 		}
 
 		void reset_stats(){
-			this->tt_init = 0;
 			this->tt_processing = 0;
-
 			this->pred_count = 0;
 			this->tuple_count = 0;
 			this->queries_per_second = 0;

@@ -122,7 +122,7 @@ class GPTA : public GAA<T,Z>{
 		void polar_partition();
 		void reorder_partition();
 
-		void atm_16_dm_driver(uint64_t k, uint64_t qq);
+		void atm_16_driver(uint64_t k, uint64_t qq);
 
 		T cpuTopK(uint64_t k, uint64_t qq);
 };
@@ -564,11 +564,11 @@ T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 template<class T, class Z>
 void GPTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	this->tuple_count=0;
-	this->atm_16_dm_driver(k,qq);
+	this->atm_16_driver(k,qq);
 }
 
 template<class T, class Z>
-void GPTA<T,Z>::atm_16_dm_driver(uint64_t k, uint64_t qq)
+void GPTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq)
 {
 	dim3 atm_16_block(256,1,1);
 	dim3 atm_16_grid(GPTA_PARTS, 1, 1);
@@ -635,6 +635,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 	uint32_t b = 0;
 	uint32_t nb = gparts[blockIdx.x].bnum;
+	if(threadIdx.x < 32) heap[threadIdx.x] = 0;
 	while(b < nb)
 	{
 		#if GPTA_BLOCK_SIZE >= 1024

@@ -18,7 +18,7 @@ def gather(fname):
     mm["tuples_per_second"] = list()
     
     for line in fp.readlines():
-        if line.startswith("< Benchmark for"):
+        if line.startswith("| Benchmark for"):
             data = line.strip().split(" ")
             #print data[3]
             mm["algo"].append(data[3])
