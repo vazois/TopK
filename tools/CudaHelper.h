@@ -43,7 +43,6 @@ namespace cutil{
 	dim3 block_1D(unsigned int data_per_block);
 	void print_grid(dim3 blocks, dim3 threads);
 
-
 	/*
 	 * Memory handling functions.
 	 */
@@ -57,6 +56,21 @@ namespace cutil{
 	__host__ void safeCopyToDevice(DATA_T *to, DATA_T *from, SIZE_T size, std::string msg);
 	template<typename DATA_T, typename SIZE_T>
 	__host__ void safeCopyToHost(DATA_T *to, DATA_T *from, SIZE_T size, std::string msg);
+
+	__host__ void safeCudaFree(void *devPtr, std::string msg);
+	__host__ void safeCudaFreeHost(void *ptr , std::string msg);
+
+	__host__ void safeCudaFree(void *devPtr, std::string msg){
+		cudaFree(devPtr);
+		cudaCheckErr(cudaPeekAtLastError(),msg);
+		devPtr = NULL;
+	}
+
+	__host__ void safeCudaFreeHost(void *ptr , std::string msg){
+		cudaFreeHost(ptr);
+		cudaCheckErr(cudaPeekAtLastError(),msg);
+		ptr = NULL;
+	}
 
 	/*
 	 * Random number generation tools
@@ -184,7 +198,7 @@ namespace cutil{
 	 *
 	 */
 	__host__ void cudaCheckErr(cudaError_t error, std::string comment){
-		if ( error != cudaSuccess){ std::cout << "CUDA Error (cutil): " << comment << "," << cudaGetErrorString(error) << std::endl; exit(1); }
+		if ( error != cudaSuccess){ std::cout << "CUDA Error (cutil): " << comment << " = { " << cudaGetErrorString(error) << " }" << std::endl; exit(1); }
 	}
 
 	__host__ void cublasCheckErr(cublasStatus_t status, std::string comment){

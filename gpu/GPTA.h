@@ -8,6 +8,13 @@
 #include "../tools/tools.h"
 #include <map>
 
+//PTA DEVICE MEMORY USAGE//
+#define USE_POLAR_DEV_MEM false // USE DEVICE MEMORY TO COMPUTE POLAR COORDINATES
+#define USE_PART_REORDER_DEV_MEM true
+#define USE_BUILD_PART_DEV_MEM true
+#define USE_PTA_DEVICE_MEM true
+//
+
 #define ALPHA 1.1
 #define GPTA_PI 3.1415926535
 #define GPTA_PI_2 (180.0f/PI)
@@ -16,7 +23,7 @@
 #define GPTA_PARTS (((uint64_t)pow(GPTA_SPLITS,NUM_DIMS-1)))
 #define GPTA_PART_BITS ((uint64_t)log2f(GPTA_SPLITS))
 
-#define GPTA_BLOCK_SIZE 256
+#define GPTA_BLOCK_SIZE 1024
 
 template<class T, class Z>
 struct gpta_block{
@@ -32,6 +39,8 @@ struct gpta_part{
 	uint32_t size = 0;
 };
 
+template<class T, class Z>
+__global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *out);
 template<class Z>
 __global__ void update_minimum_pos(Z *pos, Z* tid_vec, uint64_t n);
 template<class Z>
@@ -55,16 +64,43 @@ class GPTA : public GAA<T,Z>{
 			this->algo = "GPTA";
 
 			this->cparts = NULL;
+			this->cprts = NULL;
+			this->gparts = NULL;
 			this->part_size = NULL;
+			this->cout = NULL;
+			this->gout = NULL;
+			this->cout2 = NULL;
+			this->gout2 = NULL;
+
+			this->using_dev_mem = USE_PTA_DEVICE_MEM;
+
+			this->parts = GPTA_PARTS;
+			this->block_size = GPTA_BLOCK_SIZE;
 		};
 
 		~GPTA(){
-			if(this->part_size) cudaFreeHost(this->part_size);
+			if(this->part_size) cutil::safeCudaFreeHost(this->part_size,"free part_size"); //cudaFreeHost(this->part_size);
 			if(this->cparts)
 			{
-				for(uint64_t i = 0; i < GPTA_PARTS; i++) if(this->cparts[i].blocks) cudaFreeHost(this->cparts[i].blocks);
-				cudaFreeHost(this->cparts);
+				for(uint64_t i = 0; i < GPTA_PARTS; i++) if(this->cparts[i].blocks) cutil::safeCudaFreeHost(this->cparts[i].blocks,"free cparts blocks"); //cudaFreeHost(this->cparts[i].blocks);
+				cutil::safeCudaFreeHost(this->cparts,"free cparts"); //cudaFreeHost(this->cparts);
 			}
+
+			if(this->cprts)
+			{
+				for(uint64_t i = 0; i < GPTA_PARTS; i++) if(this->cparts[i].blocks) cutil::safeCudaFree(this->cprts[i].blocks,"free cprts blocks"); //cudaFree(this->cprts[i].blocks);
+				cutil::safeCudaFreeHost(this->cprts,"free cprts"); //cudaFreeHost(this->cprts);
+			}
+
+			if(this->gparts)
+			{
+				cutil::safeCudaFree(this->gparts,"free gparts"); //cudaFree(this->gparts);
+			}
+
+			if(this->cout) cutil::safeCudaFreeHost(this->cout,"free cout");
+			if(this->cout2) cutil::safeCudaFreeHost(this->cout2,"free cout2");
+			if(this->gout) cutil::safeCudaFree(this->gout,"free gout");
+			if(this->gout2) cutil::safeCudaFree(this->gout2,"free gout2");
 		};
 
 		void alloc();
@@ -73,13 +109,20 @@ class GPTA : public GAA<T,Z>{
 
 	private:
 		gpta_part<T,Z> *cparts;
+		gpta_part<T,Z> *cprts;
 		gpta_part<T,Z> *gparts;
 		Z *part_tid;
 		uint32_t *part_size;
 		uint32_t max_part_size;
+		T *cout = NULL;
+		T *gout = NULL;
+		T *cout2 = NULL;
+		T *gout2 = NULL;
 
 		void polar_partition();
 		void reorder_partition();
+
+		void atm_16_dm_driver(uint64_t k, uint64_t qq);
 
 		T cpuTopK(uint64_t k, uint64_t qq);
 };
@@ -98,6 +141,30 @@ void GPTA<T,Z>::init(){
 	this->polar_partition();
 	this->reorder_partition();
 	//this->tt_init=this->t.lap();
+
+	cutil::safeMallocHost<T,uint64_t>(&cout,sizeof(T) * GPTA_PARTS * KKE,"cout alloc");
+	cutil::safeMallocHost<T,uint64_t>(&cout2,sizeof(T) * GPTA_PARTS * KKE,"cout2 alloc");
+	#if USE_PTA_DEVICE_MEM
+		std::cout << "ALLOCATING DEVICE MEMORY" << std::endl;
+		cutil::safeMalloc<T,uint64_t>(&gout, sizeof(T) * GPTA_PARTS * KKE,"gout alloc");
+		cutil::safeMalloc<T,uint64_t>(&gout2, sizeof(T) * GPTA_PARTS * KKE,"gout2 alloc");
+
+		cutil::safeMalloc<gpta_part<T,Z>,uint64_t>(&this->gparts,sizeof(gpta_part<T,Z>)*GPTA_PARTS,"gparts alloc");
+		cutil::safeMallocHost<gpta_part<T,Z>,uint64_t>(&this->cprts,sizeof(gpta_part<T,Z>)*GPTA_PARTS,"cprts alloc");
+		for(uint64_t i = 0; i < GPTA_PARTS; i++)
+		{
+			this->cprts[i].size = this->cparts[i].size;
+			this->cprts[i].bnum = this->cparts[i].bnum;
+
+			cutil::safeMalloc<gpta_block<T,Z>,uint64_t>(&(this->cprts[i].blocks),sizeof(gpta_block<T,Z>)*this->cprts[i].bnum,"cprts gpta_block alloc");
+			cutil::safeCopyToDevice<gpta_block<T,Z>,uint64_t>(this->cprts[i].blocks,this->cparts[i].blocks,sizeof(gpta_block<T,Z>)*this->cprts[i].bnum, "copy cparts to cprts");
+		}
+		cutil::safeCopyToDevice<gpta_part<T,Z>,uint64_t>(this->gparts,this->cprts,sizeof(gpta_part<T,Z>)*GPTA_PARTS,"copy cprts to gparts");
+		cutil::cudaCheckErr(cudaPeekAtLastError(),"copy cprts to gparts");
+	#else
+		gout = cout;
+		gout = cout2;
+	#endif
 }
 
 template<class T, class Z>
@@ -213,18 +280,18 @@ void GPTA<T,Z>::polar_partition()
 	////////////////
 	//Free buffers//
 	#if USE_POLAR_DEV_MEM
-		cudaFree(keys_in);
-		cudaFree(keys_out);
-		cudaFree(values_out);
-		cudaFree(num_vec);
-		cudaFree(angle_vec);
-		cudaFreeHost(cpart);
+		cutil::safeCudaFree(keys_in,"free keys_in"); //cudaFree(keys_in);
+		cutil::safeCudaFree(keys_out,"free keys_out"); //cudaFree(keys_out);
+		cutil::safeCudaFree(values_out,"free values_out"); //cudaFree(values_out);
+		cutil::safeCudaFree(num_vec,"free num_vec"); //cudaFree(num_vec);
+		cutil::safeCudaFree(angle_vec,"free angle_vec"); //cudaFree(angle_vec);
+		cutil::safeCudaFreeHost(cpart,"free cpart"); //cudaFreeHost(cpart);
 	#else
-		cudaFreeHost(keys_in);
-		cudaFreeHost(keys_out);
-		cudaFreeHost(values_out);
-		cudaFreeHost(num_vec);
-		cudaFreeHost(angle_vec);
+		cutil::safeCudaFreeHost(keys_in,"free keys_in"); //cudaFreeHost(keys_in);
+		cutil::safeCudaFreeHost(keys_out,"free keys_out"); //cudaFreeHost(keys_out);
+		cutil::safeCudaFreeHost(values_out,"free values_out"); //cudaFreeHost(values_out);
+		cutil::safeCudaFreeHost(num_vec,"free num_vec"); //cudaFreeHost(num_vec);
+		cutil::safeCudaFreeHost(angle_vec,"free angle_vec"); //cudaFreeHost(angle_vec);
 	#endif
 
 	////////////////////////////////////
@@ -257,15 +324,15 @@ void GPTA<T,Z>::polar_partition()
 	cutil::safeCopyToHost<Z,uint64_t>(this->part_tid,tid_out,sizeof(Z)*this->n,"copy tid_out to part_tid");
 
 	#if USE_PART_REORDER_DEV_MEM
-		cudaFree(tid_in);
-		cudaFree(tid_out);
-		cudaFree(part_out);
+		cutil::safeCudaFree(tid_in,"free tid_in"); //cudaFree(tid_in);
+		cutil::safeCudaFree(tid_out,"free tid_out"); //cudaFree(tid_out);
+		cutil::safeCudaFree(part_out,"free part_out"); //cudaFree(part_out);
 	#else
-		cudaFreeHost(tid_in);
-		cudaFreeHost(tid_out);
-		cudaFreeHost(part_out);
+		cutil::safeCudaFreeHost(tid_in,"free tid_in"); //cudaFreeHost(tid_in);
+		cutil::safeCudaFreeHost(tid_out,"free tid_out"); //cudaFreeHost(tid_out);
+		cutil::safeCudaFreeHost(part_out,"free part_out"); //cudaFreeHost(part_out);
 	#endif
-	cudaFree(d_temp_storage);
+	cutil::safeCudaFree(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
 }
 
 template<class T, class Z>
@@ -303,7 +370,7 @@ void GPTA<T,Z>::reorder_partition(){
 	{
 		this->cparts[i].size = this->part_size[i];
 		this->cparts[i].bnum = ((this->part_size[i] - 1)/GPTA_BLOCK_SIZE) + 1;
-		cutil::safeMallocHost<gpta_block<T,Z>,uint64_t>(&this->cparts[i].blocks,sizeof(gpta_block<T,Z>)*this->cparts[i].bnum,"gpta_block alloc");
+		cutil::safeMallocHost<gpta_block<T,Z>,uint64_t>(&this->cparts[i].blocks,sizeof(gpta_block<T,Z>)*this->cparts[i].bnum,"cparts gpta_block alloc");
 
 		//initialize minimum positions//
 		this->t.start();
@@ -413,44 +480,44 @@ void GPTA<T,Z>::reorder_partition(){
 		}
 	}
 
-	cudaFreeHost(ctid_vec_out);
-	cudaFreeHost(cattr_vec_in);
-	cudaFreeHost(cpos);
+	cutil::safeCudaFreeHost(ctid_vec_out,"free ctid_vec_out"); //cudaFreeHost(ctid_vec_out);
+	cutil::safeCudaFreeHost(cattr_vec_in,"free cattr_vec_in"); //cudaFreeHost(cattr_vec_in);
+	cutil::safeCudaFreeHost(cpos,"free cpos"); //cudaFreeHost(cpos);
 
 	//Device Memory
-	cudaFree(gattr_vec_in);
-	cudaFree(gattr_vec_out);
-	cudaFree(gtid_vec_in);
-	cudaFree(gtid_vec_out);
-	cudaFree(gpos);
-	cudaFree(gpos_out);
+	cutil::safeCudaFree(gattr_vec_in,"free gattr_vec_in"); //cudaFree(gattr_vec_in);
+	cutil::safeCudaFree(gattr_vec_out,"free gattr_vec_out"); //cudaFree(gattr_vec_out);
+	cutil::safeCudaFree(gtid_vec_in,"free gtid_vec_in"); //cudaFree(gtid_vec_in);
+	cutil::safeCudaFree(gtid_vec_out,"free gtid_vec_out"); //cudaFree(gtid_vec_out);
+	cutil::safeCudaFree(gpos,"free gpos"); //cudaFree(gpos);
+	cutil::safeCudaFree(gpos_out,"free gpos_out"); //cudaFree(gpos_out);
 
-	cudaFree(d_temp_storage);
+	cutil::safeCudaFree(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
 }
 
 template<class T, class Z>
 T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 	std::priority_queue<T, std::vector<ranked_tuple<T,Z>>, MaxFirst<T,Z>> q;
 
-//	T threshold = 0;
-//	for(uint64_t i = 0; i < this->n; i++)
-//	{
-//		T score = 0;
-//		for(uint64_t m = 0; m < qq; m++)
-//		{
-//			uint32_t ai = this->query[m];
-//			score += this->cdata[ai * this->n + i] * this->weights[ai];
-//		}
-//
-//		if(q.size() < k)
-//		{
-//			q.push(ranked_tuple<T,Z>(i,score));
-//		}else if( q.top().score < score ){
-//			q.pop();
-//			q.push(ranked_tuple<T,Z>(i,score));
-//		}
-//	}
-//	threshold = q.top().score;
+	T threshold = 0;
+	for(uint64_t i = 0; i < this->n; i++)
+	{
+		T score = 0;
+		for(uint64_t m = 0; m < qq; m++)
+		{
+			uint32_t ai = this->query[m];
+			score += this->cdata[ai * this->n + i] * this->weights[ai];
+		}
+
+		if(q.size() < k)
+		{
+			q.push(ranked_tuple<T,Z>(i,score));
+		}else if( q.top().score < score ){
+			q.pop();
+			q.push(ranked_tuple<T,Z>(i,score));
+		}
+	}
+	threshold = q.top().score;
 
 	q = std::priority_queue<T, std::vector<ranked_tuple<T,Z>>, MaxFirst<T,Z>>();
 	T threshold2 = 0;
@@ -488,14 +555,401 @@ T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 		}
 	}
 	threshold2 = q.top().score;
-	//std::cout << "[" << threshold << "," << threshold2 << "]" << std::endl;
+	if( abs((double)threshold - (double)threshold2) > (double)0.00000000000001 ) {
+		std::cout << "ERROR (cpu):[" << threshold << "," << threshold2 << "]" << std::endl;
+	}
 	return threshold2;
 }
 
 template<class T, class Z>
 void GPTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	this->tuple_count=0;
-	this->cpu_threshold = this->cpuTopK(k,qq);
+	this->atm_16_dm_driver(k,qq);
+}
+
+template<class T, class Z>
+void GPTA<T,Z>::atm_16_dm_driver(uint64_t k, uint64_t qq)
+{
+	dim3 atm_16_block(256,1,1);
+	dim3 atm_16_grid(GPTA_PARTS, 1, 1);
+
+//	for(uint32_t i = 0; i < GPTA_PARTS; i++)
+//	{
+//		if(i == 0)
+//		{
+//			gpta_block<T,Z> *blocks = this->cparts[i].blocks;
+//			uint64_t nb = this->cparts[i].bnum;
+//			for(uint32_t b = 0; b < nb; b++){
+//				T *tvector = blocks[b].tvector;
+//				printf("C(%d,%d) = { ",i,(uint32_t) b);
+//				std::cout << std::fixed << std::setprecision(4);
+//				for(uint32_t m = 0; m < NUM_DIMS; m++){ std::cout << tvector[m] << " "; }
+//				std::cout << "}" << std::endl;
+//			}
+//		}
+//	}
+
+	this->t.start();
+	gpta_atm_16<T,Z><<<atm_16_grid,atm_16_block>>>(gparts, qq, k, gout);
+	cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing gpta_atm_16");
+	this->tt_processing += this->t.lap();
+
+	//First step check
+	cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * GPTA_PARTS * k, "error copying from gout to out");
+	std::sort(cout, cout + GPTA_PARTS * k, std::greater<T>());
+	this->gpu_threshold = cout[k-1];
+
+	uint64_t remainder = (GPTA_PARTS * k);
+	this->t.start();
+	while(remainder > k){
+		std::cout << "remainder: " << remainder << std::endl;
+		atm_16_grid.x = ((remainder - 1) / 4096) + 1;
+		//gpta_rr_atm_16<T><<<atm_16_grid,atm_16_block>>>(gout,remainder,k,gout2);
+		reduce_rebuild_atm_16<T><<<atm_16_grid,atm_16_block>>>(gout,remainder,k,gout2);
+		cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing gpta_rr_atm_16");
+		remainder = (atm_16_grid.x * k);
+		std::swap(gout,gout2);
+	}
+	this->tt_processing += this->t.lap();
+
+	//Second step check
+	cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
+	std::sort(cout, cout + k, std::greater<T>());
+	this->gpu_threshold = cout[k-1];
+
+	#if VALIDATE
+		this->cpu_threshold = this->cpuTopK(k,qq);
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.00000000000001 ) {
+			std::cout << std::fixed << std::setprecision(16);
+			std::cout << "ERROR: {" << cout[k-1] << "," << this->cpu_threshold << "}" << std::endl; exit(1);
+		}
+	#endif
+}
+
+template<class T, class Z>
+__global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *out)
+{
+	__shared__ T threshold[NUM_DIMS+1];
+	__shared__ T heap[32];
+	__shared__ T buffer[256];
+
+	uint32_t b = 0;
+	uint32_t nb = gparts[blockIdx.x].bnum;
+	while(b < nb)
+	{
+		#if GPTA_BLOCK_SIZE >= 1024
+			T v0 = 0, v1 = 0, v2 = 0, v3 = 0;
+		#endif
+		#if GPTA_BLOCK_SIZE >= 1024
+			T v4 = 0, v5 = 0, v6 = 0, v7 = 0;
+		#endif
+		#if GPTA_BLOCK_SIZE >= 4096
+			T v8 = 0, v9 = 0, vA = 0, vB = 0;
+			T vC = 0, vD = 0, vE = 0, vF = 0;
+		#endif
+		T *data = gparts[blockIdx.x].blocks[b].data;
+
+//		if(blockIdx.x == 0 && threadIdx.x == 0)
+//		{
+//			printf("T(%d,%d) = { ",blockIdx.x,(uint32_t) b);
+//			for(uint32_t m = 0; m < NUM_DIMS; m++)
+//			{
+//				printf("%.4f ",gparts[blockIdx.x].blocks[b].tvector[m]);
+//			}
+//			printf("}\n");
+//		}
+
+		if(threadIdx.x < NUM_DIMS)
+		{
+			threshold[threadIdx.x] = gparts[blockIdx.x].blocks[b].tvector[threadIdx.x];
+			if(threadIdx.x == 0) threshold[NUM_DIMS] = 0;
+		}
+
+		for(uint32_t m = 0; m < qq; m++)
+		{
+			Z ai = gpu_query[m];
+			Z start = ai * GPTA_BLOCK_SIZE + threadIdx.x;
+			T w = gpu_weights[ai];
+
+			if(threadIdx.x == 0) threshold[NUM_DIMS] += threshold[ai] * w;
+			#if GPTA_BLOCK_SIZE >= 1024
+				v0 += data[start       ] * w;
+				v1 += data[start +  256] * w;
+				v2 += data[start +  512] * w;
+				v3 += data[start +  768] * w;
+			#endif
+			#if GPTA_BLOCK_SIZE >= 2048
+				v4 += data[start + 1024] * w;
+				v5 += data[start + 1280] * w;
+				v6 += data[start + 1536] * w;
+				v7 += data[start + 1792] * w;
+			#endif
+			#if GPTA_BLOCK_SIZE >= 4096
+				v8 += data[start + 2048] * w;
+				v9 += data[start + 2304] * w;
+				vA += data[start + 2560] * w;
+				vB += data[start + 2816] * w;
+				vC += data[start + 3072] * w;
+				vD += data[start + 3328] * w;
+				vE += data[start + 3584] * w;
+				vF += data[start + 3840] * w;
+			#endif
+		}
+
+		//{4096,2048,1024} -> {2048,1024,512}
+		uint32_t laneId = threadIdx.x;
+		uint32_t level, step, dir;
+		for(level = 1; level < k; level = level << 1){
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				#if GPTA_BLOCK_SIZE >= 1024
+					v0 = swap(v0,step,dir);
+					v1 = swap(v1,step,dir);
+					v2 = swap(v2,step,dir);
+					v3 = swap(v3,step,dir);
+				#endif
+				#if GPTA_BLOCK_SIZE >= 2048
+					v4 = swap(v4,step,dir);
+					v5 = swap(v5,step,dir);
+					v6 = swap(v6,step,dir);
+					v7 = swap(v7,step,dir);
+				#endif
+				#if GPTA_BLOCK_SIZE >= 4096
+					v8 = swap(v8,step,dir);
+					v9 = swap(v9,step,dir);
+					vA = swap(vA,step,dir);
+					vB = swap(vB,step,dir);
+					vC = swap(vC,step,dir);
+					vD = swap(vD,step,dir);
+					vE = swap(vE,step,dir);
+					vF = swap(vF,step,dir);
+				#endif
+			}
+		}
+		#if GPTA_BLOCK_SIZE >= 1024
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+			v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+			v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+			v2 = (threadIdx.x & k) == 0 ? v2 : v3;
+		#endif
+		#if GPTA_BLOCK_SIZE >= 2048
+			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+			v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
+			v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+			v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
+			v4 = (threadIdx.x & k) == 0 ? v4 : v5;
+			v6 = (threadIdx.x & k) == 0 ? v6 : v7;
+		#endif
+		#if GPTA_BLOCK_SIZE >= 4096
+			v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+			v9 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v9, k),v9);
+			vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
+			vB = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vB, k),vB);
+			vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
+			vD = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vD, k),vD);
+			vE = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vE, k),vE);
+			vF = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vF, k),vF);
+			v8 = (threadIdx.x & k) == 0 ? v8 : v9;
+			vA = (threadIdx.x & k) == 0 ? vA : vB;
+			vC = (threadIdx.x & k) == 0 ? vC : vD;
+			vE = (threadIdx.x & k) == 0 ? vE : vF;
+		#endif
+
+		//{2048,1024,512} -> {1024,512,256}
+		level = k >> 1;
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+			#if GPTA_BLOCK_SIZE >= 1024
+				v0 = swap(v0,step,dir);
+				v2 = swap(v2,step,dir);
+			#endif
+			#if GPTA_BLOCK_SIZE >= 2048
+				v4 = swap(v4,step,dir);
+				v6 = swap(v6,step,dir);
+			#endif
+			#if GPTA_BLOCK_SIZE >= 4096
+				v8 = swap(v8,step,dir);
+				vA = swap(vA,step,dir);
+				vC = swap(vC,step,dir);
+				vE = swap(vE,step,dir);
+			#endif
+		}
+		#if GPTA_BLOCK_SIZE >= 1024
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+			v0 = (threadIdx.x & k) == 0 ? v0 : v2;
+		#endif
+		#if GPTA_BLOCK_SIZE >= 2048
+			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+			v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+			v4 = (threadIdx.x & k) == 0 ? v4 : v6;
+		#endif
+		#if GPTA_BLOCK_SIZE >= 4096
+			v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+			vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
+			vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
+			vE = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vE, k),vE);
+			v8 = (threadIdx.x & k) == 0 ? v8 : vA;
+			vC = (threadIdx.x & k) == 0 ? vC : vE;
+		#endif
+
+		//{1024,512} -> {512,256}
+		#if GPTA_BLOCK_SIZE >= 2048
+			level = k >> 1;
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+				v4 = swap(v4,step,dir);
+				#if GPTA_BLOCK_SIZE >= 4096
+					v8 = swap(v8,step,dir);
+					vC = swap(vC,step,dir);
+				#endif
+			}
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+			v0 = (threadIdx.x & k) == 0 ? v0 : v4;
+			#if GPTA_BLOCK_SIZE >= 4096
+				v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+				vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
+				v8 = (threadIdx.x & k) == 0 ? v8 : vC;
+			#endif
+		#endif
+
+		//{512} -> {256}
+		#if GPTA_BLOCK_SIZE >= 4096
+			level = k >> 1;
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+				v8 = swap(v8,step,dir);
+			}
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+			v0 = (threadIdx.x & k) == 0 ? v0 : v8;
+		#endif
+
+		buffer[threadIdx.x] = v0;
+		__syncthreads();
+
+		if(threadIdx.x < 32)
+		{
+			v0 = buffer[threadIdx.x];
+			v1 = buffer[threadIdx.x+32];
+			v2 = buffer[threadIdx.x+64];
+			v3 = buffer[threadIdx.x+96];
+			v4 = buffer[threadIdx.x+128];
+			v5 = buffer[threadIdx.x+160];
+			v6 = buffer[threadIdx.x+192];
+			v7 = buffer[threadIdx.x+224];
+
+			//256 -> 128
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+				v1 = swap(v1,step,dir);
+				v2 = swap(v2,step,dir);
+				v3 = swap(v3,step,dir);
+				v4 = swap(v4,step,dir);
+				v5 = swap(v5,step,dir);
+				v6 = swap(v6,step,dir);
+				v7 = swap(v7,step,dir);
+			}
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+			v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+			v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
+			v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+			v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
+			v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+			v2 = (threadIdx.x & k) == 0 ? v2 : v3;
+			v4 = (threadIdx.x & k) == 0 ? v4 : v5;
+			v6 = (threadIdx.x & k) == 0 ? v6 : v7;
+
+			//128 -> 64
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+				v2 = swap(v2,step,dir);
+				v4 = swap(v4,step,dir);
+				v6 = swap(v6,step,dir);
+			}
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+			v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+			v0 = (threadIdx.x & k) == 0 ? v0 : v2;
+			v4 = (threadIdx.x & k) == 0 ? v4 : v6;
+
+			//64 -> 32
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+				v4 = swap(v4,step,dir);
+			}
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+			v0 = (threadIdx.x & k) == 0 ? v0 : v4;
+
+			//32 -> 16
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+			}
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v0 = (threadIdx.x & k) == 0 ? v0 : 0;
+
+			//sort
+			for(level = k; level < 32; level = level << 1){
+				for(step = level; step > 0; step = step >> 1){
+					dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+					v0 = swap(v0,step,dir);
+				}
+			}
+
+			//Merge heaps//
+			if(b == 0)
+			{
+				heap[31 - threadIdx.x] = v0;
+			}else{
+				v1 = heap[threadIdx.x];
+				v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+				v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+				v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+
+				for(step = level; step > 0; step = step >> 1){
+					dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+					v0 = swap(v0,step,dir);
+				}
+				v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+				v0 = (threadIdx.x & k) == 0 ? v0 : 0;
+
+				for(level = k; level < 32; level = level << 1){
+					for(step = level; step > 0; step = step >> 1){
+						dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+						v0 = swap(v0,step,dir);
+					}
+				}
+				heap[31 - threadIdx.x] = v0;
+			}
+		}
+		__syncthreads();
+
+		if(heap[k-1] >= threshold[NUM_DIMS]){
+			break;
+		}
+		__syncthreads();
+		b++;
+	}
+
+	if(threadIdx.x < k){
+		uint64_t offset = blockIdx.x * k;
+		if((blockIdx.x & 0x1) == 0) out[offset + (k-1) - threadIdx.x] = heap[threadIdx.x];
+		else out[offset + threadIdx.x] = heap[threadIdx.x];
+	}
 }
 
 template<class Z>

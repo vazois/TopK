@@ -46,7 +46,7 @@ void bench_bta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 				bta.reset_stats();
 				for(uint8_t m = 0; m < ITER;m++){ bta.findTopK(k,i); }
 				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
-				bta.benchmark();
+				bta.benchmark(k,q);
 			}
 		}
 	}
@@ -82,8 +82,8 @@ void bench_gvta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t
 				gvta.findTopK(k,i);
 				gvta.reset_stats();
 				for(uint8_t m = 0; m < ITER;m++){ gvta.findTopK(k,i); }
-				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
-				gvta.benchmark();
+				//std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
+				gvta.benchmark(k,q);
 			}
 		}
 	}
@@ -118,7 +118,7 @@ void bench_gpta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t
 				gpta.reset_stats();
 				for(uint8_t m = 0; m < ITER;m++){ gpta.findTopK(k,i); }
 				std::cout << "Benchmark <<<-------------" << f.rows() << "," << (int)i << "," << k << "------------->>> " << std::endl;
-				gpta.benchmark();
+				gpta.benchmark(k,q);
 			}
 		}
 	}

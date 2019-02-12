@@ -55,16 +55,15 @@ struct gpta_pos{
 	Z pos;
 };
 
-#define GVTA_PARTITIONS 16
-//at least 8 partitions//
-#define GVTA_BLOCK_SIZE 4096
+#define VTA_PARTITIONS 16 //at least 8 partitions//
+#define VTA_BLOCK_SIZE 4096
 
 template<class T,class Z>
-struct gvta_block
+struct vta_block
 {
-	gvta_block(){};
-	T data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * NUM_DIMS] __attribute__((aligned(32)));
-	T tvector[GVTA_PARTITIONS * NUM_DIMS] __attribute__((aligned(32)));
+	vta_block(){};
+	T data[VTA_BLOCK_SIZE * VTA_PARTITIONS * NUM_DIMS] __attribute__((aligned(32)));
+	T tvector[VTA_PARTITIONS * NUM_DIMS] __attribute__((aligned(32)));
 	Z num_tuples;
 };
 
@@ -125,7 +124,7 @@ class VAGG{
 		};
 
 		T findTopKtpac(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);
-		T findTopKgvta(gvta_block<T,Z> *blocks, Z n, Z d, uint64_t k,uint8_t qq, T *weights, uint32_t *attr, uint64_t nb);
+		T findTopKgvta(vta_block<T,Z> *blocks, Z n, Z d, uint64_t k,uint8_t qq, T *weights, uint32_t *attr, uint64_t nb);
 	private:
 		T *cdata = NULL;
 		uint64_t n, d;
@@ -135,7 +134,7 @@ class VAGG{
 template<class T, class Z>
 class GVAGG{
 	public:
-		GVAGG<T,Z>(gvta_block<T,Z> *blocks, uint64_t n, uint64_t d, uint64_t bsize, uint64_t pnum, uint64_t nb)
+		GVAGG<T,Z>(vta_block<T,Z> *blocks, uint64_t n, uint64_t d, uint64_t bsize, uint64_t pnum, uint64_t nb)
 		{
 			this->blocks = blocks;
 			this->n = n;
@@ -148,7 +147,7 @@ class GVAGG{
 		T findTopKgvta(uint64_t k, uint8_t qq, T *weights, uint32_t *attr);
 		T findTopKgvta2(uint64_t k, uint8_t qq, T *weights, uint32_t *attr);
 	private:
-		gvta_block<T,Z> *blocks;
+		vta_block<T,Z> *blocks;
 		uint64_t n, d;
 		uint64_t bsize, pnum, nb;
 };
