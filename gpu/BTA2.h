@@ -777,8 +777,6 @@ __global__ void lsort_geq_32(T *ivec, T *ovec, uint64_t k){
 	bool reverse, sp;
 	for(level = 32; level < k; level = level << 1){
 		dir = level << 1;
-		//////////////
-		//up to 128//
 		for(step = level; step > 16; step = step >> 1){
 			low = threadIdx.x & (step - 1);
 			i = (threadIdx.x << 1) - low;

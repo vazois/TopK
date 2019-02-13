@@ -27,6 +27,18 @@
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];
 
+
+template<class T>
+__device__ inline void swap_shared(T &a, T &b, bool r)
+{
+	if (r ^ (a > b)){
+		T t;
+		t = a;
+		a = b;
+		b = t;
+	}
+}
+
 template<class T>
 __device__ T swap(T a, uint32_t stride, int dir){
 	T b = __shfl_xor_sync(0xFFFFFFFF,a,stride);
@@ -312,23 +324,24 @@ __global__ void reduce_rebuild_atm_16(T *iscores, uint64_t n, uint64_t k, T *osc
 	T v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
 	T v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
 
-	i = (blockIdx.x << 12) + threadIdx.x;
-	if(i<n) v0 = iscores[i];
-	if(i+256<n) v1 = iscores[i+256];
-	if(i+512<n) v2 = iscores[i+512];
-	if(i+768<n) v3 = iscores[i+768];
-	if(i+1024<n) v4 = iscores[i+1024];
-	if(i+1280<n) v5 = iscores[i+1280];
-	if(i+1536<n) v6 = iscores[i+1536];
-	if(i+1792<n) v7 = iscores[i+1792];
-	if(i+2048<n) v8 = iscores[i+2048];
-	if(i+2304<n) v9 = iscores[i+2304];
-	if(i+2560<n) vA = iscores[i+2560];
-	if(i+2816<n) vB = iscores[i+2816];
-	if(i+3072<n) vC = iscores[i+3072];
-	if(i+3328<n) vD = iscores[i+3328];
-	if(i+3584<n) vE = iscores[i+3584];
-	if(i+3840<n) vF = iscores[i+3840];
+	//i = (blockIdx.x << 12) + threadIdx.x;
+	i = (blockIdx.x * 4096) + threadIdx.x;
+	if(i<n) 	 v0 = iscores[i      ];
+	if(i+256<n)  v1 = iscores[i +  256];
+	if(i+512<n)  v2 = iscores[i +  512];
+	if(i+768<n)  v3 = iscores[i +  768];
+	if(i+1024<n) v4 = iscores[i + 1024];
+	if(i+1280<n) v5 = iscores[i + 1280];
+	if(i+1536<n) v6 = iscores[i + 1536];
+	if(i+1792<n) v7 = iscores[i + 1792];
+	if(i+2048<n) v8 = iscores[i + 2048];
+	if(i+2304<n) v9 = iscores[i + 2304];
+	if(i+2560<n) vA = iscores[i + 2560];
+	if(i+2816<n) vB = iscores[i + 2816];
+	if(i+3072<n) vC = iscores[i + 3072];
+	if(i+3328<n) vD = iscores[i + 3328];
+	if(i+3584<n) vE = iscores[i + 3584];
+	if(i+3840<n) vF = iscores[i + 3840];
 
 	//4096 -> 2048
 	v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
@@ -355,6 +368,7 @@ __global__ void reduce_rebuild_atm_16(T *iscores, uint64_t n, uint64_t k, T *osc
 	vA = (threadIdx.x & k) == 0 ? vA : vB;
 	vC = (threadIdx.x & k) == 0 ? vC : vD;
 	vE = (threadIdx.x & k) == 0 ? vE : vF;
+
 	uint32_t laneId = threadIdx.x;
 	uint32_t level = k>>1, step, dir;
 	for(step = level; step > 0; step = step >> 1){

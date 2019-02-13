@@ -7,7 +7,7 @@
 #define GVTA_USE_DEV_MEM_REORDER true
 #define GVTA_USE_DEV_MEM_PROCESSING true
 
-#define GVTA_PARTITIONS 16 //at least 8 partitions//
+#define GVTA_PARTITIONS 256 //at least 8 partitions//
 #define GVTA_BLOCK_SIZE 4096
 
 template<class T,class Z>
@@ -28,7 +28,7 @@ struct gvta_block
  * nb: number of blocks (levels)
  */
 template<class T, class Z>
-__global__ void gvta_atm_16_4096(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq, uint64_t k, T *out);
+__global__ void gvta_atm_16(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq, uint64_t k, T *out);
 
 template<class T, class Z>
 class GVTA : public GAA<T,Z>{
@@ -309,7 +309,7 @@ void GVTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 	dim3 atm_16_grid(GVTA_PARTITIONS, 1, 1);
 
 	this->t.start();
-	gvta_atm_16_4096<T,Z><<<atm_16_grid,atm_16_block,256*sizeof(T)>>>(this->gblocks,this->num_blocks,qq,k,gout);
+	gvta_atm_16<T,Z><<<atm_16_grid,atm_16_block,256*sizeof(T)>>>(this->gblocks,this->num_blocks,qq,k,gout);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gvta_atm_16");
 	this->tt_processing += this->t.lap("");
 
@@ -384,7 +384,7 @@ void GVTA<T,Z>::atm_16(uint64_t k,uint64_t qq)
 	//std::cout << "[" << atm_16_grid.x << " , " << atm_16_block.x << "] ";
 	this->t.start();
 	cudaEventRecord(start);
-	gvta_atm_16_4096<T,Z><<<atm_16_grid,atm_16_block,256*sizeof(T),s0>>>(this->gblocks,this->num_blocks,qq,k,gout);
+	gvta_atm_16<T,Z><<<atm_16_grid,atm_16_block,256*sizeof(T),s0>>>(this->gblocks,this->num_blocks,qq,k,gout);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing gvta_atm_16");
 	cudaEventRecord(stop);
 
@@ -426,7 +426,7 @@ void GVTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 }
 
 template<class T, class Z>
-__global__ void gvta_atm_16_4096(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq, uint64_t k, T *out)
+__global__ void gvta_atm_16(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq, uint64_t k, T *out)
 {
 	uint64_t b = 0;//data block level
 	uint64_t offset = blockIdx.x * nb * GVTA_BLOCK_SIZE;

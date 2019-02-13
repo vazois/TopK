@@ -1,7 +1,9 @@
 import sys
 
+inmemory_data = False
 
 def gather(fname):
+    global inmemory_data
     fp = open(fname,"r")
     
     mm = dict()
@@ -18,6 +20,8 @@ def gather(fname):
     mm["tuples_per_second"] = list()
     
     for line in fp.readlines():
+        if line.startswith("Generating"):
+            inmemory_data = True
         if line.startswith("| Benchmark for"):
             data = line.strip().split(" ")
             #print data[3]
@@ -71,6 +75,11 @@ if __name__ == "__main__":
 #         for v in mm[measurement]:
 #             print v
     
+    if inmemory_data:
+        print "Measurements Using Data Generated In Memory!!!"
+    else:
+        print "Measurements Using Data Loaded From File!!!"
+
     algo = ""
     if len(mm["threshold"]) > 0:
         print "threshold",
