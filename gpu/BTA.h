@@ -162,7 +162,7 @@ void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 	}
 
 	#if BTA_USE_DEV_MEM_PROCESSING
-		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*remainder,"copy from csvector to gsvector");
+		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T) * k,"copy from csvector to gsvector");
 	#else
 		csvector = gsvector;
 	#endif
@@ -170,7 +170,7 @@ void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 
 	#if VALIDATE
 		this->cpu_threshold = this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.00000000000001 ) {
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
 			std::cout << std::fixed << std::setprecision(16);
 			std::cout << "ERROR: {" << this->gpu_threshold << "," << this->cpu_threshold << "}" << std::endl; exit(1);
 		}
@@ -197,33 +197,89 @@ void BTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq){
 	gclear_driver(gsvector_out,this->n);
 
 	//1: local sort
+	this->t.start();
 	agg_lsort_geq_32<<<agg_lsort_grid,agg_lsort_block>>>(this->gdata, this->n, qq, k, gsvector);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_geq_32");
+	this->tt_processing += this->t.lap();
+
+	//DEBUG
+//	#if BTA_USE_DEV_MEM_PROCESSING
+//		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*this->n,"copy from csvector to gsvector");
+//	#else
+//		csvector = gsvector;
+//	#endif
+//	for(uint32_t i = 0; i < k * agg_lsort_grid.x; i+=k)
+//	{
+//		std::cout << std::fixed << std::setprecision(4);
+//		if((i/k) % 2 == 0 && std::is_sorted(&csvector[i], &csvector[i+k],std::greater<T>()) == 0){
+//			for(uint32_t j = i; j < i + k; j++){
+//				std::cout << csvector[j] << std::endl;
+//			} std::cout << "++++++++++++++++++++" << std::endl;
+//			std::cout <<"ERROR (DESC) [" <<i/k <<"] sorted: (" << std::is_sorted(&csvector[i], &csvector[i+k],std::greater<T>()) << ")" << std::endl;
+//			exit(1);
+//		}
+//		else if((i/k) % 2 == 1 && std::is_sorted(&csvector[i], &csvector[i+k]) == 0){
+//			for(uint32_t j = i; j < i + k; j++){ std::cout << csvector[j] << std::endl; } std::cout << "++++++++++++++++++++" << std::endl;
+//			std::cout <<"ERROR (ASC) [" <<i/k <<"] sorted: (" << std::is_sorted(&csvector[i], &csvector[i+k]) << ")" << std::endl;
+//			exit(1);
+//		}
+//	}
+//	std::cout << "--------------------" << std::endl;
+//
+//	std::cout << "sorting..." << std::endl;
+//	std::sort(csvector, csvector + k * agg_lsort_grid.x,std::greater<T>());
+//	std::cout << "==========" << std::endl;
+//	this->gpu_threshold = csvector[k-1];
+
+	//2:Local reduce
+	uint64_t remainder = (agg_lsort_grid.x * k);
+	while(remainder > k)
+	{
+		//std::cout << "remainder: " << remainder << std::endl;
+		agg_lsort_grid.x = ((remainder - 1) /4096) + 1;
+		this->t.start();
+		reduce_rebuild_qeq_32<T><<<agg_lsort_grid,agg_lsort_block>>>(gsvector,remainder,k,gsvector_out);
+		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing reduce_rebuild_atm_16");
+		this->tt_processing += this->t.lap();
+
+		remainder = (agg_lsort_grid.x * k);
+		std::swap(gsvector,gsvector_out);
+	}
 	#if BTA_USE_DEV_MEM_PROCESSING
-		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*this->n,"copy from csvector to gsvector");
+		//cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*this->n,"copy from csvector to gsvector");
+		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T) * k,"copy from csvector to gsvector");
 	#else
 		csvector = gsvector;
 	#endif
 
-//	for(uint32_t i = 0; i < this->n; i+=k)
+	//DEBUG
+//	for(uint32_t i = 0; i < k * agg_lsort_grid.x; i+=k)
 //	{
 //		std::cout << std::fixed << std::setprecision(4);
-//		//for(uint32_t j = i; j < i+k; j++){ std::cout << csvector[j] << std::endl; } std::cout << "++++++++++++++++++++" << std::endl;
-//		if((i/k) % 2 == 0 && std::is_sorted(&csvector[i], &csvector[i+k],std::greater<T>()) == 0)
-//			std::cout <<"ERROR [" <<i/k <<"] sorted: (" << std::is_sorted(&csvector[i], &csvector[i+k],std::greater<T>()) << ")" << std::endl;
-//		else if(((i/k) % 2 == 1 && std::is_sorted(&csvector[i], &csvector[i+k]) == 0))
-//			std::cout <<"ERROR [" <<i/k <<"] sorted: (" << std::is_sorted(&csvector[i], &csvector[i+k]) << ")" << std::endl;
+//		if((i/k) % 2 == 0 && std::is_sorted(&csvector[i], &csvector[i+k],std::greater<T>()) == 0){
+//			for(uint32_t j = i; j < i + k; j++){
+//				std::cout << j << ":" << csvector[j] << std::endl;
+//			} std::cout << "++++++++++++++++++++" << std::endl;
+//			std::cout <<"ERROR (DESC) [" <<i/k <<"] sorted: (" << std::is_sorted(&csvector[i], &csvector[i+k],std::greater<T>()) << ")" << std::endl;
+//			exit(1);
+//		}
+//		else if((i/k) % 2 == 1 && std::is_sorted(&csvector[i], &csvector[i+k]) == 0){
+//			for(uint32_t j = i; j < i + k; j++){
+//					std::cout << j << ":" << csvector[j] << std::endl;
+//			} std::cout << "++++++++++++++++++++" << std::endl;
+//			std::cout <<"ERROR (ASC) [" <<i/k <<"] sorted: (" << std::is_sorted(&csvector[i], &csvector[i+k]) << ")" << std::endl;
+//			exit(1);
+//		}
 //	}
-//	std::cout << "--------------------" << std::endl;
+//	std::cout << "sorting(2)..." << std::endl;
+//	std::sort(csvector, csvector + k * agg_lsort_grid.x,std::greater<T>());
+//	std::cout << "==========" << std::endl;
+//	this->gpu_threshold = csvector[k-1];
 
-	std::cout << "sorting..." << std::endl;
-	std::sort(csvector, csvector + k * agg_lsort_grid.x,std::greater<T>());
-	std::cout << "==========" << std::endl;
 	this->gpu_threshold = csvector[k-1];
-
 	#if VALIDATE
 		this->cpu_threshold = this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.00000000000001 ) {
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
 			std::cout << std::fixed << std::setprecision(16);
 			std::cout << "ERROR: {" << this->gpu_threshold << "," << this->cpu_threshold << "}" << std::endl; exit(1);
 		}
@@ -232,10 +288,13 @@ void BTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq){
 
 template<class T, class Z>
 void BTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
-	if( k < 32 ){
+	if( k <= 16 ){
 		this->atm_16_driver(k,qq);
-	}else{
+	}else if ( k <= 256 ){
 		this->geq_32_driver(k,qq);
+	}else{
+		std::cout << "GPU Maximum K = 256" << std::endl;
+		exit(1);
 	}
 }
 
@@ -656,24 +715,6 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		}
 	}
 
-//	uint64_t goffset = (blockIdx.x << 12) + threadIdx.x;
-//	gscores[goffset       ] = buffer[threadIdx.x       ];
-//	gscores[goffset +  256] = buffer[threadIdx.x +  256];
-//	gscores[goffset +  512] = buffer[threadIdx.x +  512];
-//	gscores[goffset +  768] = buffer[threadIdx.x +  768];
-//	gscores[goffset + 1024] = buffer[threadIdx.x + 1024];
-//	gscores[goffset + 1280] = buffer[threadIdx.x + 1280];
-//	gscores[goffset + 1536] = buffer[threadIdx.x + 1536];
-//	gscores[goffset + 1792] = buffer[threadIdx.x + 1792];
-//	gscores[goffset + 2048] = buffer[threadIdx.x + 2048];
-//	gscores[goffset + 2304] = buffer[threadIdx.x + 2304];
-//	gscores[goffset + 2560] = buffer[threadIdx.x + 2560];
-//	gscores[goffset + 2816] = buffer[threadIdx.x + 2816];
-//	gscores[goffset + 3072] = buffer[threadIdx.x + 3072];
-//	gscores[goffset + 3328] = buffer[threadIdx.x + 3328];
-//	gscores[goffset + 3584] = buffer[threadIdx.x + 3584];
-//	gscores[goffset + 3840] = buffer[threadIdx.x + 3840];
-
 	//////////////////////////////////////////////
 	//////////Reduce-Rebuild 4096 - 2048//////////
 	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
@@ -707,16 +748,6 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		__syncthreads();
 	}
 
-//	uint64_t goffset = (blockIdx.x << 11) + threadIdx.x;
-//	gscores[goffset       ] = buffer[threadIdx.x       ];
-//	gscores[goffset +  256] = buffer[threadIdx.x +  256];
-//	gscores[goffset +  512] = buffer[threadIdx.x +  512];
-//	gscores[goffset +  768] = buffer[threadIdx.x +  768];
-//	gscores[goffset + 1024] = buffer[threadIdx.x + 1024];
-//	gscores[goffset + 1280] = buffer[threadIdx.x + 1280];
-//	gscores[goffset + 1536] = buffer[threadIdx.x + 1536];
-//	gscores[goffset + 1792] = buffer[threadIdx.x + 1792];
-
 	//////////////////////////////////////////////
 	//////////Reduce-Rebuild 2048 - 1024//////////
 	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
@@ -740,12 +771,6 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		__syncthreads();
 	}
 
-//	uint64_t goffset = (blockIdx.x << 10) + threadIdx.x;
-//	gscores[goffset       ] = buffer[threadIdx.x       ];
-//	gscores[goffset +  256] = buffer[threadIdx.x +  256];
-//	gscores[goffset +  512] = buffer[threadIdx.x +  512];
-//	gscores[goffset +  768] = buffer[threadIdx.x +  768];
-
 	//////////////////////////////////////////////
 	//////////Reduce-Rebuild 1024 - 512//////////
 	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
@@ -764,10 +789,6 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		__syncthreads();
 	}
 
-//	uint64_t goffset = (blockIdx.x << 9) + threadIdx.x;
-//	gscores[goffset       ] = buffer[threadIdx.x       ];
-//	gscores[goffset +  256] = buffer[threadIdx.x +  256];
-
 	////////////////////////////////////////////
 	//////////Reduce-Rebuild 512 - 256//////////
 	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
@@ -785,7 +806,11 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		}
 		__syncthreads();
 	}
-	if(k == 256) { gscores[(blockIdx.x << 8) + threadIdx.x] = buffer[threadIdx.x]; return ; }
+	if(k == 256) {
+		if((blockIdx.x & 0x1) == 0) gscores[(blockIdx.x << 8) + threadIdx.x] = buffer[threadIdx.x];
+		else gscores[(blockIdx.x << 8) + threadIdx.x] = buffer[(k - 1) ^ threadIdx.x];
+		return ;
+	}
 
 	////////////////////////////////////////////
 	//////////Reduce-Rebuild 256 - 128//////////
@@ -806,7 +831,11 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		}
 		__syncthreads();
 	}
-	if(k == 128 && threadIdx.x < 128) { gscores[(blockIdx.x << 7) + threadIdx.x] = buffer[threadIdx.x]; return ; }
+	if(k == 128 && threadIdx.x < 128) {
+		if((blockIdx.x & 0x1) == 0) gscores[(blockIdx.x << 7) + threadIdx.x] = buffer[threadIdx.x];
+		else gscores[(blockIdx.x << 7) + threadIdx.x] = buffer[(k - 1) ^ threadIdx.x];
+		return ;
+	}
 
 	////////////////////////////////////////////
 	//////////Reduce-Rebuild 128 - 64//////////
@@ -827,7 +856,11 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		}
 		__syncthreads();
 	}
-	if(k == 64 && threadIdx.x < 64) { gscores[(blockIdx.x << 6) + threadIdx.x] = buffer[threadIdx.x]; return ; }
+	if(k == 64 && threadIdx.x < 64) {
+		if((blockIdx.x & 0x1) == 0) gscores[(blockIdx.x << 6) + threadIdx.x] = buffer[threadIdx.x];
+		else gscores[(blockIdx.x << 6) + threadIdx.x] = buffer[(k - 1) ^ threadIdx.x];
+		return ;
+	}
 
 	////////////////////////////////////////////
 	//////////Reduce-Rebuild 64 - 32//////////
@@ -848,7 +881,11 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		}
 		__syncthreads();
 	}
-	if(k == 32 && threadIdx.x < 32) { gscores[(blockIdx.x << 5) + threadIdx.x] = buffer[threadIdx.x]; return ; }
+	if(k == 32 && threadIdx.x < 32) {
+		if((blockIdx.x & 0x1) == 0) gscores[(blockIdx.x << 5) + threadIdx.x] = buffer[threadIdx.x];
+		else gscores[(blockIdx.x << 5) + threadIdx.x] = buffer[(k - 1) ^ threadIdx.x];
+		return;
+	}
 
 }
 

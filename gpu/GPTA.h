@@ -23,7 +23,7 @@
 #define GPTA_PARTS (((uint64_t)pow(GPTA_SPLITS,NUM_DIMS-1)))
 #define GPTA_PART_BITS ((uint64_t)log2f(GPTA_SPLITS))
 
-#define GPTA_BLOCK_SIZE 1024
+#define GPTA_BLOCK_SIZE 4096
 
 template<class T, class Z>
 struct gpta_block{
@@ -39,6 +39,8 @@ struct gpta_part{
 	uint32_t size = 0;
 };
 
+template<class T, class Z>
+__global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *out);
 template<class T, class Z>
 __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *out);
 template<class Z>
@@ -123,6 +125,7 @@ class GPTA : public GAA<T,Z>{
 		void reorder_partition();
 
 		void atm_16_driver(uint64_t k, uint64_t qq);
+		void geq_32_driver(uint64_t k, uint64_t qq);
 
 		T cpuTopK(uint64_t k, uint64_t qq);
 };
@@ -162,8 +165,9 @@ void GPTA<T,Z>::init(){
 		cutil::safeCopyToDevice<gpta_part<T,Z>,uint64_t>(this->gparts,this->cprts,sizeof(gpta_part<T,Z>)*GPTA_PARTS,"copy cprts to gparts");
 		cutil::cudaCheckErr(cudaPeekAtLastError(),"copy cprts to gparts");
 	#else
-		gout = cout;
-		gout = cout2;
+		this->gparts = this->cparts;
+		this->gout = cout;
+		this->gout = cout2;
 	#endif
 }
 
@@ -555,7 +559,7 @@ T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 		}
 	}
 	threshold2 = q.top().score;
-	if( abs((double)threshold - (double)threshold2) > (double)0.00000000000001 ) {
+	if( abs((double)threshold - (double)threshold2) > (double)0.000001) {
 		std::cout << "ERROR (cpu):[" << threshold << "," << threshold2 << "]" << std::endl;
 	}
 	return threshold2;
@@ -564,7 +568,14 @@ T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 template<class T, class Z>
 void GPTA<T,Z>::findTopK(uint64_t k, uint64_t qq){
 	this->tuple_count=0;
-	this->atm_16_driver(k,qq);
+	if( k <= 16 ){
+		this->atm_16_driver(k,qq);
+	}else if ( k <= 256 ){
+		this->geq_32_driver(k,qq);
+	}else{
+		std::cout << "GPU Maximum K = 256" << std::endl;
+		exit(1);
+	}
 }
 
 template<class T, class Z>
@@ -573,38 +584,22 @@ void GPTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq)
 	dim3 atm_16_block(256,1,1);
 	dim3 atm_16_grid(GPTA_PARTS, 1, 1);
 
-//	for(uint32_t i = 0; i < GPTA_PARTS; i++)
-//	{
-//		if(i == 0)
-//		{
-//			gpta_block<T,Z> *blocks = this->cparts[i].blocks;
-//			uint64_t nb = this->cparts[i].bnum;
-//			for(uint32_t b = 0; b < nb; b++){
-//				T *tvector = blocks[b].tvector;
-//				printf("C(%d,%d) = { ",i,(uint32_t) b);
-//				std::cout << std::fixed << std::setprecision(4);
-//				for(uint32_t m = 0; m < NUM_DIMS; m++){ std::cout << tvector[m] << " "; }
-//				std::cout << "}" << std::endl;
-//			}
-//		}
-//	}
-
 	this->t.start();
 	gpta_atm_16<T,Z><<<atm_16_grid,atm_16_block>>>(gparts, qq, k, gout);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing gpta_atm_16");
 	this->tt_processing += this->t.lap();
-
 	//First step check
-	cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * GPTA_PARTS * k, "error copying from gout to out");
-	std::sort(cout, cout + GPTA_PARTS * k, std::greater<T>());
-	this->gpu_threshold = cout[k-1];
+//	#if USE_PTA_DEVICE_MEM
+//		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * GPTA_PARTS * k, "error copying from gout to out");
+//	#endif
+//	std::sort(cout, cout + GPTA_PARTS * k, std::greater<T>());
+//	this->gpu_threshold = cout[k-1];
 
 	uint64_t remainder = (GPTA_PARTS * k);
 	this->t.start();
 	while(remainder > k){
 		std::cout << "remainder: " << remainder << std::endl;
 		atm_16_grid.x = ((remainder - 1) / 4096) + 1;
-		//gpta_rr_atm_16<T><<<atm_16_grid,atm_16_block>>>(gout,remainder,k,gout2);
 		reduce_rebuild_atm_16<T><<<atm_16_grid,atm_16_block>>>(gout,remainder,k,gout2);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing gpta_rr_atm_16");
 		remainder = (atm_16_grid.x * k);
@@ -613,17 +608,372 @@ void GPTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq)
 	this->tt_processing += this->t.lap();
 
 	//Second step check
-	cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
-	std::sort(cout, cout + k, std::greater<T>());
+	#if USE_PTA_DEVICE_MEM
+		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
+	#endif
 	this->gpu_threshold = cout[k-1];
 
 	#if VALIDATE
 		this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.00000000000001 ) {
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
 			std::cout << std::fixed << std::setprecision(16);
 			std::cout << "ERROR: {" << cout[k-1] << "," << this->cpu_threshold << "}" << std::endl; exit(1);
 		}
 	#endif
+}
+
+template<class T, class Z>
+void GPTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq)
+{
+	dim3 geq_32_block(256,1,1);
+	dim3 geq_32_grid(GPTA_PARTS, 1, 1);
+
+	this->t.start();
+	gpta_geq_32<T,Z><<<geq_32_grid,geq_32_block>>>(gparts, qq, k, gout);
+	cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing gpta_geq_32");
+	this->tt_processing += this->t.lap();
+
+	#if USE_PTA_DEVICE_MEM
+		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * GPTA_PARTS * k, "error copying from gout to out");
+	#endif
+	std::sort(cout, cout + GPTA_PARTS * k, std::greater<T>());
+	this->gpu_threshold = cout[k-1];
+
+	#if VALIDATE
+		this->cpu_threshold = this->cpuTopK(k,qq);
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
+			std::cout << std::fixed << std::setprecision(16);
+			std::cout << "ERROR: {" << cout[k-1] << "," << this->cpu_threshold << "}" << std::endl; exit(1);
+		}
+	#endif
+}
+
+template<class T, class Z>
+__global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *out)
+{
+	__shared__ T threshold[NUM_DIMS+1];
+	__shared__ T heap[256];
+	__shared__ T buffer[GPTA_BLOCK_SIZE];
+
+	uint32_t b = 0;
+	uint32_t nb = gparts[blockIdx.x].bnum;
+	heap[threadIdx.x] = 0;
+	while(b < nb)
+	{
+		#if GPTA_BLOCK_SIZE >= 1024
+			T v0 = 0, v1 = 0, v2 = 0, v3 = 0;
+		#endif
+		#if GPTA_BLOCK_SIZE >= 1024
+			T v4 = 0, v5 = 0, v6 = 0, v7 = 0;
+		#endif
+		#if GPTA_BLOCK_SIZE >= 4096
+			T v8 = 0, v9 = 0, vA = 0, vB = 0;
+			T vC = 0, vD = 0, vE = 0, vF = 0;
+		#endif
+		T *data = gparts[blockIdx.x].blocks[b].data;
+
+		if(threadIdx.x < NUM_DIMS)
+		{
+			threshold[threadIdx.x] = gparts[blockIdx.x].blocks[b].tvector[threadIdx.x];
+			if(threadIdx.x == 0) threshold[NUM_DIMS] = 0;
+		}
+
+		for(uint32_t m = 0; m < qq; m++)
+		{
+			Z ai = gpu_query[m];
+			Z start = ai * GPTA_BLOCK_SIZE + threadIdx.x;
+			T w = gpu_weights[ai];
+
+			if(threadIdx.x == 0) threshold[NUM_DIMS] += threshold[ai] * w;
+			#if GPTA_BLOCK_SIZE >= 1024
+				v0 += data[start       ] * w;
+				v1 += data[start +  256] * w;
+				v2 += data[start +  512] * w;
+				v3 += data[start +  768] * w;
+			#endif
+			#if GPTA_BLOCK_SIZE >= 2048
+				v4 += data[start + 1024] * w;
+				v5 += data[start + 1280] * w;
+				v6 += data[start + 1536] * w;
+				v7 += data[start + 1792] * w;
+			#endif
+			#if GPTA_BLOCK_SIZE >= 4096
+				v8 += data[start + 2048] * w;
+				v9 += data[start + 2304] * w;
+				vA += data[start + 2560] * w;
+				vB += data[start + 2816] * w;
+				vC += data[start + 3072] * w;
+				vD += data[start + 3328] * w;
+				vE += data[start + 3584] * w;
+				vF += data[start + 3840] * w;
+			#endif
+		}
+
+		uint32_t level, step, dir, i;
+		for(level = 1; level < k; level = level << 1){
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+				#if GPTA_BLOCK_SIZE >= 1024
+					v0 = swap(v0,step,dir);
+					v1 = swap(v1,step,dir);
+					v2 = swap(v2,step,dir);
+					v3 = swap(v3,step,dir);
+				#endif
+				#if GPTA_BLOCK_SIZE >= 2048
+					v4 = swap(v4,step,dir);
+					v5 = swap(v5,step,dir);
+					v6 = swap(v6,step,dir);
+					v7 = swap(v7,step,dir);
+				#endif
+				#if GPTA_BLOCK_SIZE >= 4096
+					v8 = swap(v8,step,dir);
+					v9 = swap(v9,step,dir);
+					vA = swap(vA,step,dir);
+					vB = swap(vB,step,dir);
+					vC = swap(vC,step,dir);
+					vD = swap(vD,step,dir);
+					vE = swap(vE,step,dir);
+					vF = swap(vF,step,dir);
+				#endif
+			}
+		}
+		buffer[threadIdx.x       ] = v0;
+		buffer[threadIdx.x +  256] = v1;
+		buffer[threadIdx.x +  512] = v2;
+		buffer[threadIdx.x +  768] = v3;
+		buffer[threadIdx.x + 1024] = v4;
+		buffer[threadIdx.x + 1280] = v5;
+		buffer[threadIdx.x + 1536] = v6;
+		buffer[threadIdx.x + 1792] = v7;
+		buffer[threadIdx.x + 2048] = v8;
+		buffer[threadIdx.x + 2304] = v9;
+		buffer[threadIdx.x + 2560] = vA;
+		buffer[threadIdx.x + 2816] = vB;
+		buffer[threadIdx.x + 3072] = vC;
+		buffer[threadIdx.x + 3328] = vD;
+		buffer[threadIdx.x + 3584] = vE;
+		buffer[threadIdx.x + 3840] = vF;
+		__syncthreads();
+
+
+		//sort in shared memory
+		for(level = 32; level < k; level = level << 1){
+			dir = level << 1;
+			for(step = level; step > 0; step = step >> 1){
+				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+				bool r = ((dir & i) == 0);
+				swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+				swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+				swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
+				swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
+				swap_shared<T>(buffer[i + 2048], buffer[i + 2048 + step], r);
+				swap_shared<T>(buffer[i + 2560], buffer[i + 2560 + step], r);
+				swap_shared<T>(buffer[i + 3072], buffer[i + 3072 + step], r);
+				swap_shared<T>(buffer[i + 3584], buffer[i + 3584 + step], r);
+				__syncthreads();
+			}
+		}
+
+		//////////////////////////////////////////////
+		//////////Reduce-Rebuild 4096 - 2048//////////
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+		v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+		v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
+		v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
+		v4 = fmaxf(buffer[i + 2048], buffer[i + 2048 + k]);
+		v5 = fmaxf(buffer[i + 2560], buffer[i + 2560 + k]);
+		v6 = fmaxf(buffer[i + 3072], buffer[i + 3072 + k]);
+		v7 = fmaxf(buffer[i + 3584], buffer[i + 3584 + k]);
+		__syncthreads();
+		buffer[threadIdx.x       ] = v0;
+		buffer[threadIdx.x +  256] = v1;
+		buffer[threadIdx.x +  512] = v2;
+		buffer[threadIdx.x +  768] = v3;
+		buffer[threadIdx.x + 1024] = v4;
+		buffer[threadIdx.x + 1280] = v5;
+		buffer[threadIdx.x + 1536] = v6;
+		buffer[threadIdx.x + 1792] = v7;
+		__syncthreads();
+		level = k >> 1;
+		dir = level << 1;
+		for(step = level; step > 0; step = step >> 1){
+			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+			bool r = ((dir & i) == 0);
+			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+			swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+			swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
+			swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
+			__syncthreads();
+		}
+
+		//////////////////////////////////////////////
+		//////////Reduce-Rebuild 2048 - 1024//////////
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+		v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+		v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
+		v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
+		__syncthreads();
+		buffer[threadIdx.x       ] = v0;
+		buffer[threadIdx.x +  256] = v1;
+		buffer[threadIdx.x +  512] = v2;
+		buffer[threadIdx.x +  768] = v3;
+		__syncthreads();
+		level = k >> 1;
+		dir = level << 1;
+		for(step = level; step > 0; step = step >> 1){
+			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+			bool r = ((dir & i) == 0);
+			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+			swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+			__syncthreads();
+		}
+
+		//////////////////////////////////////////////
+		//////////Reduce-Rebuild 1024 - 512//////////
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+		v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+		__syncthreads();
+		buffer[threadIdx.x       ] = v0;
+		buffer[threadIdx.x +  256] = v1;
+		__syncthreads();
+		level = k >> 1;
+		dir = level << 1;
+		for(step = level; step > 0; step = step >> 1){
+			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+			bool r = ((dir & i) == 0);
+			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+			__syncthreads();
+		}
+
+		////////////////////////////////////////////
+		//////////Reduce-Rebuild 512 - 256//////////
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+		__syncthreads();
+		buffer[threadIdx.x       ] = v0;
+		__syncthreads();
+		level = k >> 1;
+		dir = level << 1;
+		for(step = level; step > 0; step = step >> 1){
+			if(threadIdx.x < 128){
+				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+				bool r = ((dir & i) == 0);
+				swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+			}
+			__syncthreads();
+		}
+
+		////////////////////////////////////////////
+		//////////Reduce-Rebuild 256 - 128//////////
+//		if( k < 128 ){
+//			if(threadIdx.x < 128){
+//				i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+//				v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+//			}
+//			__syncthreads();
+//			if(threadIdx.x < 128) buffer[threadIdx.x] = v0;
+//			__syncthreads();
+//			level = k >> 1;
+//			dir = level << 1;
+//			for(step = level; step > 0; step = step >> 1){
+//				if(threadIdx.x < 128){
+//					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+//					bool r = ((dir & i) == 0);
+//					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+//				}
+//				__syncthreads();
+//			}
+//		}
+
+//		////////////////////////////////////////////
+//		//////////Reduce-Rebuild 128 - 64//////////
+//		if( k < 64 ){
+//			if(threadIdx.x < 64){
+//				i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+//				v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+//			}
+//			__syncthreads();
+//			if(threadIdx.x < 64) buffer[threadIdx.x] = v0;
+//			__syncthreads();
+//			level = k >> 1;
+//			dir = level << 1;
+//			for(step = level; step > 0; step = step >> 1){
+//				if(threadIdx.x < 64){
+//					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+//					bool r = ((dir & i) == 0);
+//					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+//				}
+//				__syncthreads();
+//			}
+//		}
+//
+//		////////////////////////////////////////////
+//		//////////Reduce-Rebuild 64 - 32//////////
+//		if( k < 32 ){
+//			if(threadIdx.x < 32){
+//				i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+//				v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+//			}
+//			__syncthreads();
+//			if(threadIdx.x < 32) buffer[threadIdx.x] = v0;
+//			__syncthreads();
+//			level = k >> 1;
+//			dir = level << 1;
+//			for(step = level; step > 0; step = step >> 1){
+//				if(threadIdx.x < 32){
+//					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+//					bool r = ((dir & i) == 0);
+//					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+//				}
+//				__syncthreads();
+//			}
+//		}
+
+		///////////////
+		//Merge heaps//
+		if(b == 0)
+		{
+			if(threadIdx.x < k)  heap[(k - 1) - threadIdx.x] = buffer[threadIdx.x];
+		}else{
+			if(threadIdx.x < k) buffer[k + threadIdx.x] = heap[threadIdx.x];
+
+			//2k -> k
+			if(threadIdx.x < k){
+				i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+				v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+			}
+			__syncthreads();
+			if(threadIdx.x < k) buffer[threadIdx.x       ] = v0;
+			__syncthreads();
+
+			level = k >> 1;
+			dir = level << 1;
+			for(step = level; step > 0; step = step >> 1){
+				if(threadIdx.x < k){
+					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+					bool r = ((dir & i) == 0);
+					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+				}
+				__syncthreads();
+			}
+
+			if(threadIdx.x < k) heap[(k - 1) - threadIdx.x] = buffer[threadIdx.x];
+		}
+		__syncthreads();
+
+		if(heap[k-1] >= threshold[NUM_DIMS]){ break; }
+		__syncthreads();
+		b++;
+	}
+
+	if(threadIdx.x < k){
+		uint64_t offset = blockIdx.x * k;
+		if((blockIdx.x & 0x1) == 0) out[offset + (k-1) - threadIdx.x] = heap[threadIdx.x];
+		else out[offset + threadIdx.x] = heap[threadIdx.x];
+	}
 }
 
 template<class T, class Z>
@@ -649,16 +999,6 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			T vC = 0, vD = 0, vE = 0, vF = 0;
 		#endif
 		T *data = gparts[blockIdx.x].blocks[b].data;
-
-//		if(blockIdx.x == 0 && threadIdx.x == 0)
-//		{
-//			printf("T(%d,%d) = { ",blockIdx.x,(uint32_t) b);
-//			for(uint32_t m = 0; m < NUM_DIMS; m++)
-//			{
-//				printf("%.4f ",gparts[blockIdx.x].blocks[b].tvector[m]);
-//			}
-//			printf("}\n");
-//		}
 
 		if(threadIdx.x < NUM_DIMS)
 		{
@@ -698,11 +1038,11 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 		}
 
 		//{4096,2048,1024} -> {2048,1024,512}
-		uint32_t laneId = threadIdx.x;
+		//uint32_t laneId = threadIdx.x;
 		uint32_t level, step, dir;
 		for(level = 1; level < k; level = level << 1){
 			for(step = level; step > 0; step = step >> 1){
-				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 				#if GPTA_BLOCK_SIZE >= 1024
 					v0 = swap(v0,step,dir);
 					v1 = swap(v1,step,dir);
@@ -761,7 +1101,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 		//{2048,1024,512} -> {1024,512,256}
 		level = k >> 1;
 		for(step = level; step > 0; step = step >> 1){
-			dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 			#if GPTA_BLOCK_SIZE >= 1024
 				v0 = swap(v0,step,dir);
 				v2 = swap(v2,step,dir);
@@ -800,7 +1140,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 		#if GPTA_BLOCK_SIZE >= 2048
 			level = k >> 1;
 			for(step = level; step > 0; step = step >> 1){
-				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 				v0 = swap(v0,step,dir);
 				v4 = swap(v4,step,dir);
 				#if GPTA_BLOCK_SIZE >= 4096
@@ -822,7 +1162,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 		#if GPTA_BLOCK_SIZE >= 4096
 			level = k >> 1;
 			for(step = level; step > 0; step = step >> 1){
-				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 				v0 = swap(v0,step,dir);
 				v8 = swap(v8,step,dir);
 			}
@@ -847,7 +1187,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 			//256 -> 128
 			for(step = level; step > 0; step = step >> 1){
-				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 				v0 = swap(v0,step,dir);
 				v1 = swap(v1,step,dir);
 				v2 = swap(v2,step,dir);
@@ -872,7 +1212,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 			//128 -> 64
 			for(step = level; step > 0; step = step >> 1){
-				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 				v0 = swap(v0,step,dir);
 				v2 = swap(v2,step,dir);
 				v4 = swap(v4,step,dir);
@@ -887,7 +1227,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 			//64 -> 32
 			for(step = level; step > 0; step = step >> 1){
-				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 				v0 = swap(v0,step,dir);
 				v4 = swap(v4,step,dir);
 			}
@@ -897,7 +1237,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 			//32 -> 16
 			for(step = level; step > 0; step = step >> 1){
-				dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 				v0 = swap(v0,step,dir);
 			}
 			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
@@ -906,7 +1246,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			//sort
 			for(level = k; level < 32; level = level << 1){
 				for(step = level; step > 0; step = step >> 1){
-					dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+					dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 					v0 = swap(v0,step,dir);
 				}
 			}
@@ -922,7 +1262,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 				v0 = (threadIdx.x & k) == 0 ? v0 : v1;
 
 				for(step = level; step > 0; step = step >> 1){
-					dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+					dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 					v0 = swap(v0,step,dir);
 				}
 				v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
@@ -930,7 +1270,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 				for(level = k; level < 32; level = level << 1){
 					for(step = level; step > 0; step = step >> 1){
-						dir = bfe(laneId,__ffs(level))^bfe(laneId,__ffs(step>>1));
+						dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 						v0 = swap(v0,step,dir);
 					}
 				}

@@ -208,6 +208,20 @@ void GVTA<T,Z>::reorder()
 		offset += this->tuples_per_part;
 	}
 
+//	for(uint64_t i = 0; i < GVTA_PARTITIONS; i++){
+//		T mx[NUM_DIMS];
+//		for(uint64_t m = 0; m < this->d; m++) mx[m] = 0;
+//		for(uint64_t b = this->num_blocks - 1; b > 0; b--){
+//			for(uint64_t j = i * GVTA_BLOCK_SIZE; j < (i+1) * GVTA_BLOCK_SIZE; j++){
+//				for(uint64_t m = 0; m < this->d; m++){
+//					mx[m] = std::max(mx[m], this->cblocks[b].data[GVTA_BLOCK_SIZE * GVTA_PARTITIONS * m + j]);
+//				}
+//				T *tvec = &this->cblocks[b-1].tvector[i*this->d];
+//				std::memcpy(tvec,mx,sizeof(T)*this->d);
+//			}
+//		}
+//	}
+
 	#if VALIDATE
 		for(uint64_t i = 0; i < GVTA_PARTITIONS; i++){
 			for(uint64_t b = 1; b < this->num_blocks; b++){
@@ -341,7 +355,7 @@ void GVTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 
 	#if VALIDATE
 		this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.00000000000001 ) {
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
 			std::cout << std::fixed << std::setprecision(16);
 			std::cout << "ERROR: {" << this->gpu_threshold << "," << this->cpu_threshold << "}" << std::endl; exit(1);
 		}

@@ -324,7 +324,6 @@ __global__ void reduce_rebuild_atm_16(T *iscores, uint64_t n, uint64_t k, T *osc
 	T v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
 	T v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
 
-	//i = (blockIdx.x << 12) + threadIdx.x;
 	i = (blockIdx.x * 4096) + threadIdx.x;
 	if(i<n) 	 v0 = iscores[i      ];
 	if(i+256<n)  v1 = iscores[i +  256];
@@ -520,6 +519,216 @@ __global__ void reduce_rebuild_atm_16(T *iscores, uint64_t n, uint64_t k, T *osc
 			i = blockIdx.x * k;
 			if((blockIdx.x & 0x1) == 0) oscores[i + threadIdx.x] = v0; else oscores[i + (threadIdx.x ^ (k-1))] = v0;
 		}
+	}
+}
+
+template<class T>
+__global__ void reduce_rebuild_qeq_32(T *iscores, uint64_t n, uint64_t k, T *oscores){
+	uint32_t level, step, dir, i;
+	__shared__ T buffer[4096];
+	T v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
+
+	i = (blockIdx.x * 4096) + threadIdx.x;
+	if(i<n) 	 buffer[threadIdx.x       ] = iscores[i       ]; else  buffer[threadIdx.x        ] = 0;
+	if(i+256<n)  buffer[threadIdx.x +  256] = iscores[i +  256]; else  buffer[threadIdx.x +   256] = 0;
+	if(i+512<n)  buffer[threadIdx.x +  512] = iscores[i +  512]; else  buffer[threadIdx.x +   512] = 0;
+	if(i+768<n)  buffer[threadIdx.x +  768] = iscores[i +  768]; else  buffer[threadIdx.x +   768] = 0;
+	if(i+1024<n) buffer[threadIdx.x + 1024] = iscores[i + 1024]; else  buffer[threadIdx.x +  1024] = 0;
+	if(i+1280<n) buffer[threadIdx.x + 1280] = iscores[i + 1280]; else  buffer[threadIdx.x +  1280] = 0;
+	if(i+1536<n) buffer[threadIdx.x + 1536] = iscores[i + 1536]; else  buffer[threadIdx.x +  1536] = 0;
+	if(i+1792<n) buffer[threadIdx.x + 1792] = iscores[i + 1792]; else  buffer[threadIdx.x +  1792] = 0;
+	if(i+2048<n) buffer[threadIdx.x + 2048] = iscores[i + 2048]; else  buffer[threadIdx.x +  2048] = 0;
+	if(i+2304<n) buffer[threadIdx.x + 2304] = iscores[i + 2304]; else  buffer[threadIdx.x +  2304] = 0;
+	if(i+2560<n) buffer[threadIdx.x + 2560] = iscores[i + 2560]; else  buffer[threadIdx.x +  2560] = 0;
+	if(i+2816<n) buffer[threadIdx.x + 2816] = iscores[i + 2816]; else  buffer[threadIdx.x +  2816] = 0;
+	if(i+3072<n) buffer[threadIdx.x + 3072] = iscores[i + 3072]; else  buffer[threadIdx.x +  3072] = 0;
+	if(i+3328<n) buffer[threadIdx.x + 3328] = iscores[i + 3328]; else  buffer[threadIdx.x +  3328] = 0;
+	if(i+3584<n) buffer[threadIdx.x + 3584] = iscores[i + 3584]; else  buffer[threadIdx.x +  3584] = 0;
+	if(i+3840<n) buffer[threadIdx.x + 3840] = iscores[i + 3840]; else  buffer[threadIdx.x +  3840] = 0;
+	__syncthreads();
+
+	////////////////
+	//4096 -> 2048//
+	////////////////
+	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+	v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+	v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+	v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
+	v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
+	v4 = fmaxf(buffer[i + 2048], buffer[i + 2048 + k]);
+	v5 = fmaxf(buffer[i + 2560], buffer[i + 2560 + k]);
+	v6 = fmaxf(buffer[i + 3072], buffer[i + 3072 + k]);
+	v7 = fmaxf(buffer[i + 3584], buffer[i + 3584 + k]);
+	__syncthreads();
+
+	buffer[threadIdx.x       ] = v0;
+	buffer[threadIdx.x +  256] = v1;
+	buffer[threadIdx.x +  512] = v2;
+	buffer[threadIdx.x +  768] = v3;
+	buffer[threadIdx.x + 1024] = v4;
+	buffer[threadIdx.x + 1280] = v5;
+	buffer[threadIdx.x + 1536] = v6;
+	buffer[threadIdx.x + 1792] = v7;
+	__syncthreads();
+
+	////////////////
+	//2048 -> 1024//
+	////////////////
+	level = k >> 1;
+	dir = level << 1;
+	for(step = level; step > 0; step = step >> 1){
+		i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+		bool r = ((dir & i) == 0);
+		swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+		swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+		swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
+		swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
+		__syncthreads();
+	}
+	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+	v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+	v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+	v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
+	v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
+	__syncthreads();
+	buffer[threadIdx.x      ] = v0;
+	buffer[threadIdx.x + 256] = v1;
+	buffer[threadIdx.x + 512] = v2;
+	buffer[threadIdx.x + 768] = v3;
+	__syncthreads();
+
+	////////////////
+	//1024 -> 512//
+	////////////////
+	level = k >> 1;
+	dir = level << 1;
+	for(step = level; step > 0; step = step >> 1){
+		i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+		bool r = ((dir & i) == 0);
+		swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+		swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+		__syncthreads();
+	}
+	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+	v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+	v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+	__syncthreads();
+	buffer[threadIdx.x      ] = v0;
+	buffer[threadIdx.x + 256] = v1;
+	__syncthreads();
+
+	////////////////
+	// 512 -> 256 //
+	////////////////
+	level = k >> 1;
+	dir = level << 1;
+	for(step = level; step > 0; step = step >> 1){
+		i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+		bool r = ((dir & i) == 0);
+		swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+		__syncthreads();
+	}
+	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+	v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+	__syncthreads();
+	buffer[threadIdx.x      ] = v0;
+	__syncthreads();
+
+	////////////////
+	// 256 -> 128 //
+	////////////////
+	level = k >> 1;
+	dir = level << 1;
+	for(step = level; step > 0; step = step >> 1){
+		if(threadIdx.x < 128){
+			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+			bool r = ((dir & i) == 0);
+			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+		}
+		__syncthreads();
+	}
+	if(k == 256){// Return if k == 256
+		if((blockIdx.x & 0x1) == 0) oscores[(blockIdx.x << 8) + threadIdx.x] = buffer[threadIdx.x];
+		else oscores[(blockIdx.x << 8) + threadIdx.x] = buffer[(k - 1) ^ threadIdx.x];
+		return ;
+	}
+	if(threadIdx.x < 128){
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+	}
+	__syncthreads();
+	if(threadIdx.x < 128) buffer[threadIdx.x      ] = v0;
+	__syncthreads();
+
+	////////////////
+	// 128 -> 64  //
+	////////////////
+	level = k >> 1;
+	dir = level << 1;
+	for(step = level; step > 0; step = step >> 1){
+		if(threadIdx.x < 64){
+			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+			bool r = ((dir & i) == 0);
+			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+		}
+		__syncthreads();
+	}
+	if(k == 128 && threadIdx.x < 128){// Return if k == 128
+		if((blockIdx.x & 0x1) == 0) oscores[(blockIdx.x << 7) + threadIdx.x] = buffer[threadIdx.x];
+		else oscores[(blockIdx.x << 7) + threadIdx.x] = buffer[(k - 1) ^ threadIdx.x];
+		return ;
+	}
+	if(threadIdx.x < 64){
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+	}
+	__syncthreads();
+	if(threadIdx.x < 64) buffer[threadIdx.x      ] = v0;
+	__syncthreads();
+
+	////////////////
+	// 64 -> 32   //
+	////////////////
+	level = k >> 1;
+	dir = level << 1;
+	for(step = level; step > 0; step = step >> 1){
+		if(threadIdx.x < 32){
+			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+			bool r = ((dir & i) == 0);
+			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+		}
+		__syncthreads();
+	}
+	if(k == 64 && threadIdx.x < 64){// Return if k == 64
+		if((blockIdx.x & 0x1) == 0) oscores[(blockIdx.x << 6) + threadIdx.x] = buffer[threadIdx.x];
+		else oscores[(blockIdx.x << 6) + threadIdx.x] = buffer[(k - 1) ^ threadIdx.x];
+		return ;
+	}
+	if(threadIdx.x < 32){
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+	}
+	__syncthreads();
+	if(threadIdx.x < 32) buffer[threadIdx.x      ] = v0;
+	__syncthreads();
+
+	////////////////
+	// 32 -> 16   //
+	////////////////
+	level = k >> 1;
+	dir = level << 1;
+	for(step = level; step > 0; step = step >> 1){
+		if(threadIdx.x < 16){
+			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+			bool r = ((dir & i) == 0);
+			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+		}
+		__syncthreads();
+	}
+
+	if(k == 32 && threadIdx.x < 32){// Return if k == 64
+		if((blockIdx.x & 0x1) == 0) oscores[(blockIdx.x << 5) + threadIdx.x] = buffer[threadIdx.x];
+		else oscores[(blockIdx.x << 5) + threadIdx.x] = buffer[(k - 1) ^ threadIdx.x];
 	}
 }
 
