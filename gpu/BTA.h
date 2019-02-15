@@ -364,9 +364,7 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		#endif
 	}
 
-	/*
-	 * Rebuild - Reduce 4096 -> 2048
-	 */
+	//Sort in registers//
 	uint32_t level, step, dir;
 	for(level = 1; level < k; level = level << 1){
 		for(step = level; step > 0; step = step >> 1){
@@ -395,6 +393,10 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 			#endif
 		}
 	}
+
+	/*
+	 * Rebuild - Reduce 4096 -> 2048
+	 */
 	#if BTA_TUPLES_PER_BLOCK >= 1024
 		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
 		v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
@@ -824,7 +826,7 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 	level = k >> 1;
 	dir = level << 1;
 	for(step = level; step > 0; step = step >> 1){
-		if(threadIdx.x < 128){
+		if(threadIdx.x < 64){
 			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
 			bool r = ((dir & i) == 0);
 			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
@@ -849,7 +851,7 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 	level = k >> 1;
 	dir = level << 1;
 	for(step = level; step > 0; step = step >> 1){
-		if(threadIdx.x < 64){
+		if(threadIdx.x < 32){
 			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
 			bool r = ((dir & i) == 0);
 			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
@@ -874,7 +876,7 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 	level = k >> 1;
 	dir = level << 1;
 	for(step = level; step > 0; step = step >> 1){
-		if(threadIdx.x < 32){
+		if(threadIdx.x < 16){
 			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
 			bool r = ((dir & i) == 0);
 			swap_shared<T>(buffer[i       ], buffer[i +        step], r);

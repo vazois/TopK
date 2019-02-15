@@ -34,7 +34,6 @@ int main(int argc, char **argv){
 	bench_bta(ap.getString("-f"),n,d,KKS,KKE);
 	//bench_gvta(ap.getString("-f"),n,d,KKS,KKE);
 	//bench_gpta(ap.getString("-f"),n,d,KKS,KKE);
-	//bench_gpta(ap.getString("-f"),n,d,KKS);
 	//bench_gta(ap.getString("-f"),n,d,KKS);
 
 	return 0;

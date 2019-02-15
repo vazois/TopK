@@ -23,7 +23,7 @@
 #define GPTA_PARTS (((uint64_t)pow(GPTA_SPLITS,NUM_DIMS-1)))
 #define GPTA_PART_BITS ((uint64_t)log2f(GPTA_SPLITS))
 
-#define GPTA_BLOCK_SIZE 4096
+#define GPTA_BLOCK_SIZE 2048
 
 template<class T, class Z>
 struct gpta_block{
@@ -641,7 +641,7 @@ void GPTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq)
 
 	#if VALIDATE
 		this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.0000000000001 ) {
 			std::cout << std::fixed << std::setprecision(16);
 			std::cout << "ERROR: {" << cout[k-1] << "," << this->cpu_threshold << "}" << std::endl; exit(1);
 		}
@@ -663,7 +663,7 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 		#if GPTA_BLOCK_SIZE >= 1024
 			T v0 = 0, v1 = 0, v2 = 0, v3 = 0;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 1024
+		#if GPTA_BLOCK_SIZE >= 2048
 			T v4 = 0, v5 = 0, v6 = 0, v7 = 0;
 		#endif
 		#if GPTA_BLOCK_SIZE >= 4096
@@ -671,6 +671,7 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			T vC = 0, vD = 0, vE = 0, vF = 0;
 		#endif
 		T *data = gparts[blockIdx.x].blocks[b].data;
+		uint32_t level, step, dir, i;
 
 		if(threadIdx.x < NUM_DIMS)
 		{
@@ -678,6 +679,9 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			if(threadIdx.x == 0) threshold[NUM_DIMS] = 0;
 		}
 
+		/*
+		 * Aggregate
+		 */
 		for(uint32_t m = 0; m < qq; m++)
 		{
 			Z ai = gpu_query[m];
@@ -709,8 +713,8 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			#endif
 		}
 
-		uint32_t level, step, dir, i;
-		for(level = 1; level < k; level = level << 1){
+		//sort using registers// Up to k <= 16
+		for(level = 1; level < 32; level = level << 1){
 			for(step = level; step > 0; step = step >> 1){
 				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 				#if GPTA_BLOCK_SIZE >= 1024
@@ -737,24 +741,29 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 				#endif
 			}
 		}
-		buffer[threadIdx.x       ] = v0;
-		buffer[threadIdx.x +  256] = v1;
-		buffer[threadIdx.x +  512] = v2;
-		buffer[threadIdx.x +  768] = v3;
-		buffer[threadIdx.x + 1024] = v4;
-		buffer[threadIdx.x + 1280] = v5;
-		buffer[threadIdx.x + 1536] = v6;
-		buffer[threadIdx.x + 1792] = v7;
-		buffer[threadIdx.x + 2048] = v8;
-		buffer[threadIdx.x + 2304] = v9;
-		buffer[threadIdx.x + 2560] = vA;
-		buffer[threadIdx.x + 2816] = vB;
-		buffer[threadIdx.x + 3072] = vC;
-		buffer[threadIdx.x + 3328] = vD;
-		buffer[threadIdx.x + 3584] = vE;
-		buffer[threadIdx.x + 3840] = vF;
+		#if GPTA_BLOCK_SIZE >= 1024
+			buffer[threadIdx.x       ] = v0;
+			buffer[threadIdx.x +  256] = v1;
+			buffer[threadIdx.x +  512] = v2;
+			buffer[threadIdx.x +  768] = v3;
+		#endif
+		#if GPTA_BLOCK_SIZE >= 2048
+			buffer[threadIdx.x + 1024] = v4;
+			buffer[threadIdx.x + 1280] = v5;
+			buffer[threadIdx.x + 1536] = v6;
+			buffer[threadIdx.x + 1792] = v7;
+		#endif
+		#if GPTA_BLOCK_SIZE >= 4096
+			buffer[threadIdx.x + 2048] = v8;
+			buffer[threadIdx.x + 2304] = v9;
+			buffer[threadIdx.x + 2560] = vA;
+			buffer[threadIdx.x + 2816] = vB;
+			buffer[threadIdx.x + 3072] = vC;
+			buffer[threadIdx.x + 3328] = vD;
+			buffer[threadIdx.x + 3584] = vE;
+			buffer[threadIdx.x + 3840] = vF;
+		#endif
 		__syncthreads();
-
 
 		//sort in shared memory
 		for(level = 32; level < k; level = level << 1){
@@ -762,91 +771,103 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			for(step = level; step > 0; step = step >> 1){
 				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
 				bool r = ((dir & i) == 0);
-				swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-				swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
-				swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
-				swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
-				swap_shared<T>(buffer[i + 2048], buffer[i + 2048 + step], r);
-				swap_shared<T>(buffer[i + 2560], buffer[i + 2560 + step], r);
-				swap_shared<T>(buffer[i + 3072], buffer[i + 3072 + step], r);
-				swap_shared<T>(buffer[i + 3584], buffer[i + 3584 + step], r);
+				#if GPTA_BLOCK_SIZE >= 1024
+					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+					swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+				#endif
+				#if GPTA_BLOCK_SIZE >= 2048
+					swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
+					swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
+				#endif
+				#if GPTA_BLOCK_SIZE >= 4096
+					swap_shared<T>(buffer[i + 2048], buffer[i + 2048 + step], r);
+					swap_shared<T>(buffer[i + 2560], buffer[i + 2560 + step], r);
+					swap_shared<T>(buffer[i + 3072], buffer[i + 3072 + step], r);
+					swap_shared<T>(buffer[i + 3584], buffer[i + 3584 + step], r);
+				#endif
 				__syncthreads();
 			}
 		}
 
-		//////////////////////////////////////////////
-		//////////Reduce-Rebuild 4096 - 2048//////////
-		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-		v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
-		v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
-		v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
-		v4 = fmaxf(buffer[i + 2048], buffer[i + 2048 + k]);
-		v5 = fmaxf(buffer[i + 2560], buffer[i + 2560 + k]);
-		v6 = fmaxf(buffer[i + 3072], buffer[i + 3072 + k]);
-		v7 = fmaxf(buffer[i + 3584], buffer[i + 3584 + k]);
-		__syncthreads();
-		buffer[threadIdx.x       ] = v0;
-		buffer[threadIdx.x +  256] = v1;
-		buffer[threadIdx.x +  512] = v2;
-		buffer[threadIdx.x +  768] = v3;
-		buffer[threadIdx.x + 1024] = v4;
-		buffer[threadIdx.x + 1280] = v5;
-		buffer[threadIdx.x + 1536] = v6;
-		buffer[threadIdx.x + 1792] = v7;
-		__syncthreads();
 		level = k >> 1;
 		dir = level << 1;
-		for(step = level; step > 0; step = step >> 1){
-			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
-			bool r = ((dir & i) == 0);
-			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-			swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
-			swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
-			swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
+		//////////////////////////////////////////////
+		//////////Reduce-Rebuild 4096 - 2048//////////
+		#if GPTA_BLOCK_SIZE >= 4096
+			i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+			v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+			v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+			v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
+			v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
+			v4 = fmaxf(buffer[i + 2048], buffer[i + 2048 + k]);
+			v5 = fmaxf(buffer[i + 2560], buffer[i + 2560 + k]);
+			v6 = fmaxf(buffer[i + 3072], buffer[i + 3072 + k]);
+			v7 = fmaxf(buffer[i + 3584], buffer[i + 3584 + k]);
 			__syncthreads();
-		}
+			buffer[threadIdx.x       ] = v0;
+			buffer[threadIdx.x +  256] = v1;
+			buffer[threadIdx.x +  512] = v2;
+			buffer[threadIdx.x +  768] = v3;
+			buffer[threadIdx.x + 1024] = v4;
+			buffer[threadIdx.x + 1280] = v5;
+			buffer[threadIdx.x + 1536] = v6;
+			buffer[threadIdx.x + 1792] = v7;
+			__syncthreads();
+			for(step = level; step > 0; step = step >> 1){
+				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+				bool r = ((dir & i) == 0);
+				swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+				swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+				swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
+				swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
+				__syncthreads();
+			}
+		#endif
 
 		//////////////////////////////////////////////
 		//////////Reduce-Rebuild 2048 - 1024//////////
-		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-		v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
-		v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
-		v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
-		__syncthreads();
-		buffer[threadIdx.x       ] = v0;
-		buffer[threadIdx.x +  256] = v1;
-		buffer[threadIdx.x +  512] = v2;
-		buffer[threadIdx.x +  768] = v3;
-		__syncthreads();
-		level = k >> 1;
-		dir = level << 1;
-		for(step = level; step > 0; step = step >> 1){
-			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
-			bool r = ((dir & i) == 0);
-			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-			swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+		#if GPTA_BLOCK_SIZE >= 2048
+			i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+			v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+			v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+			v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
+			v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
 			__syncthreads();
-		}
+			buffer[threadIdx.x       ] = v0;
+			buffer[threadIdx.x +  256] = v1;
+			buffer[threadIdx.x +  512] = v2;
+			buffer[threadIdx.x +  768] = v3;
+			__syncthreads();
+//			level = k >> 1;
+//			dir = level << 1;
+			for(step = level; step > 0; step = step >> 1){
+				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+				bool r = ((dir & i) == 0);
+				swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+				swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+				__syncthreads();
+			}
+		#endif
 
 		//////////////////////////////////////////////
 		//////////Reduce-Rebuild 1024 - 512//////////
-		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-		v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
-		__syncthreads();
-		buffer[threadIdx.x       ] = v0;
-		buffer[threadIdx.x +  256] = v1;
-		__syncthreads();
-		level = k >> 1;
-		dir = level << 1;
-		for(step = level; step > 0; step = step >> 1){
-			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
-			bool r = ((dir & i) == 0);
-			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+		#if GPTA_BLOCK_SIZE >= 1024
+			i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+			v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+			v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
 			__syncthreads();
-		}
+			buffer[threadIdx.x       ] = v0;
+			buffer[threadIdx.x +  256] = v1;
+			__syncthreads();
+//			level = k >> 1;
+//			dir = level << 1;
+			for(step = level; step > 0; step = step >> 1){
+				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+				bool r = ((dir & i) == 0);
+				swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+				__syncthreads();
+			}
+		#endif
 
 		////////////////////////////////////////////
 		//////////Reduce-Rebuild 512 - 256//////////
@@ -868,77 +889,80 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 		////////////////////////////////////////////
 		//////////Reduce-Rebuild 256 - 128//////////
-//		if( k < 128 ){
-//			if(threadIdx.x < 128){
-//				i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-//				v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-//			}
-//			__syncthreads();
-//			if(threadIdx.x < 128) buffer[threadIdx.x] = v0;
-//			__syncthreads();
+		if( k <= 128 ){
+			if(threadIdx.x < 128){
+				i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+				v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+			}
+			__syncthreads();
+			if(threadIdx.x < 128) buffer[threadIdx.x] = v0;
+			__syncthreads();
 //			level = k >> 1;
 //			dir = level << 1;
-//			for(step = level; step > 0; step = step >> 1){
-//				if(threadIdx.x < 128){
-//					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
-//					bool r = ((dir & i) == 0);
-//					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-//				}
-//				__syncthreads();
-//			}
-//		}
+			for(step = level; step > 0; step = step >> 1){
+				if(threadIdx.x < 64){
+					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+					bool r = ((dir & i) == 0);
+					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+				}
+				__syncthreads();
+			}
+		}
 
-//		////////////////////////////////////////////
-//		//////////Reduce-Rebuild 128 - 64//////////
-//		if( k < 64 ){
-//			if(threadIdx.x < 64){
-//				i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-//				v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-//			}
-//			__syncthreads();
-//			if(threadIdx.x < 64) buffer[threadIdx.x] = v0;
-//			__syncthreads();
+		////////////////////////////////////////////
+		//////////Reduce-Rebuild 128 - 64//////////
+		if( k <= 64 ){
+			if(threadIdx.x < 64){
+				i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+				v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+			}
+			__syncthreads();
+			if(threadIdx.x < 64) buffer[threadIdx.x] = v0;
+			__syncthreads();
 //			level = k >> 1;
 //			dir = level << 1;
-//			for(step = level; step > 0; step = step >> 1){
-//				if(threadIdx.x < 64){
-//					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
-//					bool r = ((dir & i) == 0);
-//					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-//				}
-//				__syncthreads();
-//			}
-//		}
-//
-//		////////////////////////////////////////////
-//		//////////Reduce-Rebuild 64 - 32//////////
-//		if( k < 32 ){
-//			if(threadIdx.x < 32){
-//				i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-//				v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-//			}
-//			__syncthreads();
-//			if(threadIdx.x < 32) buffer[threadIdx.x] = v0;
-//			__syncthreads();
+			for(step = level; step > 0; step = step >> 1){
+				if(threadIdx.x < 32){
+					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+					bool r = ((dir & i) == 0);
+					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+				}
+				__syncthreads();
+			}
+		}
+
+		////////////////////////////////////////////
+		//////////Reduce-Rebuild 64 - 32//////////
+		if( k <= 32 ){
+			if(threadIdx.x < 32){
+				i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+				v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+			}
+			__syncthreads();
+			if(threadIdx.x < 32) buffer[threadIdx.x] = v0;
+			__syncthreads();
 //			level = k >> 1;
 //			dir = level << 1;
-//			for(step = level; step > 0; step = step >> 1){
-//				if(threadIdx.x < 32){
-//					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
-//					bool r = ((dir & i) == 0);
-//					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-//				}
-//				__syncthreads();
-//			}
-//		}
+			for(step = level; step > 0; step = step >> 1){
+				if(threadIdx.x < 16){
+					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+					bool r = ((dir & i) == 0);
+					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+				}
+				__syncthreads();
+			}
+		}
 
 		///////////////
 		//Merge heaps//
 		if(b == 0)
 		{
-			if(threadIdx.x < k)  heap[(k - 1) - threadIdx.x] = buffer[threadIdx.x];
+			//if(threadIdx.x < k)  heap[(k - 1) - threadIdx.x] = buffer[threadIdx.x];//ASC = DESC
+			if(threadIdx.x < k)  heap[threadIdx.x] = buffer[threadIdx.x];//DESC = DESC
 		}else{
-			if(threadIdx.x < k) buffer[k + threadIdx.x] = heap[threadIdx.x];
+			//if(threadIdx.x < k) buffer[k + threadIdx.x] = heap[threadIdx.x];//ASC = DESC
+			if(threadIdx.x < k) buffer[k + threadIdx.x] = heap[(k - 1) - threadIdx.x];//ASC = DESC
+			__syncthreads();
 
 			//2k -> k
 			if(threadIdx.x < k){
@@ -949,10 +973,10 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			if(threadIdx.x < k) buffer[threadIdx.x       ] = v0;
 			__syncthreads();
 
-			level = k >> 1;
-			dir = level << 1;
+//			level = k >> 1;
+//			dir = level << 1;
 			for(step = level; step > 0; step = step >> 1){
-				if(threadIdx.x < k){
+				if(threadIdx.x < level){
 					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
 					bool r = ((dir & i) == 0);
 					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
@@ -960,10 +984,12 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 				__syncthreads();
 			}
 
-			if(threadIdx.x < k) heap[(k - 1) - threadIdx.x] = buffer[threadIdx.x];
+			//if(threadIdx.x < k) heap[(k - 1) - threadIdx.x] = buffer[threadIdx.x];//ASC = DESC
+			if(threadIdx.x < k)  heap[threadIdx.x] = buffer[threadIdx.x];//DESC = DESC
 		}
 		__syncthreads();
 
+		//if(heap[0] >= threshold[NUM_DIMS]){ break; }
 		if(heap[k-1] >= threshold[NUM_DIMS]){ break; }
 		__syncthreads();
 		b++;

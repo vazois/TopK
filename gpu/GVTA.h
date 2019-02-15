@@ -461,7 +461,7 @@ __global__ void gvta_atm_16(gvta_block<T,Z> *blocks, uint64_t nb, uint64_t qq, u
 
 		if(threadIdx.x < NUM_DIMS)
 		{
-			threshold[threadIdx.x] = blocks[b].tvector[threadIdx.x];
+			threshold[threadIdx.x] = blocks[b].tvector[GVTA_PARTITIONS * blockIdx.x + threadIdx.x];
 			if(threadIdx.x == 0) threshold[NUM_DIMS] = 0;
 		}
 
