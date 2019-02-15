@@ -170,7 +170,7 @@ void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 
 	#if VALIDATE
 		this->cpu_threshold = this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.0000000000001 ) {
 			std::cout << std::fixed << std::setprecision(16);
 			std::cout << "ERROR: {" << this->gpu_threshold << "," << this->cpu_threshold << "}" << std::endl; exit(1);
 		}
@@ -279,7 +279,7 @@ void BTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq){
 	this->gpu_threshold = csvector[k-1];
 	#if VALIDATE
 		this->cpu_threshold = this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.0000000000001 ) {
 			std::cout << std::fixed << std::setprecision(16);
 			std::cout << "ERROR: {" << this->gpu_threshold << "," << this->cpu_threshold << "}" << std::endl; exit(1);
 		}
@@ -395,26 +395,17 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 	}
 
 	/*
-	 * Rebuild - Reduce 4096 -> 2048
+	 * Reduce - Rebuild 4096 -> 2048
 	 */
-	#if BTA_TUPLES_PER_BLOCK >= 1024
+	#if BTA_TUPLES_PER_BLOCK >= 4096
 		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
 		v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
 		v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
 		v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
-		v0 = (threadIdx.x & k) == 0 ? v0 : v1;
-		v2 = (threadIdx.x & k) == 0 ? v2 : v3;
-
-	#endif
-	#if BTA_TUPLES_PER_BLOCK >= 2048
 		v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
 		v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
 		v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
 		v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
-		v4 = (threadIdx.x & k) == 0 ? v4 : v5;
-		v6 = (threadIdx.x & k) == 0 ? v6 : v7;
-	#endif
-	#if BTA_TUPLES_PER_BLOCK >= 4096
 		v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
 		v9 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v9, k),v9);
 		vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
@@ -423,90 +414,87 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		vD = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vD, k),vD);
 		vE = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vE, k),vE);
 		vF = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vF, k),vF);
-		v8 = (threadIdx.x & k) == 0 ? v8 : v9;
-		vA = (threadIdx.x & k) == 0 ? vA : vB;
-		vC = (threadIdx.x & k) == 0 ? vC : vD;
-		vE = (threadIdx.x & k) == 0 ? vE : vF;
-	#endif
-
-	/*
-	 * Rebuild - Reduce 2048 -> 1024
-	 */
-	level = k >> 1;
-	for(step = level; step > 0; step = step >> 1){
-		dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
-		#if BTA_TUPLES_PER_BLOCK >= 1024
-			v0 = swap(v0,step,dir);
-			v2 = swap(v2,step,dir);
-		#endif
-		#if BTA_TUPLES_PER_BLOCK >= 2048
-			v4 = swap(v4,step,dir);
-			v6 = swap(v6,step,dir);
-		#endif
-		#if BTA_TUPLES_PER_BLOCK >= 4096
-			v8 = swap(v8,step,dir);
-			vA = swap(vA,step,dir);
-			vC = swap(vC,step,dir);
-			vE = swap(vE,step,dir);
-		#endif
-	}
-	#if BTA_TUPLES_PER_BLOCK >= 1024
-		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
-		v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
-		v0 = (threadIdx.x & k) == 0 ? v0 : v2;
-	#endif
-	#if BTA_TUPLES_PER_BLOCK >= 2048
-		v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
-		v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
-		v4 = (threadIdx.x & k) == 0 ? v4 : v6;
-	#endif
-	#if BTA_TUPLES_PER_BLOCK >= 4096
-		v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
-		vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
-		vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
-		vE = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vE, k),vE);
-		v8 = (threadIdx.x & k) == 0 ? v8 : vA;
-		vC = (threadIdx.x & k) == 0 ? vC : vE;
-	#endif
-
-	/*
-	 * Rebuild - Reduce 1024 -> 512
-	 */
-	#if BTA_TUPLES_PER_BLOCK >= 2048
-		for(step = level; step > 0; step = step >> 1){
-			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
-			v0 = swap(v0,step,dir);
-			v4 = swap(v4,step,dir);
-			#if BTA_TUPLES_PER_BLOCK >= 4096
-				v8 = swap(v8,step,dir);
-				vC = swap(vC,step,dir);
-			#endif
-		}
-		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
-		v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
-		v0 = (threadIdx.x & k) == 0 ? v0 : v4;
-		#if BTA_TUPLES_PER_BLOCK >= 4096
-			v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
-			vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
-		#endif
-		v8 = (threadIdx.x & k) == 0 ? v8 : vC;
-	#endif
-
-	/*
-	 * Rebuild - Reduce 512 -> 256
-	 */
-	#if BTA_TUPLES_PER_BLOCK >= 4096
+		v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+		v1 = (threadIdx.x & k) == 0 ? v2 : v3;
+		v2 = (threadIdx.x & k) == 0 ? v4 : v5;
+		v3 = (threadIdx.x & k) == 0 ? v6 : v7;
+		v4 = (threadIdx.x & k) == 0 ? v8 : v9;
+		v5 = (threadIdx.x & k) == 0 ? vA : vB;
+		v6 = (threadIdx.x & k) == 0 ? vC : vD;
+		v7 = (threadIdx.x & k) == 0 ? vE : vF;
 		level = k >> 1;
 		for(step = level; step > 0; step = step >> 1){
 			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 			v0 = swap(v0,step,dir);
-			v8 = swap(v8,step,dir);
+			v1 = swap(v1,step,dir);
+			v2 = swap(v2,step,dir);
+			v3 = swap(v3,step,dir);
+			v4 = swap(v4,step,dir);
+			v5 = swap(v5,step,dir);
+			v6 = swap(v6,step,dir);
+			v7 = swap(v7,step,dir);
 		}
-		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
-		v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
-		v0 = (threadIdx.x & k) == 0 ? v0 : v8;
 	#endif
 
+	/*
+	 * Reduce - Rebuild 2048 -> 1024
+	 */
+	#if BTA_TUPLES_PER_BLOCK >= 2048
+		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+		v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+		v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+		v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+		v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+		v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
+		v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+		v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
+		v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+		v1 = (threadIdx.x & k) == 0 ? v2 : v3;
+		v2 = (threadIdx.x & k) == 0 ? v4 : v5;
+		v3 = (threadIdx.x & k) == 0 ? v6 : v7;
+		level = k >> 1;
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+			v1 = swap(v1,step,dir);
+			v2 = swap(v2,step,dir);
+			v3 = swap(v3,step,dir);
+		}
+	#endif
+
+	/*
+	 * Reduce - Rebuild 1024 -> 512
+	 */
+	#if BTA_TUPLES_PER_BLOCK >= 1024
+		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+		v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+		v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+		v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+		v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+		v1 = (threadIdx.x & k) == 0 ? v2 : v3;
+		level = k >> 1;
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+			v1 = swap(v1,step,dir);
+		}
+	#endif
+
+	/*
+	 * Reduce - Rebuild 512 -> 256
+	 */
+	#if BTA_TUPLES_PER_BLOCK >= 512
+		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+		v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+		v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+		level = k >> 1;
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+		}
+	#endif
+
+	//Merge//
 	buffer[threadIdx.x] = v0;
 	__syncthreads();
 	if(threadIdx.x < 32)
@@ -611,7 +599,10 @@ template<class T>
 __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, T *gscores){
 	__shared__ T buffer[BTA_TUPLES_PER_BLOCK];
 	#if BTA_TUPLES_PER_BLOCK >= 1024
-		T v0 = 0, v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0, v7 = 0;
+		T v0 = 0, v1 = 0, v2 = 0, v3 = 0;
+	#endif
+	#if BTA_TUPLES_PER_BLOCK >= 2048
+		T v4 = 0, v5 = 0, v6 = 0, v7 = 0;
 	#endif
 	#if BTA_TUPLES_PER_BLOCK >= 4096
 		T v8 = 0, v9 = 0, vA = 0, vB = 0, vC = 0, vD = 0, vE = 0, vF = 0;
@@ -681,22 +672,28 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		}
 	}
 
-	buffer[threadIdx.x       ] = v0;
-	buffer[threadIdx.x +  256] = v1;
-	buffer[threadIdx.x +  512] = v2;
-	buffer[threadIdx.x +  768] = v3;
-	buffer[threadIdx.x + 1024] = v4;
-	buffer[threadIdx.x + 1280] = v5;
-	buffer[threadIdx.x + 1536] = v6;
-	buffer[threadIdx.x + 1792] = v7;
-	buffer[threadIdx.x + 2048] = v8;
-	buffer[threadIdx.x + 2304] = v9;
-	buffer[threadIdx.x + 2560] = vA;
-	buffer[threadIdx.x + 2816] = vB;
-	buffer[threadIdx.x + 3072] = vC;
-	buffer[threadIdx.x + 3328] = vD;
-	buffer[threadIdx.x + 3584] = vE;
-	buffer[threadIdx.x + 3840] = vF;
+	#if BTA_TUPLES_PER_BLOCK >= 1024
+		buffer[threadIdx.x       ] = v0;
+		buffer[threadIdx.x +  256] = v1;
+		buffer[threadIdx.x +  512] = v2;
+		buffer[threadIdx.x +  768] = v3;
+	#endif
+	#if BTA_TUPLES_PER_BLOCK >= 2048
+		buffer[threadIdx.x + 1024] = v4;
+		buffer[threadIdx.x + 1280] = v5;
+		buffer[threadIdx.x + 1536] = v6;
+		buffer[threadIdx.x + 1792] = v7;
+	#endif
+	#if BTA_TUPLES_PER_BLOCK >= 4096
+		buffer[threadIdx.x + 2048] = v8;
+		buffer[threadIdx.x + 2304] = v9;
+		buffer[threadIdx.x + 2560] = vA;
+		buffer[threadIdx.x + 2816] = vB;
+		buffer[threadIdx.x + 3072] = vC;
+		buffer[threadIdx.x + 3328] = vD;
+		buffer[threadIdx.x + 3584] = vE;
+		buffer[threadIdx.x + 3840] = vF;
+	#endif
 	__syncthreads();
 
 	//Sort in shared memory//
@@ -705,109 +702,124 @@ __global__ void agg_lsort_geq_32(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		for(step = level; step > 0; step = step >> 1){
 			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
 			bool r = ((dir & i) == 0);
-			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-			swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
-			swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
-			swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
-			swap_shared<T>(buffer[i + 2048], buffer[i + 2048 + step], r);
-			swap_shared<T>(buffer[i + 2560], buffer[i + 2560 + step], r);
-			swap_shared<T>(buffer[i + 3072], buffer[i + 3072 + step], r);
-			swap_shared<T>(buffer[i + 3584], buffer[i + 3584 + step], r);
+			#if BTA_TUPLES_PER_BLOCK >= 1024
+				swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+				swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+			#endif
+			#if BTA_TUPLES_PER_BLOCK >= 2048
+				swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
+				swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
+			#endif
+			#if BTA_TUPLES_PER_BLOCK >= 4096
+				swap_shared<T>(buffer[i + 2048], buffer[i + 2048 + step], r);
+				swap_shared<T>(buffer[i + 2560], buffer[i + 2560 + step], r);
+				swap_shared<T>(buffer[i + 3072], buffer[i + 3072 + step], r);
+				swap_shared<T>(buffer[i + 3584], buffer[i + 3584 + step], r);
+			#endif
 			__syncthreads();
 		}
 	}
 
 	//////////////////////////////////////////////
 	//////////Reduce-Rebuild 4096 - 2048//////////
-	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-	v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-	v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
-	v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
-	v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
-	v4 = fmaxf(buffer[i + 2048], buffer[i + 2048 + k]);
-	v5 = fmaxf(buffer[i + 2560], buffer[i + 2560 + k]);
-	v6 = fmaxf(buffer[i + 3072], buffer[i + 3072 + k]);
-	v7 = fmaxf(buffer[i + 3584], buffer[i + 3584 + k]);
-	__syncthreads();
-	buffer[threadIdx.x       ] = v0;
-	buffer[threadIdx.x +  256] = v1;
-	buffer[threadIdx.x +  512] = v2;
-	buffer[threadIdx.x +  768] = v3;
-	buffer[threadIdx.x + 1024] = v4;
-	buffer[threadIdx.x + 1280] = v5;
-	buffer[threadIdx.x + 1536] = v6;
-	buffer[threadIdx.x + 1792] = v7;
-	__syncthreads();
-	level = k >> 1;
-	dir = level << 1;
-	for(step = level; step > 0; step = step >> 1){
-		i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
-		bool r = ((dir & i) == 0);
-		swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-		swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
-		swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
-		swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
+	#if BTA_TUPLES_PER_BLOCK >= 4096
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+		v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+		v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
+		v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
+		v4 = fmaxf(buffer[i + 2048], buffer[i + 2048 + k]);
+		v5 = fmaxf(buffer[i + 2560], buffer[i + 2560 + k]);
+		v6 = fmaxf(buffer[i + 3072], buffer[i + 3072 + k]);
+		v7 = fmaxf(buffer[i + 3584], buffer[i + 3584 + k]);
 		__syncthreads();
-	}
-
-	//////////////////////////////////////////////
-	//////////Reduce-Rebuild 2048 - 1024//////////
-	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-	v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-	v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
-	v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
-	v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
-	__syncthreads();
-	buffer[threadIdx.x       ] = v0;
-	buffer[threadIdx.x +  256] = v1;
-	buffer[threadIdx.x +  512] = v2;
-	buffer[threadIdx.x +  768] = v3;
-	__syncthreads();
-	level = k >> 1;
-	dir = level << 1;
-	for(step = level; step > 0; step = step >> 1){
-		i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
-		bool r = ((dir & i) == 0);
-		swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-		swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+		buffer[threadIdx.x       ] = v0;
+		buffer[threadIdx.x +  256] = v1;
+		buffer[threadIdx.x +  512] = v2;
+		buffer[threadIdx.x +  768] = v3;
+		buffer[threadIdx.x + 1024] = v4;
+		buffer[threadIdx.x + 1280] = v5;
+		buffer[threadIdx.x + 1536] = v6;
+		buffer[threadIdx.x + 1792] = v7;
 		__syncthreads();
-	}
-
-	//////////////////////////////////////////////
-	//////////Reduce-Rebuild 1024 - 512//////////
-	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-	v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-	v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
-	__syncthreads();
-	buffer[threadIdx.x       ] = v0;
-	buffer[threadIdx.x +  256] = v1;
-	__syncthreads();
-	level = k >> 1;
-	dir = level << 1;
-	for(step = level; step > 0; step = step >> 1){
-		i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
-		bool r = ((dir & i) == 0);
-		swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-		__syncthreads();
-	}
-
-	////////////////////////////////////////////
-	//////////Reduce-Rebuild 512 - 256//////////
-	i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-	v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-	__syncthreads();
-	buffer[threadIdx.x       ] = v0;
-	__syncthreads();
-	level = k >> 1;
-	dir = level << 1;
-	for(step = level; step > 0; step = step >> 1){
-		if(threadIdx.x < 128){
+		level = k >> 1;
+		dir = level << 1;
+		for(step = level; step > 0; step = step >> 1){
 			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
 			bool r = ((dir & i) == 0);
 			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+			swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+			swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
+			swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
+			__syncthreads();
 		}
+	#endif
+
+	//////////////////////////////////////////////
+	//////////Reduce-Rebuild 2048 - 1024//////////
+	#if BTA_TUPLES_PER_BLOCK >= 2048
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+		v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+		v2 = fmaxf(buffer[i + 1024], buffer[i + 1024 + k]);
+		v3 = fmaxf(buffer[i + 1536], buffer[i + 1536 + k]);
 		__syncthreads();
-	}
+		buffer[threadIdx.x       ] = v0;
+		buffer[threadIdx.x +  256] = v1;
+		buffer[threadIdx.x +  512] = v2;
+		buffer[threadIdx.x +  768] = v3;
+		__syncthreads();
+		level = k >> 1;
+		dir = level << 1;
+		for(step = level; step > 0; step = step >> 1){
+			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+			bool r = ((dir & i) == 0);
+			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+			swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
+			__syncthreads();
+		}
+	#endif
+
+	//////////////////////////////////////////////
+	//////////Reduce-Rebuild 1024 - 512//////////
+	#if BTA_TUPLES_PER_BLOCK >= 1024
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+		v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
+		__syncthreads();
+		buffer[threadIdx.x       ] = v0;
+		buffer[threadIdx.x +  256] = v1;
+		__syncthreads();
+		level = k >> 1;
+		dir = level << 1;
+		for(step = level; step > 0; step = step >> 1){
+			i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+			bool r = ((dir & i) == 0);
+			swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+			__syncthreads();
+		}
+	#endif
+
+	////////////////////////////////////////////
+	//////////Reduce-Rebuild 512 - 256//////////
+	#if BTA_TUPLES_PER_BLOCK >= 1024
+		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
+		__syncthreads();
+		buffer[threadIdx.x       ] = v0;
+		__syncthreads();
+		level = k >> 1;
+		dir = level << 1;
+		for(step = level; step > 0; step = step >> 1){
+			if(threadIdx.x < 128){
+				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+				bool r = ((dir & i) == 0);
+				swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+			}
+			__syncthreads();
+		}
+	#endif
+
 	if(k == 256) {
 		if((blockIdx.x & 0x1) == 0) gscores[(blockIdx.x << 8) + threadIdx.x] = buffer[threadIdx.x];
 		else gscores[(blockIdx.x << 8) + threadIdx.x] = buffer[(k - 1) ^ threadIdx.x];
