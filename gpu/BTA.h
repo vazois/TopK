@@ -4,7 +4,7 @@
 #include "GAA.h"
 
 #define BTA_TUPLES_PER_BLOCK 4096
-#define BTA_USE_DEV_MEM_PROCESSING true
+#define BTA_USE_DEV_MEM_PROCESSING false
 
 template<class T>
 __global__ void aggregate(T *gdata, uint64_t n, uint64_t qq, T *gscores);
@@ -32,9 +32,11 @@ class BTA : public GAA<T,Z>{
 		~BTA(){
 			if(this->csvector) cutil::safeCudaFreeHost(this->csvector,"free csvector");
 			if(this->csvector_out) cutil::safeCudaFreeHost(this->csvector_out,"free csvector_out");
-			#if USE_DEVICE_MEM
+			#if BTA_USE_DEV_MEM_PROCESSING
 				if(this->gsvector) cutil::safeCudaFree(this->gsvector,"free gsvector");
 				if(this->gsvector_out) cutil::safeCudaFree(this->gsvector_out,"free gsvector_out");
+			#else
+				this->gdata = NULL;
 			#endif
 		};
 
@@ -46,6 +48,7 @@ class BTA : public GAA<T,Z>{
 		void clear(T *vec, uint64_t size);
 		void gclear_driver(T *vec, uint64_t size);
 		T cpuTopK(uint64_t k, uint64_t qq);
+		void validate(uint64_t k, uint64_t qq);
 
 		void atm_16_driver(uint64_t k, uint64_t qq);
 		void geq_32_driver(uint64_t k, uint64_t qq);
@@ -123,6 +126,17 @@ T BTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 }
 
 template<class T, class Z>
+void BTA<T,Z>::validate(uint64_t k, uint64_t qq){
+	#if VALIDATE
+		this->cpu_threshold = this->cpuTopK(k,qq);
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
+			std::cout << std::fixed << std::setprecision(16);
+			std::cout << "ERROR: {" << this->gpu_threshold << "," << this->cpu_threshold << "}" << std::endl; exit(1);
+		}
+	#endif
+}
+
+template<class T, class Z>
 void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 	T *csvector = this->csvector;
 	T *gsvector;
@@ -167,14 +181,7 @@ void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 		csvector = gsvector;
 	#endif
 	this->gpu_threshold = csvector[k-1];
-
-	#if VALIDATE
-		this->cpu_threshold = this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.0000000000001 ) {
-			std::cout << std::fixed << std::setprecision(16);
-			std::cout << "ERROR: {" << this->gpu_threshold << "," << this->cpu_threshold << "}" << std::endl; exit(1);
-		}
-	#endif
+	this->validate(k,qq);
 }
 
 template<class T, class Z>
@@ -202,35 +209,6 @@ void BTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq){
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing agg_lsort_geq_32");
 	this->tt_processing += this->t.lap();
 
-	//DEBUG
-//	#if BTA_USE_DEV_MEM_PROCESSING
-//		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*this->n,"copy from csvector to gsvector");
-//	#else
-//		csvector = gsvector;
-//	#endif
-//	for(uint32_t i = 0; i < k * agg_lsort_grid.x; i+=k)
-//	{
-//		std::cout << std::fixed << std::setprecision(4);
-//		if((i/k) % 2 == 0 && std::is_sorted(&csvector[i], &csvector[i+k],std::greater<T>()) == 0){
-//			for(uint32_t j = i; j < i + k; j++){
-//				std::cout << csvector[j] << std::endl;
-//			} std::cout << "++++++++++++++++++++" << std::endl;
-//			std::cout <<"ERROR (DESC) [" <<i/k <<"] sorted: (" << std::is_sorted(&csvector[i], &csvector[i+k],std::greater<T>()) << ")" << std::endl;
-//			exit(1);
-//		}
-//		else if((i/k) % 2 == 1 && std::is_sorted(&csvector[i], &csvector[i+k]) == 0){
-//			for(uint32_t j = i; j < i + k; j++){ std::cout << csvector[j] << std::endl; } std::cout << "++++++++++++++++++++" << std::endl;
-//			std::cout <<"ERROR (ASC) [" <<i/k <<"] sorted: (" << std::is_sorted(&csvector[i], &csvector[i+k]) << ")" << std::endl;
-//			exit(1);
-//		}
-//	}
-//	std::cout << "--------------------" << std::endl;
-//
-//	std::cout << "sorting..." << std::endl;
-//	std::sort(csvector, csvector + k * agg_lsort_grid.x,std::greater<T>());
-//	std::cout << "==========" << std::endl;
-//	this->gpu_threshold = csvector[k-1];
-
 	//2:Local reduce
 	uint64_t remainder = (agg_lsort_grid.x * k);
 	while(remainder > k)
@@ -252,38 +230,8 @@ void BTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq){
 		csvector = gsvector;
 	#endif
 
-	//DEBUG
-//	for(uint32_t i = 0; i < k * agg_lsort_grid.x; i+=k)
-//	{
-//		std::cout << std::fixed << std::setprecision(4);
-//		if((i/k) % 2 == 0 && std::is_sorted(&csvector[i], &csvector[i+k],std::greater<T>()) == 0){
-//			for(uint32_t j = i; j < i + k; j++){
-//				std::cout << j << ":" << csvector[j] << std::endl;
-//			} std::cout << "++++++++++++++++++++" << std::endl;
-//			std::cout <<"ERROR (DESC) [" <<i/k <<"] sorted: (" << std::is_sorted(&csvector[i], &csvector[i+k],std::greater<T>()) << ")" << std::endl;
-//			exit(1);
-//		}
-//		else if((i/k) % 2 == 1 && std::is_sorted(&csvector[i], &csvector[i+k]) == 0){
-//			for(uint32_t j = i; j < i + k; j++){
-//					std::cout << j << ":" << csvector[j] << std::endl;
-//			} std::cout << "++++++++++++++++++++" << std::endl;
-//			std::cout <<"ERROR (ASC) [" <<i/k <<"] sorted: (" << std::is_sorted(&csvector[i], &csvector[i+k]) << ")" << std::endl;
-//			exit(1);
-//		}
-//	}
-//	std::cout << "sorting(2)..." << std::endl;
-//	std::sort(csvector, csvector + k * agg_lsort_grid.x,std::greater<T>());
-//	std::cout << "==========" << std::endl;
-//	this->gpu_threshold = csvector[k-1];
-
 	this->gpu_threshold = csvector[k-1];
-	#if VALIDATE
-		this->cpu_threshold = this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.0000000000001 ) {
-			std::cout << std::fixed << std::setprecision(16);
-			std::cout << "ERROR: {" << this->gpu_threshold << "," << this->cpu_threshold << "}" << std::endl; exit(1);
-		}
-	#endif
+	this->validate(k,qq);
 }
 
 template<class T, class Z>

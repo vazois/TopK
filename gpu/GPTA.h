@@ -9,10 +9,10 @@
 #include <map>
 
 //PTA DEVICE MEMORY USAGE//
-#define USE_POLAR_DEV_MEM false // USE DEVICE MEMORY TO COMPUTE POLAR COORDINATES
+#define USE_POLAR_DEV_MEM true // USE DEVICE MEMORY TO COMPUTE POLAR COORDINATES
 #define USE_PART_REORDER_DEV_MEM true
 #define USE_BUILD_PART_DEV_MEM true
-#define USE_PTA_DEVICE_MEM true
+#define USE_PTA_DEVICE_MEM false
 //
 
 #define ALPHA 1.1
@@ -23,7 +23,7 @@
 #define GPTA_PARTS (((uint64_t)pow(GPTA_SPLITS,NUM_DIMS-1)))
 #define GPTA_PART_BITS ((uint64_t)log2f(GPTA_SPLITS))
 
-#define GPTA_BLOCK_SIZE 2048
+#define GPTA_BLOCK_SIZE 4096
 
 template<class T, class Z>
 struct gpta_block{
@@ -93,16 +93,15 @@ class GPTA : public GAA<T,Z>{
 				for(uint64_t i = 0; i < GPTA_PARTS; i++) if(this->cparts[i].blocks) cutil::safeCudaFree(this->cprts[i].blocks,"free cprts blocks"); //cudaFree(this->cprts[i].blocks);
 				cutil::safeCudaFreeHost(this->cprts,"free cprts"); //cudaFreeHost(this->cprts);
 			}
-
-			if(this->gparts)
-			{
-				cutil::safeCudaFree(this->gparts,"free gparts"); //cudaFree(this->gparts);
-			}
-
 			if(this->cout) cutil::safeCudaFreeHost(this->cout,"free cout");
 			if(this->cout2) cutil::safeCudaFreeHost(this->cout2,"free cout2");
-			if(this->gout) cutil::safeCudaFree(this->gout,"free gout");
-			if(this->gout2) cutil::safeCudaFree(this->gout2,"free gout2");
+			#if USE_PTA_DEVICE_MEM
+				if(this->gparts){ cutil::safeCudaFree(this->gparts,"free gparts"); }
+				if(this->gout) cutil::safeCudaFree(this->gout,"free gout");
+				if(this->gout2) cutil::safeCudaFree(this->gout2,"free gout2");
+			#else
+				this->gdata = NULL;
+			#endif
 		};
 
 		void alloc();
@@ -168,7 +167,7 @@ void GPTA<T,Z>::init(){
 	#else
 		this->gparts = this->cparts;
 		this->gout = cout;
-		this->gout = cout2;
+		this->gout2 = cout2;
 	#endif
 }
 
@@ -176,6 +175,7 @@ template<class T, class Z>
 void GPTA<T,Z>::polar_partition()
 {
 	uint64_t mem = 0;
+	double tt = 0;
 	uint32_t *keys_in;
 	uint32_t *keys_out;
 	T *values_out;
@@ -219,7 +219,7 @@ void GPTA<T,Z>::polar_partition()
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_part");
 	init_num_vec<T><<<polar_grid, polar_block>>>(this->cdata,this->n,this->d-1,num_vec);//initialize numerator vector
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_num_vec");
-	this->tt_init += this->t.lap();
+	tt += this->t.lap();
 	uint32_t mul = 1;
 	for(int m = this->d-1; m > 0; m--)
 	{
@@ -248,7 +248,7 @@ void GPTA<T,Z>::polar_partition()
 		//d: assign to partition by adding offset value
 		assign<<<polar_grid,polar_block>>>(keys_out,part,this->n,mul);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing assign");
-		this->tt_init += this->t.lap();
+		tt += this->t.lap();
 
 		mul *= GPTA_SPLITS;
 	}
@@ -276,7 +276,7 @@ void GPTA<T,Z>::polar_partition()
 		max_part_size = std::max(max_part_size,part_size[cpart[i]]);
 		if(cpart[i]>=GPTA_PARTS){ std::cout << "ERROR (polar): " << i << "," << cpart[i] << std::endl;  exit(1); }
 	}
-	this->tt_init += this->t.lap();
+	tt += this->t.lap();
 //	for(uint64_t i = 0; i < GPTA_PARTS; i++){
 //		std::cout << "g(" << i << "):" << std::setfill('0') << std::setw(8) << part_size[i] << std::endl;
 //	}
@@ -322,7 +322,7 @@ void GPTA<T,Z>::polar_partition()
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_keys for sorting according to partition");
 	cub::DeviceRadixSort::SortPairs(d_temp_storage,temp_storage_bytes, part, part_out, tid_in, tid_out, this->n);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing SortPairs for sorting according to partition");
-	this->tt_init += this->t.lap();
+	tt += this->t.lap();
 
 	//Copy ordered tuple ids ordered by partition assignment
 	cutil::safeMallocHost<Z,uint64_t>(&this->part_tid,sizeof(Z)*this->n,"alloc part_tid");
@@ -338,11 +338,14 @@ void GPTA<T,Z>::polar_partition()
 		cutil::safeCudaFreeHost(part_out,"free part_out"); //cudaFreeHost(part_out);
 	#endif
 	cutil::safeCudaFree(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
+	this->tt_init += tt;
+	std::cout << "POLAR PARTITIONING TIME  (ms): " << tt << std::endl;
 }
 
 template<class T, class Z>
 void GPTA<T,Z>::reorder_partition(){
 	uint64_t mem = 0;
+	double tt = 0;
 	T *cattr_vec_in;
 	Z *gtid_vec_in, *gtid_vec_out, *ctid_vec_out;
 	T *gattr_vec_in, *gattr_vec_out;
@@ -381,7 +384,7 @@ void GPTA<T,Z>::reorder_partition(){
 		this->t.start();
 		init_pos<Z><<<reorder_grid,reorder_block>>>(gpos,this->cparts[i].size);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_pos");
-		this->tt_init += this->t.lap();
+		tt += this->t.lap();
 
 		//Find local order for tuples//
 		this->t.start();
@@ -409,7 +412,7 @@ void GPTA<T,Z>::reorder_partition(){
 			update_minimum_pos<Z><<<reorder_grid,reorder_block>>>(gpos,gtid_vec_out,this->cparts[i].size);
 			cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing update minimum pos");
 		}
-		this->tt_init += this->t.lap();
+		tt += this->t.lap();
 
 		this->t.start();
 		//f:reorder based on first seen position
@@ -417,7 +420,7 @@ void GPTA<T,Z>::reorder_partition(){
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_tid_vec");
 		cub::DeviceRadixSort::SortPairs(d_temp_storage,temp_storage_bytes, gpos, gpos_out, gtid_vec_in, gtid_vec_out, this->cparts[i].size);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing Sort Pairs Descending");
-		this->tt_init += this->t.lap();
+		tt += this->t.lap();
 
 		//Build partition//
 		cutil::safeCopyToHost<Z,uint64_t>(ctid_vec_out,gtid_vec_out,sizeof(Z)*this->cparts[i].size,"copy gtid_vec_out to ctid_vec_out");
@@ -446,7 +449,7 @@ void GPTA<T,Z>::reorder_partition(){
 			}
 			b++;
 		}
-		this->tt_init += this->t.lap();
+		tt += this->t.lap();
 		part_offset += this->cparts[i].size;
 	}
 
@@ -464,7 +467,7 @@ void GPTA<T,Z>::reorder_partition(){
 			std::memcpy(tvector,mx,sizeof(T)*NUM_DIMS);
 		}
 	}
-	this->tt_init += this->t.lap();
+	tt += this->t.lap();
 
 	//Validate thresholds//
 	for(uint64_t i = 0; i < GPTA_PARTS; i++){
@@ -498,6 +501,8 @@ void GPTA<T,Z>::reorder_partition(){
 	cutil::safeCudaFree(gpos_out,"free gpos_out"); //cudaFree(gpos_out);
 
 	cutil::safeCudaFree(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
+	this->tt_init += tt;
+	std::cout << "PARTITION REORDERING TIME (ms): " << tt << std::endl;
 }
 
 template<class T, class Z>
@@ -613,7 +618,7 @@ void GPTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq)
 		std::cout << "remainder: " << remainder << std::endl;
 		atm_16_grid.x = ((remainder - 1) / 4096) + 1;
 		reduce_rebuild_atm_16<T><<<atm_16_grid,atm_16_block>>>(gout,remainder,k,gout2);
-		cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing gpta_rr_atm_16");
+		cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing reduce_rebuild_atm_16");
 		remainder = (atm_16_grid.x * k);
 		std::swap(gout,gout2);
 	}
@@ -622,8 +627,11 @@ void GPTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq)
 	//Second step check
 	#if USE_PTA_DEVICE_MEM
 		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
+	#else
+		cout = gout;
 	#endif
 	this->gpu_threshold = cout[k-1];
+
 	this->validate(k,qq);
 }
 
@@ -639,11 +647,11 @@ void GPTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq)
 	this->tt_processing += this->t.lap();
 
 	//First step check
-	#if USE_PTA_DEVICE_MEM
-		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * GPTA_PARTS * k, "error copying from gout to out");
-	#endif
-	std::sort(cout, cout + GPTA_PARTS * k, std::greater<T>());
-	this->gpu_threshold = cout[k-1];
+//	#if USE_PTA_DEVICE_MEM
+//		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * GPTA_PARTS * k, "error copying from gout to out");
+//	#endif
+//	std::sort(cout, cout + GPTA_PARTS * k, std::greater<T>());
+//	this->gpu_threshold = cout[k-1];
 
 	uint64_t remainder = (GPTA_PARTS * k);
 	this->t.start();
@@ -660,6 +668,8 @@ void GPTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq)
 	//Second step check
 	#if USE_PTA_DEVICE_MEM
 		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
+	#else
+		cout = gout;
 	#endif
 	this->gpu_threshold = cout[k-1];
 	this->validate(k,qq);

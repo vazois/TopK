@@ -5,10 +5,10 @@
 
 //PTA DEVICE MEMORY USAGE//
 #define GVTA_USE_DEV_MEM_REORDER true
-#define GVTA_USE_DEV_MEM_PROCESSING true
+#define GVTA_USE_DEV_MEM_PROCESSING false
 
-#define GVTA_PARTITIONS 1024 //at least 8 partitions//
-#define GVTA_BLOCK_SIZE 2048
+#define GVTA_PARTITIONS 256 //at least 8 partitions//
+#define GVTA_BLOCK_SIZE 4096
 
 template<class T,class Z>
 struct gvta_block
@@ -404,9 +404,12 @@ void GVTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 	//Second step check
 	#if GVTA_USE_DEV_MEM_PROCESSING
 		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
+	#else
+		cout = gout;
 	#endif
 	std::sort(cout, cout + k, std::greater<T>());
 	this->gpu_threshold = cout[k-1];
+
 	this->validate(k,qq);
 }
 
@@ -427,23 +430,25 @@ void GVTA<T,Z>::geq_32_driver(uint64_t k,uint64_t qq){
 	std::sort(cout, cout + GVTA_PARTITIONS * k,std::greater<T>());
 	this->gpu_threshold = cout[k-1];
 
-//	uint64_t remainder = (GVTA_PARTITIONS * k);
-//	this->t.start();
-//	while(remainder > k){
-//		std::cout << "remainder: " << remainder << std::endl;
-//		geq_32_grid.x = ((remainder - 1) / 4096) + 1;
-//		reduce_rebuild_qeq_32<T><<<geq_32_grid,geq_32_block>>>(gout,remainder,k,gout2);
-//		cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing gpta_rr_atm_16");
-//		remainder = (geq_32_grid.x * k);
-//		std::swap(gout,gout2);
-//	}
-//	this->tt_processing += this->t.lap();
-//
-//	//Second step check
-//	#if USE_PTA_DEVICE_MEM
-//		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
-//	#endif
-//	this->gpu_threshold = cout[k-1];
+	uint64_t remainder = (GVTA_PARTITIONS * k);
+	this->t.start();
+	while(remainder > k){
+		std::cout << "remainder: " << remainder << std::endl;
+		geq_32_grid.x = ((remainder - 1) / 4096) + 1;
+		reduce_rebuild_qeq_32<T><<<geq_32_grid,geq_32_block>>>(gout,remainder,k,gout2);
+		cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing gpta_rr_atm_16");
+		remainder = (geq_32_grid.x * k);
+		std::swap(gout,gout2);
+	}
+	this->tt_processing += this->t.lap();
+
+	//Second step check
+	#if GVTA_USE_DEV_MEM_PROCESSING
+		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
+	#else
+		cout = gout;
+	#endif
+	this->gpu_threshold = cout[k-1];
 
 	this->validate(k,qq);
 }
