@@ -31,9 +31,9 @@ int main(int argc, char **argv){
 	cudaSetDevice(0);
 	//bench_gpa(ap.getString("-f"),n,d,KKS);
 	//bench_gpam(ap.getString("-f"),n,d,K);
-	bench_bta(ap.getString("-f"),n,d,KKS,KKE);
-	//bench_gvta(ap.getString("-f"),n,d,KKS,KKE);
-	//bench_gpta(ap.getString("-f"),n,d,KKS,KKE);
+	if(BTA_B == 1) bench_bta(ap.getString("-f"),n,d,KKS,KKE);
+	if(GVTA_B == 1) bench_gvta(ap.getString("-f"),n,d,KKS,KKE);
+	if(GPTA_B == 1) bench_gpta(ap.getString("-f"),n,d,KKS,KKE);
 	//bench_gta(ap.getString("-f"),n,d,KKS);
 
 	return 0;

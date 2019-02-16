@@ -3,7 +3,7 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((1*1024*1024))
+START_N=$((32*1024*1024))
 END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
@@ -84,10 +84,20 @@ TPAr_B=0
 #VTA Benhmark
 VTA_B=0
 #PTA Benchmark
-PTA_B=1
+PTA_B=0
 #SLA Benchmark
 SLA_B=0
+#####################################################################################
+
+######CHOOSE GPU ALGORITHM######
+#BTA Benchmark
+BTA_B=0
+#GVTA Benchmark
+GVTA_B=0
+#GPTA Benchmark
+GPTA_B=1
 #####################################################################################	
+
 
 ####################################
 ###### COMPILATION PARAMETERS ######
@@ -96,7 +106,7 @@ if [ $device -eq 0 ]
 then
 	make cpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR TA_B=$TA_B TPAc_B=$TPAc_B TPAr_B=$TPAr_B VTA_B=$VTA_B PTA_B=$PTA_B SLA_B=$SLA_B KKS=$KKS KKE=$KKE MQTHREADS=$MQTHREADS STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 else
-	make gpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR KKS=$KKS KKE=$KKE STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
+	make gpu_cc DIMS=$DIMS QM=$QM QD=$QD IMP=$IMP ITER=$ITER LD=$LD DISTR=$DSTR BTA_B=$BTA_B GVTA_B=$GVTA_B GPTA_B=$GPTA_B KKS=$KKS KKE=$KKE STATS_EFF=$STATS_EFF WORKLOAD=$WORKLOAD
 fi
 #################################################################################
 

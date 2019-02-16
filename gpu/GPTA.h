@@ -128,6 +128,7 @@ class GPTA : public GAA<T,Z>{
 		void geq_32_driver(uint64_t k, uint64_t qq);
 
 		T cpuTopK(uint64_t k, uint64_t qq);
+		void validate(uint64_t k, uint64_t qq);
 };
 
 template<class T, class Z>
@@ -546,8 +547,8 @@ T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 					q.pop();
 					q.push(ranked_tuple<T,Z>(i,score));
 				}
-				this->tuple_count+=1;
 			}
+			this->tuple_count+=GPTA_BLOCK_SIZE;
 
 			T t = 0;
 			T *tvector = blocks[b].tvector;
@@ -563,6 +564,17 @@ T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 		std::cout << "ERROR (cpu):[" << threshold << "," << threshold2 << "]" << std::endl;
 	}
 	return threshold2;
+}
+
+template<class T, class Z>
+void GPTA<T,Z>::validate(uint64_t k, uint64_t qq){
+	#if VALIDATE
+		this->cpu_threshold = this->cpuTopK(k,qq);
+		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
+			std::cout << std::fixed << std::setprecision(16);
+			std::cout << "ERROR: {" << this->gpu_threshold << "," << this->cpu_threshold << "}" << std::endl; exit(1);
+		}
+	#endif
 }
 
 template<class T, class Z>
@@ -612,14 +624,7 @@ void GPTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq)
 		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
 	#endif
 	this->gpu_threshold = cout[k-1];
-
-	#if VALIDATE
-		this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.000001 ) {
-			std::cout << std::fixed << std::setprecision(16);
-			std::cout << "ERROR: {" << cout[k-1] << "," << this->cpu_threshold << "}" << std::endl; exit(1);
-		}
-	#endif
+	this->validate(k,qq);
 }
 
 template<class T, class Z>
@@ -633,19 +638,31 @@ void GPTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq)
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing gpta_geq_32");
 	this->tt_processing += this->t.lap();
 
+	//First step check
 	#if USE_PTA_DEVICE_MEM
 		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * GPTA_PARTS * k, "error copying from gout to out");
 	#endif
 	std::sort(cout, cout + GPTA_PARTS * k, std::greater<T>());
 	this->gpu_threshold = cout[k-1];
 
-	#if VALIDATE
-		this->cpu_threshold = this->cpuTopK(k,qq);
-		if( abs((double)this->gpu_threshold - (double)this->cpu_threshold) > (double)0.0000000000001 ) {
-			std::cout << std::fixed << std::setprecision(16);
-			std::cout << "ERROR: {" << cout[k-1] << "," << this->cpu_threshold << "}" << std::endl; exit(1);
-		}
+	uint64_t remainder = (GPTA_PARTS * k);
+	this->t.start();
+	while(remainder > k){
+		std::cout << "remainder: " << remainder << std::endl;
+		geq_32_grid.x = ((remainder - 1) / 4096) + 1;
+		reduce_rebuild_qeq_32<T><<<geq_32_grid,geq_32_block>>>(gout,remainder,k,gout2);
+		cutil::cudaCheckErr(cudaDeviceSynchronize(),"executing gpta_rr_atm_16");
+		remainder = (geq_32_grid.x * k);
+		std::swap(gout,gout2);
+	}
+	this->tt_processing += this->t.lap();
+
+	//Second step check
+	#if USE_PTA_DEVICE_MEM
+		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
 	#endif
+	this->gpu_threshold = cout[k-1];
+	this->validate(k,qq);
 }
 
 template<class T, class Z>
@@ -838,8 +855,6 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			buffer[threadIdx.x +  512] = v2;
 			buffer[threadIdx.x +  768] = v3;
 			__syncthreads();
-//			level = k >> 1;
-//			dir = level << 1;
 			for(step = level; step > 0; step = step >> 1){
 				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
 				bool r = ((dir & i) == 0);
@@ -859,8 +874,6 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			buffer[threadIdx.x       ] = v0;
 			buffer[threadIdx.x +  256] = v1;
 			__syncthreads();
-//			level = k >> 1;
-//			dir = level << 1;
 			for(step = level; step > 0; step = step >> 1){
 				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
 				bool r = ((dir & i) == 0);
@@ -871,21 +884,21 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 		////////////////////////////////////////////
 		//////////Reduce-Rebuild 512 - 256//////////
-		i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
-		v0 = fmaxf(buffer[i       ], buffer[i +        k]);
-		__syncthreads();
-		buffer[threadIdx.x       ] = v0;
-		__syncthreads();
-		level = k >> 1;
-		dir = level << 1;
-		for(step = level; step > 0; step = step >> 1){
-			if(threadIdx.x < 128){
-				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
-				bool r = ((dir & i) == 0);
-				swap_shared<T>(buffer[i       ], buffer[i +        step], r);
-			}
+		#if GPTA_BLOCK_SIZE >= 512
+			i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
+			v0 = fmaxf(buffer[i       ], buffer[i +        k]);
 			__syncthreads();
-		}
+			buffer[threadIdx.x       ] = v0;
+			__syncthreads();
+			for(step = level; step > 0; step = step >> 1){
+				if(threadIdx.x < 128){
+					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
+					bool r = ((dir & i) == 0);
+					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
+				}
+				__syncthreads();
+			}
+		#endif
 
 		////////////////////////////////////////////
 		//////////Reduce-Rebuild 256 - 128//////////
@@ -897,8 +910,6 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			__syncthreads();
 			if(threadIdx.x < 128) buffer[threadIdx.x] = v0;
 			__syncthreads();
-//			level = k >> 1;
-//			dir = level << 1;
 			for(step = level; step > 0; step = step >> 1){
 				if(threadIdx.x < 64){
 					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
@@ -919,8 +930,6 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			__syncthreads();
 			if(threadIdx.x < 64) buffer[threadIdx.x] = v0;
 			__syncthreads();
-//			level = k >> 1;
-//			dir = level << 1;
 			for(step = level; step > 0; step = step >> 1){
 				if(threadIdx.x < 32){
 					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
@@ -941,8 +950,6 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			__syncthreads();
 			if(threadIdx.x < 32) buffer[threadIdx.x] = v0;
 			__syncthreads();
-//			level = k >> 1;
-//			dir = level << 1;
 			for(step = level; step > 0; step = step >> 1){
 				if(threadIdx.x < 16){
 					i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));

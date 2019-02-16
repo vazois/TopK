@@ -254,7 +254,7 @@ class GAA{
 
 		void benchmark(uint64_t k,uint64_t qq){
 			std::cout << std::fixed << std::setprecision(4);
-			std::string msg = "| Benchmark for " + this->algo + "(" +
+			std::string msg = "| Benchmark for " + this->algo + " (" +
 					std::to_string(this->n) + "," + std::to_string(qq) + "," + std::to_string(k)
 					+ ")-(" +
 					std::to_string(this->parts) + "," + std::to_string(this->block_size) + ") algorithm |";

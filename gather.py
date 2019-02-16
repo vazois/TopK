@@ -8,6 +8,7 @@ def gather(fname):
     
     mm = dict()
     mm["algo"]=list()
+    mm["size"]=list()
     mm["threshold"]=list()
     mm["cpu_threshold"]=list()
     mm["gpu_threshold"]=list()
@@ -24,8 +25,10 @@ def gather(fname):
             inmemory_data = True
         if line.startswith("| Benchmark for"):
             data = line.strip().split(" ")
-            #print data[3]
-            mm["algo"].append(data[3])
+            #print data[4].split(",")[0][1:]+"-"+data[4].split(",")[2].split(")")[0]
+            #mm["size"].append(data[4].split(",")[0][1:])
+            mm["size"].append(data[4].split(",")[0][1:]+","+data[4].split(",")[2].split(")")[0])
+            mm["algo"].append(data[3].strip())
         if line.startswith("threshold:"):
             data = line.strip().split(":")
             mm[data[0]].append(float(data[1]))
@@ -81,6 +84,7 @@ if __name__ == "__main__":
         print "Measurements Using Data Loaded From File!!!"
 
     algo = ""
+    sz = ""
     if len(mm["threshold"]) > 0:
         print "threshold",
     if len(mm["cpu_threshold"]) > 0:
@@ -100,10 +104,14 @@ if __name__ == "__main__":
     print "" 
 
 #    print "threshold tt_init tt_processing accesses tuple_count candidate_count"
-    for i in range(len(mm["tt_init"])):
+    dt = list()
+    for i in range(len(mm["algo"])):
         if(mm["algo"][i] != algo):
             algo = mm["algo"][i]
             print algo
+        if(mm["size"][i] != sz):
+            sz = mm["size"][i]
+            print sz
         #print mm["tt_init"][i]
         #print mm["tt_procesing"][i],mm["tuple_count"][i],mm["tt_init"][i]
         #print mm["tuple_count"][i]
@@ -111,14 +119,14 @@ if __name__ == "__main__":
         #print "{0:0.4f}".format(mm["threshold"][i]),mm["stop_level"][i],"{0:0.4f}".format(mm["tt_init"][i]),"{0:0.4f}".format(mm["tt_procesing"][i]),mm["tuple_count"][i],mm["candidate_count"][i]
         #print "{0:0.4f}".format(mm["threshold"][i]),"{0:0.4f}".format(mm["tt_init"][i]),"{0:0.4f}".format(mm["tt_procesing"][i]),mm["tuple_count"][i],mm["candidate_count"][i]
         #print "{0:0.4f}".format(mm["threshold"][i]),"{0:0.4f}".format(mm["tt_init"][i]),"{0:0.4f}".format(mm["tt_procesing"][i]),mm["accesses"][i],mm["tuple_count"][i],mm["candidate_count"][i]
-        if i < len(mm["threshold"]):
-            print "{0:0.4f}".format(mm["threshold"][i]),
-        if i < len(mm["cpu_threshold"]):
-            print "{0:0.4f}".format(mm["cpu_threshold"][i]),
-        if i < len(mm["gpu_threshold"]):
-            print "{0:0.4f}".format(mm["gpu_threshold"][i]),                    
-        if i < len(mm["tt_init"]):
-            print "{0:0.4f}".format(mm["tt_init"][i]),
+#         if i < len(mm["threshold"]):
+#             print "{0:0.4f}".format(mm["threshold"][i]),
+#         if i < len(mm["cpu_threshold"]):
+#             print "{0:0.4f}".format(mm["cpu_threshold"][i]),
+#         if i < len(mm["gpu_threshold"]):
+#             print "{0:0.4f}".format(mm["gpu_threshold"][i]),                    
+#         if i < len(mm["tt_init"]):
+#             print "{0:0.4f}".format(mm["tt_init"][i]),
         if i < len(mm["tt_procesing"]):
             print "{0:0.4f}".format(mm["tt_procesing"][i]),
         if i < len(mm["accesses"]):
@@ -128,3 +136,21 @@ if __name__ == "__main__":
         if i < len(mm["candidate_count"]):
             print mm["candidate_count"][i],        
         print ""
+    
+#     for i in range(len(mm["algo"])):
+#         if(mm["algo"][i] != algo):
+#             algo = mm["algo"][i]
+#             print algo
+#         if(mm["size"][i] != sz):
+#             dt = list()
+#             sz = mm["size"][i]
+#             print sz
+#         if i < len(mm["tt_procesing"]):
+#             dt.mm["tt_procesing"][i]
+            
+            
+            
+            
+            
+                       
+        

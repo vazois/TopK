@@ -1,8 +1,8 @@
 CC=g++
 #CC=icpc
-NVCC=/usr/local/cuda-9.0/bin/nvcc
+NVCC=/usr/local/cuda-10.0/bin/nvcc
 NVCC_INCLUDE=-Icub-1.8.0/ -I/usr/local/cuda/include/
-NVCC_LIBS=-L/usr/local/cuda-9.0/lib64/
+NVCC_LIBS=-L/usr/local/cuda-10.0/lib64/
 
 #REORDER APP
 CC_REORDER=input/main.cpp
@@ -36,6 +36,7 @@ STATS_EFF=true
 #Choose workload for multi-query evaluation
 WORKLOAD=32768
 
+######CPU ALGORITHM######
 #TA Benchmark
 TA_B=1
 #TPAc Benchmark
@@ -49,11 +50,20 @@ PTA_B=1
 #SLA Benchmark
 SLA_B=1
 
+######GPU ALGORITHM######
+#BTA Benchmark
+BTA_B=1
+#GVTA Benchmark
+GVTA_B=1
+#GPTA Benchmark
+GPTA_B=1
+
 #Top-K
 KKS=16
 KKE=16
 
-BENCH= -DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
+BENCH=-DTA_B=$(TA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
+GBENCH=-DBTA_B=$(BTA_B) -DGVTA_B=$(GVTA_B) -DGPTA_B=$(GPTA_B)
 
 #CPU CONFIGURATION
 CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp input/randdataset-1.1.0/src/randdataset.c
@@ -68,7 +78,7 @@ GC_EXE=gpu_run
 #NVCC_FLAGS = --ptxas-options=-v -gencode arch=compute_35,code=sm_35 -rdc=true
 GPU_FLAGS=-O3 #-mavx -fopenmp #--use_fast_math --gpu-architecture=compute_70 --gpu-code=sm_70
 #ARCH = -gencode arch=compute_35,code=sm_35
-GPU_PARAMETERS=-DKKS=$(KKS) -DKKE=$(KKE) -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD) -Xcompiler -fopenmp -lgomp
+GPU_PARAMETERS= $(GBENCH) -DKKS=$(KKS) -DKKE=$(KKE) -DGNU=0 -DQM=$(QM) -DQD=$(QD) -DIMP=$(IMP) -DITER=$(ITER) -DLD=$(LD) -DDISTR=$(DISTR) -DNUM_DIMS=$(DIMS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD) -Xcompiler -fopenmp -lgomp
 GPU_GCC_FLAGS=-ffast-math -funroll-loops -msse -msse2 -msse3 -msse4.1 -mbmi2 -mmmx -mavx -mavx2 -fomit-frame-pointer -m64 -fopenmp
 
 all: cpu_cc
