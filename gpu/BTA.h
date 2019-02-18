@@ -179,6 +179,7 @@ void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T) * k,"copy from csvector to gsvector");
 	#else
 		csvector = gsvector;
+		csvector_out = gsvector_out;
 	#endif
 	this->gpu_threshold = csvector[k-1];
 	this->validate(k,qq);
@@ -228,6 +229,7 @@ void BTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq){
 		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T) * k,"copy from csvector to gsvector");
 	#else
 		csvector = gsvector;
+		csvector_out = gsvector_out;
 	#endif
 
 	this->gpu_threshold = csvector[k-1];

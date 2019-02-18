@@ -10,6 +10,7 @@
 
 //PTA DEVICE MEMORY USAGE//
 #define USE_POLAR_DEV_MEM true // USE DEVICE MEMORY TO COMPUTE POLAR COORDINATES
+#define USE_RANDOM_DEV_MEM true
 #define USE_PART_REORDER_DEV_MEM true
 #define USE_BUILD_PART_DEV_MEM true
 #define USE_PTA_DEVICE_MEM false
@@ -22,12 +23,24 @@
 #define GPTA_SPLITS 2
 #define GPTA_PARTS (((uint64_t)pow(GPTA_SPLITS,NUM_DIMS-1)))
 #define GPTA_PART_BITS ((uint64_t)log2f(GPTA_SPLITS))
-
 #define GPTA_BLOCK_SIZE 4096
+
+//Choose polar or random partitioning, configuration for random partitioning
+#define ENABLE_POLAR_PARTITIONING true
+#define GPTA_R_PARTITIONS 256 //at least 8 partitions//
+#define GPTA_R_BLOCK_SIZE 4096
+
+#if ENABLE_POLAR_PARTITIONING
+	#define PART_NUM (GPTA_PARTS)
+	#define BLOCK_SIZE (GPTA_BLOCK_SIZE)
+#else
+	#define PART_NUM (GPTA_R_PARTITIONS)
+	#define BLOCK_SIZE (GPTA_R_BLOCK_SIZE)
+#endif
 
 template<class T, class Z>
 struct gpta_block{
-	T data[GPTA_BLOCK_SIZE * NUM_DIMS];
+	T data[BLOCK_SIZE * NUM_DIMS];
 	T tvector[NUM_DIMS];
 	Z offset = 0;
 };
@@ -38,6 +51,7 @@ struct gpta_part{
 	uint32_t bnum = 0;
 	uint32_t size = 0;
 };
+
 
 template<class T, class Z>
 __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *out);
@@ -50,6 +64,7 @@ __global__ void init_pos(Z *pos, uint64_t n);
 template<class Z>
 __global__ void init_tid_vec(Z *tid_vec, uint64_t n);
 __global__ void assign(uint32_t *keys, uint32_t *part, uint64_t n, uint32_t mul);
+__global__ void random_assign(uint32_t *part, uint32_t n, uint32_t part_num);
 __global__ void init_part(uint32_t *part, uint64_t n);
 __global__ void init_keys(uint32_t *keys, uint64_t n);
 
@@ -76,21 +91,21 @@ class GPTA : public GAA<T,Z>{
 
 			this->using_dev_mem = USE_PTA_DEVICE_MEM;
 
-			this->parts = GPTA_PARTS;
-			this->block_size = GPTA_BLOCK_SIZE;
+			this->parts = PART_NUM;
+			this->block_size = BLOCK_SIZE;
 		};
 
 		~GPTA(){
 			if(this->part_size) cutil::safeCudaFreeHost(this->part_size,"free part_size"); //cudaFreeHost(this->part_size);
 			if(this->cparts)
 			{
-				for(uint64_t i = 0; i < GPTA_PARTS; i++) if(this->cparts[i].blocks) cutil::safeCudaFreeHost(this->cparts[i].blocks,"free cparts blocks"); //cudaFreeHost(this->cparts[i].blocks);
+				for(uint64_t i = 0; i < PART_NUM; i++) if(this->cparts[i].blocks) cutil::safeCudaFreeHost(this->cparts[i].blocks,"free cparts blocks"); //cudaFreeHost(this->cparts[i].blocks);
 				cutil::safeCudaFreeHost(this->cparts,"free cparts"); //cudaFreeHost(this->cparts);
 			}
 
 			if(this->cprts)
 			{
-				for(uint64_t i = 0; i < GPTA_PARTS; i++) if(this->cparts[i].blocks) cutil::safeCudaFree(this->cprts[i].blocks,"free cprts blocks"); //cudaFree(this->cprts[i].blocks);
+				for(uint64_t i = 0; i < PART_NUM; i++) if(this->cparts[i].blocks) cutil::safeCudaFree(this->cprts[i].blocks,"free cprts blocks"); //cudaFree(this->cprts[i].blocks);
 				cutil::safeCudaFreeHost(this->cprts,"free cprts"); //cudaFreeHost(this->cprts);
 			}
 			if(this->cout) cutil::safeCudaFreeHost(this->cout,"free cout");
@@ -108,6 +123,11 @@ class GPTA : public GAA<T,Z>{
 		void init();
 		void findTopK(uint64_t k, uint64_t qq);
 
+		void benchmark(uint64_t k,uint64_t qq){
+			GAA<T,Z>::benchmark(k,qq);
+			std::cout << "Partitioning scheme: {" << (ENABLE_POLAR_PARTITIONING ? "POLAR" : "RANDOM") << "}" << std::endl;
+		}
+
 	private:
 		gpta_part<T,Z> *cparts;
 		gpta_part<T,Z> *cprts;
@@ -121,6 +141,7 @@ class GPTA : public GAA<T,Z>{
 		T *gout2 = NULL;
 
 		void polar_partition();
+		void random_partition();
 		void reorder_partition();
 
 		void atm_16_driver(uint64_t k, uint64_t qq);
@@ -133,7 +154,7 @@ class GPTA : public GAA<T,Z>{
 template<class T, class Z>
 void GPTA<T,Z>::alloc(){
 	cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
-	cutil::safeMallocHost<Z,uint64_t>(&(this->part_size),sizeof(Z)*GPTA_PARTS,"part size alloc");// Allocate cpu data memory
+	cutil::safeMallocHost<Z,uint64_t>(&(this->part_size),sizeof(Z)*PART_NUM,"part size alloc");// Allocate cpu data memory
 }
 
 template<class T, class Z>
@@ -141,20 +162,24 @@ void GPTA<T,Z>::init(){
 	normalize_transpose<T>(this->cdata, this->n, this->d);
 	this->tt_init = 0;
 	//this->t.start();
-	this->polar_partition();
+	#if ENABLE_POLAR_PARTITIONING
+		this->polar_partition();
+	#else
+		this->random_partition();
+	#endif
 	this->reorder_partition();
 	//this->tt_init=this->t.lap();
 
-	cutil::safeMallocHost<T,uint64_t>(&cout,sizeof(T) * GPTA_PARTS * KKE,"cout alloc");
-	cutil::safeMallocHost<T,uint64_t>(&cout2,sizeof(T) * GPTA_PARTS * KKE,"cout2 alloc");
+	cutil::safeMallocHost<T,uint64_t>(&cout,sizeof(T) * PART_NUM * KKE,"cout alloc");
+	cutil::safeMallocHost<T,uint64_t>(&cout2,sizeof(T) * PART_NUM * KKE,"cout2 alloc");
 	#if USE_PTA_DEVICE_MEM
 		std::cout << "ALLOCATING DEVICE MEMORY" << std::endl;
-		cutil::safeMalloc<T,uint64_t>(&gout, sizeof(T) * GPTA_PARTS * KKE,"gout alloc");
-		cutil::safeMalloc<T,uint64_t>(&gout2, sizeof(T) * GPTA_PARTS * KKE,"gout2 alloc");
+		cutil::safeMalloc<T,uint64_t>(&gout, sizeof(T) * PART_NUM * KKE,"gout alloc");
+		cutil::safeMalloc<T,uint64_t>(&gout2, sizeof(T) * PART_NUM * KKE,"gout2 alloc");
 
-		cutil::safeMalloc<gpta_part<T,Z>,uint64_t>(&this->gparts,sizeof(gpta_part<T,Z>)*GPTA_PARTS,"gparts alloc");
-		cutil::safeMallocHost<gpta_part<T,Z>,uint64_t>(&this->cprts,sizeof(gpta_part<T,Z>)*GPTA_PARTS,"cprts alloc");
-		for(uint64_t i = 0; i < GPTA_PARTS; i++)
+		cutil::safeMalloc<gpta_part<T,Z>,uint64_t>(&this->gparts,sizeof(gpta_part<T,Z>)*PART_NUM,"gparts alloc");
+		cutil::safeMallocHost<gpta_part<T,Z>,uint64_t>(&this->cprts,sizeof(gpta_part<T,Z>)*PART_NUM,"cprts alloc");
+		for(uint64_t i = 0; i < PART_NUM; i++)
 		{
 			this->cprts[i].size = this->cparts[i].size;
 			this->cprts[i].bnum = this->cparts[i].bnum;
@@ -162,7 +187,7 @@ void GPTA<T,Z>::init(){
 			cutil::safeMalloc<gpta_block<T,Z>,uint64_t>(&(this->cprts[i].blocks),sizeof(gpta_block<T,Z>)*this->cprts[i].bnum,"cprts gpta_block alloc");
 			cutil::safeCopyToDevice<gpta_block<T,Z>,uint64_t>(this->cprts[i].blocks,this->cparts[i].blocks,sizeof(gpta_block<T,Z>)*this->cprts[i].bnum, "copy cparts to cprts");
 		}
-		cutil::safeCopyToDevice<gpta_part<T,Z>,uint64_t>(this->gparts,this->cprts,sizeof(gpta_part<T,Z>)*GPTA_PARTS,"copy cprts to gparts");
+		cutil::safeCopyToDevice<gpta_part<T,Z>,uint64_t>(this->gparts,this->cprts,sizeof(gpta_part<T,Z>)*PART_NUM,"copy cprts to gparts");
 		cutil::cudaCheckErr(cudaPeekAtLastError(),"copy cprts to gparts");
 	#else
 		this->gparts = this->cparts;
@@ -263,12 +288,6 @@ void GPTA<T,Z>::polar_partition()
 	#endif
 
 	this->t.start();
-//	for(uint64_t i = 0; i<64; i++){
-//		std::cout << "[" << std::setfill('0') << std::setw(8) << i << "] : {" << std::setfill('0') << std::setw(3) << cpart[i] << "} = ";
-//		std::cout << std::fixed << std::setprecision(4);
-//		for(uint64_t m = 0; m < this->d; m++){ std::cout << this->cdata[m*this->n + i] << " "; } std::cout << std::endl;
-//	}
-
 	max_part_size = 0;
 	for(uint64_t i = 0; i < GPTA_PARTS; i++) part_size[i] = 0;
 	for(uint64_t i = 0; i<this->n; i++){
@@ -277,10 +296,6 @@ void GPTA<T,Z>::polar_partition()
 		if(cpart[i]>=GPTA_PARTS){ std::cout << "ERROR (polar): " << i << "," << cpart[i] << std::endl;  exit(1); }
 	}
 	tt += this->t.lap();
-//	for(uint64_t i = 0; i < GPTA_PARTS; i++){
-//		std::cout << "g(" << i << "):" << std::setfill('0') << std::setw(8) << part_size[i] << std::endl;
-//	}
-//	std::cout << "max_part_size: " << this->max_part_size << std::endl;
 
 	////////////////
 	//Free buffers//
@@ -343,6 +358,91 @@ void GPTA<T,Z>::polar_partition()
 }
 
 template<class T, class Z>
+void GPTA<T,Z>::random_partition()
+{
+	uint64_t mem = 0;
+	double tt = 0;
+	Z *part; // Partition assignment vector
+	dim3 random_block(256,1,1);
+	dim3 random_grid(((this->n - 1)/256) + 1, 1, 1);
+
+	#if USE_RANDOM_DEV_MEM
+		cutil::safeMalloc<Z,uint64_t>(&part,sizeof(Z)*this->n,"part alloc"); mem+=this->n * sizeof(Z);
+	#else
+		cutil::safeMallocHost<Z,uint64_t>(&part,sizeof(Z)*this->n,"part alloc"); mem+=this->n * sizeof(Z);
+	#endif
+
+	random_assign<<<random_grid,random_block>>>(part,this->n,GPTA_R_PARTITIONS);
+	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing random_assign");
+	/////////////////////////
+	//Gather Partition Info//
+	Z *cpart;
+	#if USE_RANDOM_DEV_MEM
+		cutil::safeMallocHost<Z,uint64_t>(&cpart,sizeof(Z)*this->n,"keys_in alloc");
+		cutil::safeCopyToHost<Z,uint64_t>(cpart,part,sizeof(Z)*this->n,"copy part to cpart");
+	#else
+		cpart = part;
+	#endif
+
+	this->t.start();
+	max_part_size = 0;
+	for(uint64_t i = 0; i < GPTA_R_PARTITIONS; i++) part_size[i] = 0;
+	for(uint64_t i = 0; i<this->n; i++){
+		part_size[cpart[i]]++;
+		max_part_size = std::max(max_part_size,part_size[cpart[i]]);
+		if(cpart[i]>=GPTA_R_PARTITIONS){ std::cout << "ERROR (random): " << i << "," << cpart[i] << std::endl;  exit(1); }
+	}
+	tt += this->t.lap();
+
+	////////////////////////////////////
+	//Group tids in the same partition//
+	Z *tid_in;
+	Z *tid_out;
+	Z *part_out;
+	void *d_temp_storage = NULL;
+	size_t temp_storage_bytes = 0;
+
+	#if USE_PART_REORDER_DEV_MEM
+		cutil::safeMalloc<Z,uint64_t>(&tid_in,sizeof(Z)*this->n,"alloc tid_in"); mem+=this->n * sizeof(Z);
+		cutil::safeMalloc<Z,uint64_t>(&tid_out,sizeof(Z)*this->n,"alloc tid_out"); mem+=this->n * sizeof(Z);
+		cutil::safeMalloc<Z,uint64_t>(&part_out,sizeof(Z)*this->n,"alloc part_out"); mem+=this->n * sizeof(Z);
+	#else
+		cutil::safeMallocHost<Z,uint64_t>(&tid_in,sizeof(Z)*this->n,"alloc tid_in"); mem+=this->n * sizeof(Z);
+		cutil::safeMallocHost<Z,uint64_t>(&tid_out,sizeof(Z)*this->n,"alloc tid_out"); mem+=this->n * sizeof(Z);
+		cutil::safeMallocHost<Z,uint64_t>(&part_out,sizeof(Z)*this->n,"alloc part_out"); mem+=this->n * sizeof(Z);
+	#endif
+	cub::DeviceRadixSort::SortPairs(d_temp_storage,temp_storage_bytes, part, part_out, tid_in, tid_out, this->n);
+	cutil::cudaCheckErr(cudaMalloc(&d_temp_storage, temp_storage_bytes),"alloc d_temp_storage"); mem+=temp_storage_bytes;
+	std::cout << "temp_storage_bytes: " << temp_storage_bytes << "," << this->n << std::endl;
+	std::cout << "PART REORDER MEMORY OVERHEAD: " << ((double)mem)/(1 << 20) << " MB" << std::endl;
+
+	//e:Sort tuples according to partition assignment
+	this->t.start();
+	init_keys<<<random_grid,random_block>>>(tid_in,this->n);
+	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_keys for sorting according to partition");
+	cub::DeviceRadixSort::SortPairs(d_temp_storage,temp_storage_bytes, part, part_out, tid_in, tid_out, this->n);
+	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing SortPairs for sorting according to partition");
+	tt += this->t.lap();
+
+	//Copy ordered tuple ids ordered by partition assignment
+	cutil::safeMallocHost<Z,uint64_t>(&this->part_tid,sizeof(Z)*this->n,"alloc part_tid");
+	cutil::safeCopyToHost<Z,uint64_t>(this->part_tid,tid_out,sizeof(Z)*this->n,"copy tid_out to part_tid");
+	#if USE_PART_REORDER_DEV_MEM
+		cutil::safeCudaFree(tid_in,"free tid_in"); //cudaFree(tid_in);
+		cutil::safeCudaFree(tid_out,"free tid_out"); //cudaFree(tid_out);
+		cutil::safeCudaFree(part_out,"free part_out"); //cudaFree(part_out);
+	#else
+		cutil::safeCudaFreeHost(tid_in,"free tid_in"); //cudaFreeHost(tid_in);
+		cutil::safeCudaFreeHost(tid_out,"free tid_out"); //cudaFreeHost(tid_out);
+		cutil::safeCudaFreeHost(part_out,"free part_out"); //cudaFreeHost(part_out);
+	#endif
+	cutil::safeCudaFree(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
+	this->tt_init += tt;
+
+	this->tt_init += tt;
+}
+
+template<class T, class Z>
 void GPTA<T,Z>::reorder_partition(){
 	uint64_t mem = 0;
 	double tt = 0;
@@ -373,11 +473,11 @@ void GPTA<T,Z>::reorder_partition(){
 	std::cout << "BUILD PARTITION MEMORY OVERHEAD: " << ((double)mem)/(1 << 20) << " MB" << std::endl;
 
 	uint64_t part_offset = 0;
-	cutil::safeMallocHost<gpta_part<T,Z>,uint64_t>(&this->cparts,sizeof(gpta_part<T,Z>)*GPTA_PARTS,"cparts alloc");
-	for(uint64_t i = 0; i < GPTA_PARTS; i++)
+	cutil::safeMallocHost<gpta_part<T,Z>,uint64_t>(&this->cparts,sizeof(gpta_part<T,Z>)*PART_NUM,"cparts alloc");
+	for(uint64_t i = 0; i < PART_NUM; i++)
 	{
 		this->cparts[i].size = this->part_size[i];
-		this->cparts[i].bnum = ((this->part_size[i] - 1)/GPTA_BLOCK_SIZE) + 1;
+		this->cparts[i].bnum = ((this->part_size[i] - 1)/BLOCK_SIZE) + 1;
 		cutil::safeMallocHost<gpta_block<T,Z>,uint64_t>(&this->cparts[i].blocks,sizeof(gpta_block<T,Z>)*this->cparts[i].bnum,"cparts gpta_block alloc");
 
 		//initialize minimum positions//
@@ -426,25 +526,25 @@ void GPTA<T,Z>::reorder_partition(){
 		cutil::safeCopyToHost<Z,uint64_t>(ctid_vec_out,gtid_vec_out,sizeof(Z)*this->cparts[i].size,"copy gtid_vec_out to ctid_vec_out");
 		uint64_t b = 0;
 		this->t.start();
-		for(Z j = 0; j < this->cparts[i].size; j+=GPTA_BLOCK_SIZE)
+		for(Z j = 0; j < this->cparts[i].size; j+=BLOCK_SIZE)
 		{
-			Z size = (j + GPTA_BLOCK_SIZE) < this->cparts[i].size ? GPTA_BLOCK_SIZE : this->cparts[i].size - j;
+			Z size = (j + BLOCK_SIZE) < this->cparts[i].size ? BLOCK_SIZE : this->cparts[i].size - j;
 			T *data = this->cparts[i].blocks[b].data;
 			this->cparts[i].blocks[b].offset = j;
 
 			T mx[NUM_DIMS];
 			for(uint64_t m = 0; m < this->d; m++) mx[m] = 0;
-			for(Z jj = 0; jj < GPTA_BLOCK_SIZE; jj++)
+			for(Z jj = 0; jj < BLOCK_SIZE; jj++)
 			{
 				if( jj < size ){
 					Z tid = this->part_tid[part_offset + ctid_vec_out[j + jj]];
 					for(uint64_t m = 0; m < this->d; m++){
 						T v = this->cdata[m * this->n + tid];
-						data[m * GPTA_BLOCK_SIZE + jj] = v;
+						data[m * BLOCK_SIZE + jj] = v;
 						mx[m] = std::max(mx[m],v);
 					}
 				}else{
-					for(uint64_t m = 0; m < this->d; m++) data[m * GPTA_BLOCK_SIZE + jj] = 0;
+					for(uint64_t m = 0; m < this->d; m++) data[m * BLOCK_SIZE + jj] = 0;
 				}
 			}
 			b++;
@@ -455,14 +555,14 @@ void GPTA<T,Z>::reorder_partition(){
 
 	//Calculate thresholds//
 	this->t.start();
-	for(uint64_t i = 0; i < GPTA_PARTS; i++){
+	for(uint64_t i = 0; i < PART_NUM; i++){
 		T mx[NUM_DIMS];
 		for(uint64_t m = 0; m < this->d; m++) mx[m] = 0;
 		for(uint64_t b = this->cparts[i].bnum - 1; b > 0; b--){
 			T *tvector = this->cparts[i].blocks[b-1].tvector;
 			T *data = this->cparts[i].blocks[b].data;
-			for(uint64_t j = 0; j < GPTA_BLOCK_SIZE; j++){
-				for(uint64_t m = 0; m < this->d; m++) mx[m] = std::max(mx[m],data[m * GPTA_BLOCK_SIZE + j]);
+			for(uint64_t j = 0; j < BLOCK_SIZE; j++){
+				for(uint64_t m = 0; m < this->d; m++) mx[m] = std::max(mx[m],data[m * BLOCK_SIZE + j]);
 			}
 			std::memcpy(tvector,mx,sizeof(T)*NUM_DIMS);
 		}
@@ -470,7 +570,7 @@ void GPTA<T,Z>::reorder_partition(){
 	tt += this->t.lap();
 
 	//Validate thresholds//
-	for(uint64_t i = 0; i < GPTA_PARTS; i++){
+	for(uint64_t i = 0; i < PART_NUM; i++){
 		for(uint64_t b = 1; b < this->cparts[i].bnum; b++){
 			for(uint64_t m = 0; m < this->d; m++){
 				if(this->cparts[i].blocks[b].tvector[ m ] > this->cparts[i].blocks[b-1].tvector[ m ]){
@@ -531,19 +631,19 @@ T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 
 	q = std::priority_queue<T, std::vector<ranked_tuple<T,Z>>, MaxFirst<T,Z>>();
 	T threshold2 = 0;
-	for(uint64_t i = 0; i < GPTA_PARTS; i++)
+	for(uint64_t i = 0; i < PART_NUM; i++)
 	{
 		gpta_block<T,Z> *blocks = this->cparts[i].blocks;
 		for(uint64_t b = 0; b < this->cparts[i].bnum; b++)
 		{
 			T *data = blocks[b].data;
-			for(uint64_t j = 0; j < GPTA_BLOCK_SIZE; j++)
+			for(uint64_t j = 0; j < BLOCK_SIZE; j++)
 			{
 				T score = 0;
 				for(uint64_t m = 0; m < qq; m++)
 				{
 					Z ai = this->query[m];
-					score += data[ai*GPTA_BLOCK_SIZE + j] * this->weights[ai];
+					score += data[ai*BLOCK_SIZE + j] * this->weights[ai];
 				}
 				if(q.size() < k)
 				{
@@ -553,7 +653,7 @@ T GPTA<T,Z>::cpuTopK(uint64_t k, uint64_t qq){
 					q.push(ranked_tuple<T,Z>(i,score));
 				}
 			}
-			this->tuple_count+=GPTA_BLOCK_SIZE;
+			this->tuple_count+=BLOCK_SIZE;
 
 			T t = 0;
 			T *tvector = blocks[b].tvector;
@@ -599,7 +699,7 @@ template<class T, class Z>
 void GPTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq)
 {
 	dim3 atm_16_block(256,1,1);
-	dim3 atm_16_grid(GPTA_PARTS, 1, 1);
+	dim3 atm_16_grid(PART_NUM, 1, 1);
 
 	this->t.start();
 	gpta_atm_16<T,Z><<<atm_16_grid,atm_16_block>>>(gparts, qq, k, gout);
@@ -609,10 +709,10 @@ void GPTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq)
 //	#if USE_PTA_DEVICE_MEM
 //		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * GPTA_PARTS * k, "error copying from gout to out");
 //	#endif
-//	std::sort(cout, cout + GPTA_PARTS * k, std::greater<T>());
+//	std::sort(cout, cout + PART_NUM * k, std::greater<T>());
 //	this->gpu_threshold = cout[k-1];
 
-	uint64_t remainder = (GPTA_PARTS * k);
+	uint64_t remainder = (PART_NUM * k);
 	this->t.start();
 	while(remainder > k){
 		std::cout << "remainder: " << remainder << std::endl;
@@ -629,6 +729,7 @@ void GPTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq)
 		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
 	#else
 		cout = gout;
+		cout2 = gout2;
 	#endif
 	this->gpu_threshold = cout[k-1];
 
@@ -639,7 +740,7 @@ template<class T, class Z>
 void GPTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq)
 {
 	dim3 geq_32_block(256,1,1);
-	dim3 geq_32_grid(GPTA_PARTS, 1, 1);
+	dim3 geq_32_grid(PART_NUM, 1, 1);
 
 	this->t.start();
 	gpta_geq_32<T,Z><<<geq_32_grid,geq_32_block>>>(gparts, qq, k, gout);
@@ -650,10 +751,10 @@ void GPTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq)
 //	#if USE_PTA_DEVICE_MEM
 //		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * GPTA_PARTS * k, "error copying from gout to out");
 //	#endif
-//	std::sort(cout, cout + GPTA_PARTS * k, std::greater<T>());
+//	std::sort(cout, cout + PART_NUM * k, std::greater<T>());
 //	this->gpu_threshold = cout[k-1];
 
-	uint64_t remainder = (GPTA_PARTS * k);
+	uint64_t remainder = (PART_NUM * k);
 	this->t.start();
 	while(remainder > k){
 		std::cout << "remainder: " << remainder << std::endl;
@@ -670,6 +771,7 @@ void GPTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq)
 		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
 	#else
 		cout = gout;
+		cout2 = gout2;
 	#endif
 	this->gpu_threshold = cout[k-1];
 	this->validate(k,qq);
@@ -680,20 +782,20 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 {
 	__shared__ T threshold[NUM_DIMS+1];
 	__shared__ T heap[256];
-	__shared__ T buffer[GPTA_BLOCK_SIZE];
+	__shared__ T buffer[BLOCK_SIZE];
 
 	uint32_t b = 0;
 	uint32_t nb = gparts[blockIdx.x].bnum;
 	heap[threadIdx.x] = 0;
 	while(b < nb)
 	{
-		#if GPTA_BLOCK_SIZE >= 1024
+		#if BLOCK_SIZE >= 1024
 			T v0 = 0, v1 = 0, v2 = 0, v3 = 0;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 2048
+		#if BLOCK_SIZE >= 2048
 			T v4 = 0, v5 = 0, v6 = 0, v7 = 0;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 4096
+		#if BLOCK_SIZE >= 4096
 			T v8 = 0, v9 = 0, vA = 0, vB = 0;
 			T vC = 0, vD = 0, vE = 0, vF = 0;
 		#endif
@@ -716,19 +818,19 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			T w = gpu_weights[ai];
 
 			if(threadIdx.x == 0) threshold[NUM_DIMS] += threshold[ai] * w;
-			#if GPTA_BLOCK_SIZE >= 1024
+			#if BLOCK_SIZE >= 1024
 				v0 += data[start       ] * w;
 				v1 += data[start +  256] * w;
 				v2 += data[start +  512] * w;
 				v3 += data[start +  768] * w;
 			#endif
-			#if GPTA_BLOCK_SIZE >= 2048
+			#if BLOCK_SIZE >= 2048
 				v4 += data[start + 1024] * w;
 				v5 += data[start + 1280] * w;
 				v6 += data[start + 1536] * w;
 				v7 += data[start + 1792] * w;
 			#endif
-			#if GPTA_BLOCK_SIZE >= 4096
+			#if BLOCK_SIZE >= 4096
 				v8 += data[start + 2048] * w;
 				v9 += data[start + 2304] * w;
 				vA += data[start + 2560] * w;
@@ -768,19 +870,19 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 				#endif
 			}
 		}
-		#if GPTA_BLOCK_SIZE >= 1024
+		#if BLOCK_SIZE >= 1024
 			buffer[threadIdx.x       ] = v0;
 			buffer[threadIdx.x +  256] = v1;
 			buffer[threadIdx.x +  512] = v2;
 			buffer[threadIdx.x +  768] = v3;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 2048
+		#if BLOCK_SIZE >= 2048
 			buffer[threadIdx.x + 1024] = v4;
 			buffer[threadIdx.x + 1280] = v5;
 			buffer[threadIdx.x + 1536] = v6;
 			buffer[threadIdx.x + 1792] = v7;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 4096
+		#if BLOCK_SIZE >= 4096
 			buffer[threadIdx.x + 2048] = v8;
 			buffer[threadIdx.x + 2304] = v9;
 			buffer[threadIdx.x + 2560] = vA;
@@ -798,15 +900,15 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			for(step = level; step > 0; step = step >> 1){
 				i = (threadIdx.x << 1) - (threadIdx.x & (step - 1));
 				bool r = ((dir & i) == 0);
-				#if GPTA_BLOCK_SIZE >= 1024
+				#if BLOCK_SIZE >= 1024
 					swap_shared<T>(buffer[i       ], buffer[i +        step], r);
 					swap_shared<T>(buffer[i +  512], buffer[i +  512 + step], r);
 				#endif
-				#if GPTA_BLOCK_SIZE >= 2048
+				#if BLOCK_SIZE >= 2048
 					swap_shared<T>(buffer[i + 1024], buffer[i + 1024 + step], r);
 					swap_shared<T>(buffer[i + 1536], buffer[i + 1536 + step], r);
 				#endif
-				#if GPTA_BLOCK_SIZE >= 4096
+				#if BLOCK_SIZE >= 4096
 					swap_shared<T>(buffer[i + 2048], buffer[i + 2048 + step], r);
 					swap_shared<T>(buffer[i + 2560], buffer[i + 2560 + step], r);
 					swap_shared<T>(buffer[i + 3072], buffer[i + 3072 + step], r);
@@ -820,7 +922,7 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 		dir = level << 1;
 		//////////////////////////////////////////////
 		//////////Reduce-Rebuild 4096 - 2048//////////
-		#if GPTA_BLOCK_SIZE >= 4096
+		#if BLOCK_SIZE >= 4096
 			i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
 			v0 = fmaxf(buffer[i       ], buffer[i +        k]);
 			v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
@@ -853,7 +955,7 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 		//////////////////////////////////////////////
 		//////////Reduce-Rebuild 2048 - 1024//////////
-		#if GPTA_BLOCK_SIZE >= 2048
+		#if BLOCK_SIZE >= 2048
 			i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
 			v0 = fmaxf(buffer[i       ], buffer[i +        k]);
 			v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
@@ -876,7 +978,7 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 		//////////////////////////////////////////////
 		//////////Reduce-Rebuild 1024 - 512//////////
-		#if GPTA_BLOCK_SIZE >= 1024
+		#if BLOCK_SIZE >= 1024
 			i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
 			v0 = fmaxf(buffer[i       ], buffer[i +        k]);
 			v1 = fmaxf(buffer[i +  512], buffer[i +  512 + k]);
@@ -894,7 +996,7 @@ __global__ void gpta_geq_32(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 
 		////////////////////////////////////////////
 		//////////Reduce-Rebuild 512 - 256//////////
-		#if GPTA_BLOCK_SIZE >= 512
+		#if BLOCK_SIZE >= 512
 			i = (threadIdx.x << 1) - (threadIdx.x & (k - 1));
 			v0 = fmaxf(buffer[i       ], buffer[i +        k]);
 			__syncthreads();
@@ -1031,13 +1133,13 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 	if(threadIdx.x < 32) heap[threadIdx.x] = 0;
 	while(b < nb)
 	{
-		#if GPTA_BLOCK_SIZE >= 1024
+		#if BLOCK_SIZE >= 1024
 			T v0 = 0, v1 = 0, v2 = 0, v3 = 0;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 1024
+		#if BLOCK_SIZE >= 1024
 			T v4 = 0, v5 = 0, v6 = 0, v7 = 0;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 4096
+		#if BLOCK_SIZE >= 4096
 			T v8 = 0, v9 = 0, vA = 0, vB = 0;
 			T vC = 0, vD = 0, vE = 0, vF = 0;
 		#endif
@@ -1056,19 +1158,19 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			T w = gpu_weights[ai];
 
 			if(threadIdx.x == 0) threshold[NUM_DIMS] += threshold[ai] * w;
-			#if GPTA_BLOCK_SIZE >= 1024
+			#if BLOCK_SIZE >= 1024
 				v0 += data[start       ] * w;
 				v1 += data[start +  256] * w;
 				v2 += data[start +  512] * w;
 				v3 += data[start +  768] * w;
 			#endif
-			#if GPTA_BLOCK_SIZE >= 2048
+			#if BLOCK_SIZE >= 2048
 				v4 += data[start + 1024] * w;
 				v5 += data[start + 1280] * w;
 				v6 += data[start + 1536] * w;
 				v7 += data[start + 1792] * w;
 			#endif
-			#if GPTA_BLOCK_SIZE >= 4096
+			#if BLOCK_SIZE >= 4096
 				v8 += data[start + 2048] * w;
 				v9 += data[start + 2304] * w;
 				vA += data[start + 2560] * w;
@@ -1086,19 +1188,19 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 		for(level = 1; level < k; level = level << 1){
 			for(step = level; step > 0; step = step >> 1){
 				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
-				#if GPTA_BLOCK_SIZE >= 1024
+				#if BLOCK_SIZE >= 1024
 					v0 = swap(v0,step,dir);
 					v1 = swap(v1,step,dir);
 					v2 = swap(v2,step,dir);
 					v3 = swap(v3,step,dir);
 				#endif
-				#if GPTA_BLOCK_SIZE >= 2048
+				#if BLOCK_SIZE >= 2048
 					v4 = swap(v4,step,dir);
 					v5 = swap(v5,step,dir);
 					v6 = swap(v6,step,dir);
 					v7 = swap(v7,step,dir);
 				#endif
-				#if GPTA_BLOCK_SIZE >= 4096
+				#if BLOCK_SIZE >= 4096
 					v8 = swap(v8,step,dir);
 					v9 = swap(v9,step,dir);
 					vA = swap(vA,step,dir);
@@ -1110,7 +1212,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 				#endif
 			}
 		}
-		#if GPTA_BLOCK_SIZE >= 1024
+		#if BLOCK_SIZE >= 1024
 			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
 			v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
 			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
@@ -1118,7 +1220,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			v0 = (threadIdx.x & k) == 0 ? v0 : v1;
 			v2 = (threadIdx.x & k) == 0 ? v2 : v3;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 2048
+		#if BLOCK_SIZE >= 2048
 			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
 			v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
 			v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
@@ -1126,7 +1228,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			v4 = (threadIdx.x & k) == 0 ? v4 : v5;
 			v6 = (threadIdx.x & k) == 0 ? v6 : v7;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 4096
+		#if BLOCK_SIZE >= 4096
 			v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
 			v9 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v9, k),v9);
 			vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
@@ -1145,32 +1247,32 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 		level = k >> 1;
 		for(step = level; step > 0; step = step >> 1){
 			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
-			#if GPTA_BLOCK_SIZE >= 1024
+			#if BLOCK_SIZE >= 1024
 				v0 = swap(v0,step,dir);
 				v2 = swap(v2,step,dir);
 			#endif
-			#if GPTA_BLOCK_SIZE >= 2048
+			#if BLOCK_SIZE >= 2048
 				v4 = swap(v4,step,dir);
 				v6 = swap(v6,step,dir);
 			#endif
-			#if GPTA_BLOCK_SIZE >= 4096
+			#if BLOCK_SIZE >= 4096
 				v8 = swap(v8,step,dir);
 				vA = swap(vA,step,dir);
 				vC = swap(vC,step,dir);
 				vE = swap(vE,step,dir);
 			#endif
 		}
-		#if GPTA_BLOCK_SIZE >= 1024
+		#if BLOCK_SIZE >= 1024
 			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
 			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
 			v0 = (threadIdx.x & k) == 0 ? v0 : v2;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 2048
+		#if BLOCK_SIZE >= 2048
 			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
 			v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
 			v4 = (threadIdx.x & k) == 0 ? v4 : v6;
 		#endif
-		#if GPTA_BLOCK_SIZE >= 4096
+		#if BLOCK_SIZE >= 4096
 			v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
 			vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
 			vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
@@ -1180,13 +1282,13 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 		#endif
 
 		//{1024,512} -> {512,256}
-		#if GPTA_BLOCK_SIZE >= 2048
+		#if BLOCK_SIZE >= 2048
 			level = k >> 1;
 			for(step = level; step > 0; step = step >> 1){
 				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 				v0 = swap(v0,step,dir);
 				v4 = swap(v4,step,dir);
-				#if GPTA_BLOCK_SIZE >= 4096
+				#if BLOCK_SIZE >= 4096
 					v8 = swap(v8,step,dir);
 					vC = swap(vC,step,dir);
 				#endif
@@ -1194,7 +1296,7 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
 			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
 			v0 = (threadIdx.x & k) == 0 ? v0 : v4;
-			#if GPTA_BLOCK_SIZE >= 4096
+			#if BLOCK_SIZE >= 4096
 				v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
 				vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
 				v8 = (threadIdx.x & k) == 0 ? v8 : vC;
@@ -1202,17 +1304,15 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 		#endif
 
 		//{512} -> {256}
-		#if GPTA_BLOCK_SIZE >= 4096
-			level = k >> 1;
-			for(step = level; step > 0; step = step >> 1){
-				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
-				v0 = swap(v0,step,dir);
-				v8 = swap(v8,step,dir);
-			}
-			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
-			v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
-			v0 = (threadIdx.x & k) == 0 ? v0 : v8;
-		#endif
+		level = k >> 1;
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+			v8 = swap(v8,step,dir);
+		}
+		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+		v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
+		v0 = (threadIdx.x & k) == 0 ? v0 : v8;
 
 		buffer[threadIdx.x] = v0;
 		__syncthreads();
@@ -1371,6 +1471,11 @@ __global__ void assign(uint32_t *keys_out, uint32_t *part, uint64_t n, uint32_t 
 		uint32_t tid = keys_out[i];
 		part[tid] = part[tid] + (i/(((n-1)/GPTA_SPLITS)+1)) * mul;
 	}
+}
+
+__global__ void random_assign(uint32_t *part, uint32_t n, uint32_t part_num){
+	uint64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+	if(i < n) part[i] = i/(n/part_num);
 }
 
 __global__ void init_part(uint32_t *part, uint64_t n)

@@ -4,7 +4,7 @@
 ###### DATA PARAMETERS ######
 #############################
 START_N=$((1*1024*1024))
-END_N=$((32*1024*1024))
+END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=1
@@ -91,9 +91,9 @@ SLA_B=0
 
 ######CHOOSE GPU ALGORITHM######
 #BTA Benchmark
-BTA_B=1
+BTA_B=0
 #GVTA Benchmark
-GVTA_B=0
+GVTA_B=1
 #GPTA Benchmark
 GPTA_B=0
 #####################################################################################	

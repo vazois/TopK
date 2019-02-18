@@ -5,7 +5,7 @@
 
 //PTA DEVICE MEMORY USAGE//
 #define GVTA_USE_DEV_MEM_REORDER true
-#define GVTA_USE_DEV_MEM_PROCESSING false
+#define GVTA_USE_DEV_MEM_PROCESSING true
 
 #define GVTA_PARTITIONS 256 //at least 8 partitions//
 #define GVTA_BLOCK_SIZE 4096
@@ -406,6 +406,7 @@ void GVTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
 	#else
 		cout = gout;
+		cout2 = gout2;
 	#endif
 	std::sort(cout, cout + k, std::greater<T>());
 	this->gpu_threshold = cout[k-1];
@@ -447,6 +448,7 @@ void GVTA<T,Z>::geq_32_driver(uint64_t k,uint64_t qq){
 		cutil::safeCopyToHost<T,uint64_t>(cout, gout, sizeof(T) * k, "error copying (k) from gout to out");
 	#else
 		cout = gout;
+		cout2 = gout2;
 	#endif
 	this->gpu_threshold = cout[k-1];
 
