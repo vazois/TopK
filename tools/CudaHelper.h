@@ -145,7 +145,6 @@ namespace cutil{
 
 	template<typename DATA_T, typename SIZE_T>
 	__host__ void safeMallocManaged(DATA_T **addr, SIZE_T size, std::string msg, unsigned int flags){
-		//error = cudaMallocManaged(&(*addr),size,flags);
 		error = cudaMallocManaged(&(*addr),size);
 		cudaCheckErr(error, "Error Alloc Host "+msg);
 	}

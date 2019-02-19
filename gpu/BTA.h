@@ -57,6 +57,7 @@ class BTA : public GAA<T,Z>{
 		T *csvector_out = NULL;
 		T *gsvector = NULL;
 		T *gsvector_out = NULL;
+		uint64_t BLOCKS;
 };
 
 template<class T, class Z>
@@ -82,16 +83,17 @@ void BTA<T,Z>::alloc(){
 template<class T, class Z>
 void BTA<T,Z>::init()
 {
+	BLOCKS = ((this->n-1)/BTA_TUPLES_PER_BLOCK);
 	normalize_transpose<T>(this->cdata, this->n, this->d);
-	cutil::safeMallocHost<T,uint64_t>(&(this->csvector),sizeof(T)*this->n,"csvector alloc");//Allocate cpu scores memory
-	cutil::safeMallocHost<T,uint64_t>(&(this->csvector_out),sizeof(T)*this->n,"csvector alloc");//Allocate cpu scores memory
-	this->clear(this->csvector,this->n);
-	this->clear(this->csvector_out,this->n);
+	cutil::safeMallocHost<T,uint64_t>(&(this->csvector),sizeof(T) * BLOCKS * KKE,"csvector alloc");//Allocate cpu scores memory
+	cutil::safeMallocHost<T,uint64_t>(&(this->csvector_out),sizeof(T) * BLOCKS * KKE,"csvector alloc");//Allocate cpu scores memory
+	this->clear(this->csvector, BLOCKS * KKE);
+	this->clear(this->csvector_out, BLOCKS * KKE);
 
 	#if BTA_USE_DEV_MEM_PROCESSING
 		cutil::safeCopyToDevice<T,uint64_t>(this->gdata,this->cdata,sizeof(T)*this->n*this->d, " copy from cdata to gdata ");//Copy data from cpu to gpu memory
-		cutil::safeMalloc<T,uint64_t>(&(this->gsvector),sizeof(T)*this->n,"gsvector alloc");//Allocate gpu scores memory
-		cutil::safeMalloc<T,uint64_t>(&(this->gsvector_out),sizeof(T)*this->n,"gsvector_out alloc");//Allocate gpu scores memory
+		cutil::safeMalloc<T,uint64_t>(&(this->gsvector),sizeof(T) * BLOCKS * KKE,"gsvector alloc");//Allocate gpu scores memory
+		cutil::safeMalloc<T,uint64_t>(&(this->gsvector_out),sizeof(T) * BLOCKS * KKE,"gsvector_out alloc");//Allocate gpu scores memory
 	#else
 		this->gdata = this->cdata;
 		this->gsvector = this->csvector;
@@ -152,8 +154,8 @@ void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 
 	dim3 agg_lsort_block(256,1,1);
 	dim3 agg_lsort_grid(((this->n-1)/BTA_TUPLES_PER_BLOCK) + 1,1,1);
-	gclear_driver(gsvector,this->n);
-	gclear_driver(gsvector_out,this->n);
+	gclear_driver(gsvector,BLOCKS * KKE);
+	gclear_driver(gsvector_out,BLOCKS * KKE);
 
 	//1:Local sort
 	this->t.start();
@@ -200,8 +202,8 @@ void BTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq){
 
 	dim3 agg_lsort_block(256,1,1);
 	dim3 agg_lsort_grid(((this->n-1)/BTA_TUPLES_PER_BLOCK) + 1,1,1);
-	gclear_driver(gsvector,this->n);
-	gclear_driver(gsvector_out,this->n);
+	gclear_driver(gsvector,BLOCKS * KKE);
+	gclear_driver(gsvector_out,BLOCKS * KKE);
 
 	//1: local sort
 	this->t.start();
