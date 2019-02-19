@@ -3,7 +3,7 @@
 
 #include "GAA.h"
 
-#define BTA_TUPLES_PER_BLOCK 4096
+#define BTA_TUPLES_PER_BLOCK 2048
 #define BTA_USE_DEV_MEM_PROCESSING false
 
 template<class T>
@@ -179,7 +179,6 @@ void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T) * k,"copy from csvector to gsvector");
 	#else
 		csvector = gsvector;
-		csvector_out = gsvector_out;
 	#endif
 	this->gpu_threshold = csvector[k-1];
 	this->validate(k,qq);
@@ -229,7 +228,6 @@ void BTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq){
 		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T) * k,"copy from csvector to gsvector");
 	#else
 		csvector = gsvector;
-		csvector_out = gsvector_out;
 	#endif
 
 	this->gpu_threshold = csvector[k-1];

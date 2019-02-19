@@ -5,7 +5,7 @@
 
 //PTA DEVICE MEMORY USAGE//
 #define GVTA_USE_DEV_MEM_REORDER true
-#define GVTA_USE_DEV_MEM_PROCESSING true
+#define GVTA_USE_DEV_MEM_PROCESSING false
 
 #define GVTA_PARTITIONS 256 //at least 8 partitions//
 #define GVTA_BLOCK_SIZE 4096

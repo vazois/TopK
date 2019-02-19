@@ -26,7 +26,7 @@
 #define GPTA_BLOCK_SIZE 4096
 
 //Choose polar or random partitioning, configuration for random partitioning
-#define ENABLE_POLAR_PARTITIONING true
+#define ENABLE_POLAR_PARTITIONING false
 #define GPTA_R_PARTITIONS 256 //at least 8 partitions//
 #define GPTA_R_BLOCK_SIZE 4096
 
@@ -1151,6 +1151,9 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			if(threadIdx.x == 0) threshold[NUM_DIMS] = 0;
 		}
 
+		/*
+		 * Aggregate
+		 */
 		for(uint32_t m = 0; m < qq; m++)
 		{
 			Z ai = gpu_query[m];
@@ -1182,8 +1185,9 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			#endif
 		}
 
-		//{4096,2048,1024} -> {2048,1024,512}
-		//uint32_t laneId = threadIdx.x;
+		/*
+		 * Sort data in registers
+		 */
 		uint32_t level, step, dir;
 		for(level = 1; level < k; level = level << 1){
 			for(step = level; step > 0; step = step >> 1){
@@ -1212,23 +1216,16 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 				#endif
 			}
 		}
-		#if BLOCK_SIZE >= 1024
+
+		#if GPTA_BLOCK_SIZE >= 4096
 			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
 			v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
 			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
 			v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
-			v0 = (threadIdx.x & k) == 0 ? v0 : v1;
-			v2 = (threadIdx.x & k) == 0 ? v2 : v3;
-		#endif
-		#if BLOCK_SIZE >= 2048
 			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
 			v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
 			v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
 			v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
-			v4 = (threadIdx.x & k) == 0 ? v4 : v5;
-			v6 = (threadIdx.x & k) == 0 ? v6 : v7;
-		#endif
-		#if BLOCK_SIZE >= 4096
 			v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
 			v9 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v9, k),v9);
 			vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
@@ -1237,82 +1234,85 @@ __global__ void gpta_atm_16(gpta_part<T,Z> *gparts, uint64_t qq, uint64_t k, T *
 			vD = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vD, k),vD);
 			vE = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vE, k),vE);
 			vF = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vF, k),vF);
-			v8 = (threadIdx.x & k) == 0 ? v8 : v9;
-			vA = (threadIdx.x & k) == 0 ? vA : vB;
-			vC = (threadIdx.x & k) == 0 ? vC : vD;
-			vE = (threadIdx.x & k) == 0 ? vE : vF;
-		#endif
-
-		//{2048,1024,512} -> {1024,512,256}
-		level = k >> 1;
-		for(step = level; step > 0; step = step >> 1){
-			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
-			#if BLOCK_SIZE >= 1024
-				v0 = swap(v0,step,dir);
-				v2 = swap(v2,step,dir);
-			#endif
-			#if BLOCK_SIZE >= 2048
-				v4 = swap(v4,step,dir);
-				v6 = swap(v6,step,dir);
-			#endif
-			#if BLOCK_SIZE >= 4096
-				v8 = swap(v8,step,dir);
-				vA = swap(vA,step,dir);
-				vC = swap(vC,step,dir);
-				vE = swap(vE,step,dir);
-			#endif
-		}
-		#if BLOCK_SIZE >= 1024
-			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
-			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
-			v0 = (threadIdx.x & k) == 0 ? v0 : v2;
-		#endif
-		#if BLOCK_SIZE >= 2048
-			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
-			v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
-			v4 = (threadIdx.x & k) == 0 ? v4 : v6;
-		#endif
-		#if BLOCK_SIZE >= 4096
-			v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
-			vA = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vA, k),vA);
-			vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
-			vE = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vE, k),vE);
-			v8 = (threadIdx.x & k) == 0 ? v8 : vA;
-			vC = (threadIdx.x & k) == 0 ? vC : vE;
-		#endif
-
-		//{1024,512} -> {512,256}
-		#if BLOCK_SIZE >= 2048
+			v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+			v1 = (threadIdx.x & k) == 0 ? v2 : v3;
+			v2 = (threadIdx.x & k) == 0 ? v4 : v5;
+			v3 = (threadIdx.x & k) == 0 ? v6 : v7;
+			v4 = (threadIdx.x & k) == 0 ? v8 : v9;
+			v5 = (threadIdx.x & k) == 0 ? vA : vB;
+			v6 = (threadIdx.x & k) == 0 ? vC : vD;
+			v7 = (threadIdx.x & k) == 0 ? vE : vF;
 			level = k >> 1;
 			for(step = level; step > 0; step = step >> 1){
 				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 				v0 = swap(v0,step,dir);
+				v1 = swap(v1,step,dir);
+				v2 = swap(v2,step,dir);
+				v3 = swap(v3,step,dir);
 				v4 = swap(v4,step,dir);
-				#if BLOCK_SIZE >= 4096
-					v8 = swap(v8,step,dir);
-					vC = swap(vC,step,dir);
-				#endif
+				v5 = swap(v5,step,dir);
+				v6 = swap(v6,step,dir);
+				v7 = swap(v7,step,dir);
 			}
-			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
-			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
-			v0 = (threadIdx.x & k) == 0 ? v0 : v4;
-			#if BLOCK_SIZE >= 4096
-				v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
-				vC = fmaxf(__shfl_xor_sync(0xFFFFFFFF, vC, k),vC);
-				v8 = (threadIdx.x & k) == 0 ? v8 : vC;
-			#endif
 		#endif
 
-		//{512} -> {256}
-		level = k >> 1;
-		for(step = level; step > 0; step = step >> 1){
-			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
-			v0 = swap(v0,step,dir);
-			v8 = swap(v8,step,dir);
-		}
-		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
-		v8 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v8, k),v8);
-		v0 = (threadIdx.x & k) == 0 ? v0 : v8;
+		/*
+		 * Reduce - Rebuild : 2048 -> 1024
+		 */
+		#if GPTA_BLOCK_SIZE >= 2048
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+			v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+			v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
+			v5 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v5, k),v5);
+			v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
+			v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
+			v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+			v1 = (threadIdx.x & k) == 0 ? v2 : v3;
+			v2 = (threadIdx.x & k) == 0 ? v4 : v5;
+			v3 = (threadIdx.x & k) == 0 ? v6 : v7;
+			level = k >> 1;
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+				v1 = swap(v1,step,dir);
+				v2 = swap(v2,step,dir);
+				v3 = swap(v3,step,dir);
+			}
+		#endif
+
+		/*
+		 * Reduce - Rebuild : 1024 -> 512
+		 */
+		#if GPTA_BLOCK_SIZE >= 1024
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+			v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
+			v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+			v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+			v1 = (threadIdx.x & k) == 0 ? v2 : v3;
+			level = k >> 1;
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+				v1 = swap(v1,step,dir);
+			}
+		#endif
+
+		/*
+		 * Reduce - Rebuild : 512 -> 256
+		 */
+		#if GPTA_BLOCK_SIZE >= 512
+			v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+			v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+			v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+			level = k >> 1;
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+			}
+		#endif
 
 		buffer[threadIdx.x] = v0;
 		__syncthreads();
