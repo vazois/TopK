@@ -11,6 +11,8 @@
 #include <queue>
 #include <algorithm>
 #include <cub/cub.cuh>
+#include <chrono>
+#include <thread>
 
 #define SHARED_MEM_BYTES 49152
 #define THREADS_PER_BLOCK 256
@@ -19,7 +21,7 @@
 
 #include <unistd.h>
 
-#define VALIDATE true//ENABLE RESULT VALIDATION//
+#define VALIDATE false//ENABLE RESULT VALIDATION//
 
 //VTA DEVICE MEMORY USAGE//
 #define USE_DEVICE_MEM true
@@ -231,13 +233,13 @@ class GAA{
 		};
 
 		~GAA<T,Z>(){
-			if(this->cdata) cutil::safeCudaFreeHost(this->cdata,"free cdata"); //if(this->cdata != NULL){ cudaFreeHost(this->cdata); this->cdata = NULL; }
+			if(this->cdata) cutil::safeCudaFreeHost(this->cdata,"free GAA cdata"); //if(this->cdata != NULL){ cudaFreeHost(this->cdata); this->cdata = NULL; }
 			if(this->cids) cutil::safeCudaFreeHost(this->cids,"free cids"); //if(this->cids != NULL){ cudaFreeHost(this->cids); this->cids = NULL; }
 			if(this->cscores) cutil::safeCudaFreeHost(this->cscores,"free cscores"); //if(this->cscores != NULL){ cudaFreeHost(this->cscores); this->cscores = NULL; }
 
-			if(this->gdata) cutil::safeCudaFree(this->gdata,"free gdata"); //if(this->gdata != NULL){ cudaFree(this->gdata); this->gdata = NULL; }
-			if(this->gids) cutil::safeCudaFree(this->gids,"free gids"); //if(this->gids != NULL){ cudaFree(this->gids); this->gids = NULL; }
-			if(this->gscores) cutil::safeCudaFree(this->gscores,"free gscores"); //if(this->gscores != NULL){ cudaFree(this->gscores); this->gscores = NULL; }
+			if(this->gdata) cutil::safeCudaFree<T>(this->gdata,"free gdata"); //if(this->gdata != NULL){ cudaFree(this->gdata); this->gdata = NULL; }
+			if(this->gids) cutil::safeCudaFree<Z>(this->gids,"free gids"); //if(this->gids != NULL){ cudaFree(this->gids); this->gids = NULL; }
+			if(this->gscores) cutil::safeCudaFree<T>(this->gscores,"free gscores"); //if(this->gscores != NULL){ cudaFree(this->gscores); this->gscores = NULL; }
 		};
 
 		void findTopKtpac(uint64_t k,uint8_t qq, T *weights, uint32_t *attr);

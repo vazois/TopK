@@ -57,16 +57,15 @@ namespace cutil{
 	template<typename DATA_T, typename SIZE_T>
 	__host__ void safeCopyToHost(DATA_T *to, DATA_T *from, SIZE_T size, std::string msg);
 
-	__host__ void safeCudaFree(void *devPtr, std::string msg);
-	__host__ void safeCudaFreeHost(void *ptr , std::string msg);
-
-	__host__ void safeCudaFree(void *devPtr, std::string msg){
+	template<class DATA_T> __host__ void safeCudaFree(DATA_T *& devPtr, std::string msg);
+	template<class DATA_T> __host__ void safeCudaFree(DATA_T *& devPtr, std::string msg){
 		cudaFree(devPtr);
 		cudaCheckErr(cudaPeekAtLastError(),msg);
 		devPtr = NULL;
 	}
 
-	__host__ void safeCudaFreeHost(void *ptr , std::string msg){
+	template<class DATA_T> __host__ void safeCudaFreeHost(DATA_T *& ptr , std::string msg);
+	template<class DATA_T> __host__ void safeCudaFreeHost(DATA_T *& ptr , std::string msg){
 		cudaFreeHost(ptr);
 		cudaCheckErr(cudaPeekAtLastError(),msg);
 		ptr = NULL;

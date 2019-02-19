@@ -36,7 +36,7 @@ void bench_bta(std::string fname, uint64_t n, uint64_t d, uint64_t ks, uint64_t 
 	bta.init();
 	bta.set_iter(ITER);
 	bta.reset_stats();
-	uint64_t q = 2;
+	uint64_t q = 8;
 	if(IMP < 3){
 		for(uint64_t k = ks; k <= ke; k*=2){
 			for(uint64_t i = q; i <= f.items();i+=QD){

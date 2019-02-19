@@ -5,7 +5,7 @@
 
 //PTA DEVICE MEMORY USAGE//
 #define GVTA_USE_DEV_MEM_REORDER true
-#define GVTA_USE_DEV_MEM_PROCESSING false
+#define GVTA_USE_DEV_MEM_PROCESSING true
 
 #define GVTA_PARTITIONS 256 //at least 8 partitions//
 #define GVTA_BLOCK_SIZE 4096
@@ -58,14 +58,14 @@ class GVTA : public GAA<T,Z>{
 		{
 			cudaStreamDestroy(s0);
 			cudaStreamDestroy(s1);
-			if(this->cblocks) cutil::safeCudaFreeHost(this->cblocks, "free cblocks"); //cudaFreeHost(this->blocks);
-			if(this->cout) cutil::safeCudaFreeHost(this->cout,"free cout"); //cudaFreeHost(cout);
-			if(this->cout2) cutil::safeCudaFreeHost(this->cout2,"free cout2"); //cudaFreeHost(cout);
+			if(this->cblocks) cutil::safeCudaFreeHost<gvta_block<T,Z>>(this->cblocks, "free cblocks"); //cudaFreeHost(this->blocks);
+			if(this->cout) cutil::safeCudaFreeHost<T>(this->cout,"free cout"); //cudaFreeHost(cout);
+			if(this->cout2) cutil::safeCudaFreeHost<T>(this->cout2,"free cout2"); //cudaFreeHost(cout);
 
 			#if GVTA_USE_DEV_MEM_PROCESSING
-				if(this->gblocks) cutil::safeCudaFree(this->gblocks,"free gblocks"); //cudaFree(this->gblocks);
-				if(this->gout) cutil::safeCudaFree(this->gout,"free gout"); //cudaFree(gout);
-				if(this->gout2) cutil::safeCudaFree(this->gout2,"free gout2"); //cudaFree(gout2);
+				if(this->gblocks) cutil::safeCudaFree<gvta_block<T,Z>>(this->gblocks,"free gblocks"); //cudaFree(this->gblocks);
+				if(this->gout) cutil::safeCudaFree<T>(this->gout,"free gout"); //cudaFree(gout);
+				if(this->gout2) cutil::safeCudaFree<T>(this->gout2,"free gout2"); //cudaFree(gout2);
 			#endif
 		};
 
@@ -249,16 +249,16 @@ void GVTA<T,Z>::reorder()
 
 	/////////////////////////
 	//Free not needed space//
-	cutil::safeCudaFree(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
-	cutil::safeCudaFreeHost(grvector,"free grvector"); //cudaFreeHost(grvector);
-	cutil::safeCudaFreeHost(grvector_out,"free grvector_out"); //cudaFreeHost(grvector_out);
-	cutil::safeCudaFreeHost(dkeys_in,"free dkeys_in"); //cudaFreeHost(dkeys_in);
-	cutil::safeCudaFreeHost(dkeys_out,"free dkeys_out"); //cudaFreeHost(dkeys_out);
-	cutil::safeCudaFreeHost(dvalues_in,"free dvalues_in");//cudaFreeHost(dvalues_in);
-	cutil::safeCudaFreeHost(dvalues_out,"free dvalues_out"); //cudaFreeHost(dvalues_out);
-	cutil::safeCudaFreeHost(hkeys,"free hkeys"); //cudaFreeHost(hkeys);
+	cutil::safeCudaFree<void>(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
+	cutil::safeCudaFreeHost<Z>(grvector,"free grvector"); //cudaFreeHost(grvector);
+	cutil::safeCudaFreeHost<Z>(grvector_out,"free grvector_out"); //cudaFreeHost(grvector_out);
+	cutil::safeCudaFreeHost<Z>(dkeys_in,"free dkeys_in"); //cudaFreeHost(dkeys_in);
+	cutil::safeCudaFreeHost<Z>(dkeys_out,"free dkeys_out"); //cudaFreeHost(dkeys_out);
+	cutil::safeCudaFreeHost<T>(dvalues_in,"free dvalues_in");//cudaFreeHost(dvalues_in);
+	cutil::safeCudaFreeHost<T>(dvalues_out,"free dvalues_out"); //cudaFreeHost(dvalues_out);
+	cutil::safeCudaFreeHost<Z>(hkeys,"free hkeys"); //cudaFreeHost(hkeys);
 	#if !VALIDATE
-		cutil::safeCudaFreeHost(this->cdata,"free cdata"); //cudaFreeHost(this->cdata);
+		cutil::safeCudaFreeHost<T>(this->cdata,"free cdata"); //cudaFreeHost(this->cdata);
 	#endif
 }
 

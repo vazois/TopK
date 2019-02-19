@@ -96,24 +96,23 @@ class GPTA : public GAA<T,Z>{
 		};
 
 		~GPTA(){
-			if(this->part_size) cutil::safeCudaFreeHost(this->part_size,"free part_size"); //cudaFreeHost(this->part_size);
+			if(this->part_size) cutil::safeCudaFreeHost<uint32_t>(this->part_size,"free part_size"); //cudaFreeHost(this->part_size);
 			if(this->cparts)
 			{
-				for(uint64_t i = 0; i < PART_NUM; i++) if(this->cparts[i].blocks) cutil::safeCudaFreeHost(this->cparts[i].blocks,"free cparts blocks"); //cudaFreeHost(this->cparts[i].blocks);
-				cutil::safeCudaFreeHost(this->cparts,"free cparts"); //cudaFreeHost(this->cparts);
+				for(uint64_t i = 0; i < PART_NUM; i++) if(this->cparts[i].blocks) cutil::safeCudaFreeHost<gpta_block<T,Z>>(this->cparts[i].blocks,"free cparts blocks"); //cudaFreeHost(this->cparts[i].blocks);
+				cutil::safeCudaFreeHost<gpta_part<T,Z>>(this->cparts,"free cparts"); //cudaFreeHost(this->cparts);
 			}
-
-			if(this->cprts)
-			{
-				for(uint64_t i = 0; i < PART_NUM; i++) if(this->cparts[i].blocks) cutil::safeCudaFree(this->cprts[i].blocks,"free cprts blocks"); //cudaFree(this->cprts[i].blocks);
-				cutil::safeCudaFreeHost(this->cprts,"free cprts"); //cudaFreeHost(this->cprts);
-			}
-			if(this->cout) cutil::safeCudaFreeHost(this->cout,"free cout");
-			if(this->cout2) cutil::safeCudaFreeHost(this->cout2,"free cout2");
+			if(this->cout) cutil::safeCudaFreeHost<T>(this->cout,"free cout");
+			if(this->cout2) cutil::safeCudaFreeHost<T>(this->cout2,"free cout2");
 			#if USE_PTA_DEVICE_MEM
-				if(this->gparts){ cutil::safeCudaFree(this->gparts,"free gparts"); }
-				if(this->gout) cutil::safeCudaFree(this->gout,"free gout");
-				if(this->gout2) cutil::safeCudaFree(this->gout2,"free gout2");
+				if(this->cprts)
+				{
+					for(uint64_t i = 0; i < PART_NUM; i++) if(this->cprts[i].blocks) cutil::safeCudaFree<gpta_block<T,Z>>(this->cprts[i].blocks,"free cprts blocks"); //cudaFree(this->cprts[i].blocks);
+					cutil::safeCudaFreeHost<gpta_part<T,Z>>(this->cprts,"free cprts"); //cudaFreeHost(this->cprts);
+				}
+				if(this->gparts) cutil::safeCudaFree<gpta_part<T,Z>>(this->gparts,"free gparts");
+				if(this->gout) cutil::safeCudaFree<T>(this->gout,"free gout");
+				if(this->gout2) cutil::safeCudaFree<T>(this->gout2,"free gout2");
 			#else
 				this->gdata = NULL;
 			#endif
@@ -300,18 +299,18 @@ void GPTA<T,Z>::polar_partition()
 	////////////////
 	//Free buffers//
 	#if USE_POLAR_DEV_MEM
-		cutil::safeCudaFree(keys_in,"free keys_in"); //cudaFree(keys_in);
-		cutil::safeCudaFree(keys_out,"free keys_out"); //cudaFree(keys_out);
-		cutil::safeCudaFree(values_out,"free values_out"); //cudaFree(values_out);
-		cutil::safeCudaFree(num_vec,"free num_vec"); //cudaFree(num_vec);
-		cutil::safeCudaFree(angle_vec,"free angle_vec"); //cudaFree(angle_vec);
-		cutil::safeCudaFreeHost(cpart,"free cpart"); //cudaFreeHost(cpart);
+		cutil::safeCudaFree<Z>(keys_in,"free keys_in"); //cudaFree(keys_in);
+		cutil::safeCudaFree<Z>(keys_out,"free keys_out"); //cudaFree(keys_out);
+		cutil::safeCudaFree<T>(values_out,"free values_out"); //cudaFree(values_out);
+		cutil::safeCudaFree<T>(num_vec,"free num_vec"); //cudaFree(num_vec);
+		cutil::safeCudaFree<T>(angle_vec,"free angle_vec"); //cudaFree(angle_vec);
+		cutil::safeCudaFreeHost<Z>(cpart,"free cpart"); //cudaFreeHost(cpart);
 	#else
-		cutil::safeCudaFreeHost(keys_in,"free keys_in"); //cudaFreeHost(keys_in);
-		cutil::safeCudaFreeHost(keys_out,"free keys_out"); //cudaFreeHost(keys_out);
-		cutil::safeCudaFreeHost(values_out,"free values_out"); //cudaFreeHost(values_out);
-		cutil::safeCudaFreeHost(num_vec,"free num_vec"); //cudaFreeHost(num_vec);
-		cutil::safeCudaFreeHost(angle_vec,"free angle_vec"); //cudaFreeHost(angle_vec);
+		cutil::safeCudaFreeHost<Z>(keys_in,"free keys_in"); //cudaFreeHost(keys_in);
+		cutil::safeCudaFreeHost<Z>(keys_out,"free keys_out"); //cudaFreeHost(keys_out);
+		cutil::safeCudaFreeHost<T>(values_out,"free values_out"); //cudaFreeHost(values_out);
+		cutil::safeCudaFreeHost<T>(num_vec,"free num_vec"); //cudaFreeHost(num_vec);
+		cutil::safeCudaFreeHost<T>(angle_vec,"free angle_vec"); //cudaFreeHost(angle_vec);
 	#endif
 
 	////////////////////////////////////
@@ -344,15 +343,15 @@ void GPTA<T,Z>::polar_partition()
 	cutil::safeCopyToHost<Z,uint64_t>(this->part_tid,tid_out,sizeof(Z)*this->n,"copy tid_out to part_tid");
 
 	#if USE_PART_REORDER_DEV_MEM
-		cutil::safeCudaFree(tid_in,"free tid_in"); //cudaFree(tid_in);
-		cutil::safeCudaFree(tid_out,"free tid_out"); //cudaFree(tid_out);
-		cutil::safeCudaFree(part_out,"free part_out"); //cudaFree(part_out);
+		cutil::safeCudaFree<Z>(tid_in,"free tid_in"); //cudaFree(tid_in);
+		cutil::safeCudaFree<Z>(tid_out,"free tid_out"); //cudaFree(tid_out);
+		cutil::safeCudaFree<Z>(part_out,"free part_out"); //cudaFree(part_out);
 	#else
-		cutil::safeCudaFreeHost(tid_in,"free tid_in"); //cudaFreeHost(tid_in);
-		cutil::safeCudaFreeHost(tid_out,"free tid_out"); //cudaFreeHost(tid_out);
-		cutil::safeCudaFreeHost(part_out,"free part_out"); //cudaFreeHost(part_out);
+		cutil::safeCudaFreeHost<Z>(tid_in,"free tid_in"); //cudaFreeHost(tid_in);
+		cutil::safeCudaFreeHost<Z>(tid_out,"free tid_out"); //cudaFreeHost(tid_out);
+		cutil::safeCudaFreeHost<Z>(part_out,"free part_out"); //cudaFreeHost(part_out);
 	#endif
-	cutil::safeCudaFree(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
+	cutil::safeCudaFree<void>(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
 	this->tt_init += tt;
 	std::cout << "POLAR PARTITIONING TIME  (ms): " << tt << std::endl;
 }
@@ -428,15 +427,15 @@ void GPTA<T,Z>::random_partition()
 	cutil::safeMallocHost<Z,uint64_t>(&this->part_tid,sizeof(Z)*this->n,"alloc part_tid");
 	cutil::safeCopyToHost<Z,uint64_t>(this->part_tid,tid_out,sizeof(Z)*this->n,"copy tid_out to part_tid");
 	#if USE_PART_REORDER_DEV_MEM
-		cutil::safeCudaFree(tid_in,"free tid_in"); //cudaFree(tid_in);
-		cutil::safeCudaFree(tid_out,"free tid_out"); //cudaFree(tid_out);
-		cutil::safeCudaFree(part_out,"free part_out"); //cudaFree(part_out);
+		cutil::safeCudaFree<Z>(tid_in,"free tid_in"); //cudaFree(tid_in);
+		cutil::safeCudaFree<Z>(tid_out,"free tid_out"); //cudaFree(tid_out);
+		cutil::safeCudaFree<Z>(part_out,"free part_out"); //cudaFree(part_out);
 	#else
-		cutil::safeCudaFreeHost(tid_in,"free tid_in"); //cudaFreeHost(tid_in);
-		cutil::safeCudaFreeHost(tid_out,"free tid_out"); //cudaFreeHost(tid_out);
-		cutil::safeCudaFreeHost(part_out,"free part_out"); //cudaFreeHost(part_out);
+		cutil::safeCudaFreeHost<Z>(tid_in,"free tid_in"); //cudaFreeHost(tid_in);
+		cutil::safeCudaFreeHost<Z>(tid_out,"free tid_out"); //cudaFreeHost(tid_out);
+		cutil::safeCudaFreeHost<Z>(part_out,"free part_out"); //cudaFreeHost(part_out);
 	#endif
-	cutil::safeCudaFree(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
+	cutil::safeCudaFree<void>(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
 	this->tt_init += tt;
 
 	this->tt_init += tt;
@@ -588,19 +587,19 @@ void GPTA<T,Z>::reorder_partition(){
 		}
 	}
 
-	cutil::safeCudaFreeHost(ctid_vec_out,"free ctid_vec_out"); //cudaFreeHost(ctid_vec_out);
-	cutil::safeCudaFreeHost(cattr_vec_in,"free cattr_vec_in"); //cudaFreeHost(cattr_vec_in);
-	cutil::safeCudaFreeHost(cpos,"free cpos"); //cudaFreeHost(cpos);
+	cutil::safeCudaFreeHost<Z>(ctid_vec_out,"free ctid_vec_out"); //cudaFreeHost(ctid_vec_out);
+	cutil::safeCudaFreeHost<T>(cattr_vec_in,"free cattr_vec_in"); //cudaFreeHost(cattr_vec_in);
+	cutil::safeCudaFreeHost<Z>(cpos,"free cpos"); //cudaFreeHost(cpos);
 
 	//Device Memory
-	cutil::safeCudaFree(gattr_vec_in,"free gattr_vec_in"); //cudaFree(gattr_vec_in);
-	cutil::safeCudaFree(gattr_vec_out,"free gattr_vec_out"); //cudaFree(gattr_vec_out);
-	cutil::safeCudaFree(gtid_vec_in,"free gtid_vec_in"); //cudaFree(gtid_vec_in);
-	cutil::safeCudaFree(gtid_vec_out,"free gtid_vec_out"); //cudaFree(gtid_vec_out);
-	cutil::safeCudaFree(gpos,"free gpos"); //cudaFree(gpos);
-	cutil::safeCudaFree(gpos_out,"free gpos_out"); //cudaFree(gpos_out);
+	cutil::safeCudaFree<T>(gattr_vec_in,"free gattr_vec_in"); //cudaFree(gattr_vec_in);
+	cutil::safeCudaFree<T>(gattr_vec_out,"free gattr_vec_out"); //cudaFree(gattr_vec_out);
+	cutil::safeCudaFree<Z>(gtid_vec_in,"free gtid_vec_in"); //cudaFree(gtid_vec_in);
+	cutil::safeCudaFree<Z>(gtid_vec_out,"free gtid_vec_out"); //cudaFree(gtid_vec_out);
+	cutil::safeCudaFree<Z>(gpos,"free gpos"); //cudaFree(gpos);
+	cutil::safeCudaFree<Z>(gpos_out,"free gpos_out"); //cudaFree(gpos_out);
 
-	cutil::safeCudaFree(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
+	cutil::safeCudaFree<void>(d_temp_storage,"free d_temp_storage"); //cudaFree(d_temp_storage);
 	this->tt_init += tt;
 	std::cout << "PARTITION REORDERING TIME (ms): " << tt << std::endl;
 }

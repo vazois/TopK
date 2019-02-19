@@ -3,8 +3,10 @@
 
 #include "GAA.h"
 
-#define BTA_TUPLES_PER_BLOCK 2048
-#define BTA_USE_DEV_MEM_PROCESSING false
+#define BTA_TUPLES_PER_BLOCK 4096
+#define BTA_USE_DEV_MEM_PROCESSING true
+#define BTA_USE_DEV_MEM_FOR_SCORES true
+#define BTA_USE_PREFETCH false
 
 template<class T>
 __global__ void aggregate(T *gdata, uint64_t n, uint64_t qq, T *gscores);
@@ -30,13 +32,18 @@ class BTA : public GAA<T,Z>{
 		};
 
 		~BTA(){
-			if(this->csvector) cutil::safeCudaFreeHost(this->csvector,"free csvector");
-			if(this->csvector_out) cutil::safeCudaFreeHost(this->csvector_out,"free csvector_out");
+			if(this->csvector) cutil::safeCudaFreeHost<T>(this->csvector,"free csvector");
+			if(this->csvector_out) cutil::safeCudaFreeHost<T>(this->csvector_out,"free csvector_out");
+			if(this->cdata) cutil::safeCudaFree<T>(this->cdata,"free BTA cdata");
 			#if BTA_USE_DEV_MEM_PROCESSING
-				if(this->gsvector) cutil::safeCudaFree(this->gsvector,"free gsvector");
-				if(this->gsvector_out) cutil::safeCudaFree(this->gsvector_out,"free gsvector_out");
+				if(this->gsvector) cutil::safeCudaFree<T>(this->gsvector,"free gsvector");
+				if(this->gsvector_out) cutil::safeCudaFree<T>(this->gsvector_out,"free gsvector_out");
 			#else
 				this->gdata = NULL;
+				#if BTA_USE_DEV_MEM_FOR_SCORES
+					if(this->gsvector) cutil::safeCudaFree<T>(this->gsvector,"free gsvector");
+					if(this->gsvector_out) cutil::safeCudaFree<T>(this->gsvector_out,"free gsvector_out");
+				#endif
 			#endif
 		};
 
@@ -57,7 +64,7 @@ class BTA : public GAA<T,Z>{
 		T *csvector_out = NULL;
 		T *gsvector = NULL;
 		T *gsvector_out = NULL;
-		uint64_t BLOCKS;
+		uint64_t svec_size;
 };
 
 template<class T, class Z>
@@ -74,7 +81,7 @@ void BTA<T,Z>::gclear_driver(T *vec, uint64_t size){
 
 template<class T, class Z>
 void BTA<T,Z>::alloc(){
-	cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
+	cutil::safeMallocManaged<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
 	#if USE_DEVICE_MEM
 		cutil::safeMalloc<T,uint64_t>(&(this->gdata),sizeof(T)*this->n*this->d,"gdata alloc");//Allocate gpu data memory
 	#endif
@@ -83,21 +90,26 @@ void BTA<T,Z>::alloc(){
 template<class T, class Z>
 void BTA<T,Z>::init()
 {
-	BLOCKS = ((this->n-1)/BTA_TUPLES_PER_BLOCK);
+	svec_size = ((this->n-1)/BTA_TUPLES_PER_BLOCK) * KKE;
 	normalize_transpose<T>(this->cdata, this->n, this->d);
-	cutil::safeMallocHost<T,uint64_t>(&(this->csvector),sizeof(T) * BLOCKS * KKE,"csvector alloc");//Allocate cpu scores memory
-	cutil::safeMallocHost<T,uint64_t>(&(this->csvector_out),sizeof(T) * BLOCKS * KKE,"csvector alloc");//Allocate cpu scores memory
-	this->clear(this->csvector, BLOCKS * KKE);
-	this->clear(this->csvector_out, BLOCKS * KKE);
+	cutil::safeMallocHost<T,uint64_t>(&(this->csvector),sizeof(T) * svec_size,"csvector alloc");//Allocate cpu scores memory
+	cutil::safeMallocHost<T,uint64_t>(&(this->csvector_out),sizeof(T) * svec_size,"csvector alloc");//Allocate cpu scores memory
+//	this->clear(this->csvector, BLOCKS * KKE);
+//	this->clear(this->csvector_out, BLOCKS * KKE);
 
 	#if BTA_USE_DEV_MEM_PROCESSING
 		cutil::safeCopyToDevice<T,uint64_t>(this->gdata,this->cdata,sizeof(T)*this->n*this->d, " copy from cdata to gdata ");//Copy data from cpu to gpu memory
-		cutil::safeMalloc<T,uint64_t>(&(this->gsvector),sizeof(T) * BLOCKS * KKE,"gsvector alloc");//Allocate gpu scores memory
-		cutil::safeMalloc<T,uint64_t>(&(this->gsvector_out),sizeof(T) * BLOCKS * KKE,"gsvector_out alloc");//Allocate gpu scores memory
+		cutil::safeMalloc<T,uint64_t>(&(this->gsvector),sizeof(T) * svec_size,"gsvector alloc");//Allocate gpu scores memory
+		cutil::safeMalloc<T,uint64_t>(&(this->gsvector_out),sizeof(T) * svec_size,"gsvector_out alloc");//Allocate gpu scores memory
 	#else
 		this->gdata = this->cdata;
-		this->gsvector = this->csvector;
-		this->gsvector_out = this->csvector_out;
+		#if BTA_USE_DEV_MEM_FOR_SCORES
+			cutil::safeMalloc<T,uint64_t>(&(this->gsvector),sizeof(T) * svec_size,"gsvector alloc");//Allocate gpu scores memory
+			cutil::safeMalloc<T,uint64_t>(&(this->gsvector_out),sizeof(T) * svec_size,"gsvector_out alloc");//Allocate gpu scores memory
+		#else
+			this->gsvector = this->csvector;
+			this->gsvector_out = this->csvector_out;
+		#endif
 	#endif
 }
 
@@ -144,18 +156,31 @@ void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 	T *gsvector;
 	T *gsvector_out;
 
+	#if BTA_USE_PREFETCH
+		uint32_t ai = this->query[0];
+		std::cout << "CPU Device: " << cudaCpuDeviceId << std::endl;
+		cudaMemAdvise(&this->cdata[ai * this->n], sizeof(T) * qq, cudaMemAdviseSetReadMostly, 1);
+		cudaMemPrefetchAsync(&this->cdata[ai * this->n], sizeof(T) * qq, 1, cudaStreamLegacy);
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+	#endif
+
 	#if BTA_USE_DEV_MEM_PROCESSING
 		gsvector = this->gsvector;
 		gsvector_out = this->gsvector_out;
 	#else
-		gsvector = csvector;
-		gsvector_out = this->csvector_out;
+		#if BTA_USE_DEV_MEM_FOR_SCORES
+			gsvector = this->gsvector;
+			gsvector_out = this->gsvector_out;
+		#else
+			gsvector = csvector;
+			gsvector_out = this->csvector_out;
+		#endif
 	#endif
 
 	dim3 agg_lsort_block(256,1,1);
 	dim3 agg_lsort_grid(((this->n-1)/BTA_TUPLES_PER_BLOCK) + 1,1,1);
-	gclear_driver(gsvector,BLOCKS * KKE);
-	gclear_driver(gsvector_out,BLOCKS * KKE);
+//	gclear_driver(gsvector,BLOCKS * KKE);
+//	gclear_driver(gsvector_out,BLOCKS * KKE);
 
 	//1:Local sort
 	this->t.start();
@@ -180,7 +205,11 @@ void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 	#if BTA_USE_DEV_MEM_PROCESSING
 		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T) * k,"copy from csvector to gsvector");
 	#else
-		csvector = gsvector;
+		#if BTA_USE_DEV_MEM_FOR_SCORES
+			cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T) * k,"copy from csvector to gsvector");
+		#else
+			csvector = gsvector;
+		#endif
 	#endif
 	this->gpu_threshold = csvector[k-1];
 	this->validate(k,qq);
@@ -196,14 +225,19 @@ void BTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq){
 		gsvector = this->gsvector;
 		gsvector_out = this->gsvector_out;
 	#else
-		gsvector = csvector;
-		gsvector_out = this->csvector_out;
+		#if BTA_USE_DEV_MEM_FOR_SCORES
+			gsvector = this->gsvector;
+			gsvector_out = this->gsvector_out;
+		#else
+			gsvector = csvector;
+			gsvector_out = this->csvector_out;
+		#endif
 	#endif
 
 	dim3 agg_lsort_block(256,1,1);
 	dim3 agg_lsort_grid(((this->n-1)/BTA_TUPLES_PER_BLOCK) + 1,1,1);
-	gclear_driver(gsvector,BLOCKS * KKE);
-	gclear_driver(gsvector_out,BLOCKS * KKE);
+//	gclear_driver(gsvector,BLOCKS * KKE);
+//	gclear_driver(gsvector_out,BLOCKS * KKE);
 
 	//1: local sort
 	this->t.start();
@@ -225,13 +259,16 @@ void BTA<T,Z>::geq_32_driver(uint64_t k, uint64_t qq){
 		remainder = (agg_lsort_grid.x * k);
 		std::swap(gsvector,gsvector_out);
 	}
+
 	#if BTA_USE_DEV_MEM_PROCESSING
-		//cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T)*this->n,"copy from csvector to gsvector");
 		cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T) * k,"copy from csvector to gsvector");
 	#else
-		csvector = gsvector;
+		#if BTA_USE_DEV_MEM_FOR_SCORES
+			cutil::safeCopyToHost<T,uint64_t>(csvector,gsvector,sizeof(T) * k,"copy from csvector to gsvector");
+		#else
+			csvector = gsvector;
+		#endif
 	#endif
-
 	this->gpu_threshold = csvector[k-1];
 	this->validate(k,qq);
 }

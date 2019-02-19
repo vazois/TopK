@@ -151,7 +151,8 @@ else
 			#echo "./gpu_run -f=data/$fname -n=$n -d=$DIMS"
 			set -e
 			./gpu_run -f=data/$fname -n=$n -d=$DIMS
-			#nvprof --kernels "agg_lsort_geq_32|reduce_rebuild_qeq_32|agg_lsort_atm_16|reduce_rebuild_atm_16|gvta_atm_16|gpta_atm_16" --metrics branch_efficiency,dram_read_throughput,dram_write_throughput,dram_utilization,gld_throughput,gld_efficiency,gst_throughput,gst_efficiency,stall_inst_fetch,stall_memory_throttle,stall_memory_dependency,stall_sync,issued_ipc,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS 
+			#nvprof --kernels "agg_lsort_geq_32|reduce_rebuild_qeq_32|agg_lsort_atm_16|reduce_rebuild_atm_16|gvta_atm_16|gpta_atm_16" --metrics branch_efficiency,dram_read_throughput,dram_write_throughput,dram_utilization,gld_throughput,gld_efficiency,gst_throughput,gst_efficiency,stall_inst_fetch,stall_memory_throttle,stall_memory_dependency,stall_sync,issued_ipc,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#nvprof --print-gpu-trace --unified-memory-profiling per-process-device ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 		fi
 		
 		if [ $? -eq 1 ]
