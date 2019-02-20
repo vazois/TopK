@@ -4,9 +4,10 @@
 #include "GAA.h"
 
 #define BTA_TUPLES_PER_BLOCK 4096
-#define BTA_USE_DEV_MEM_PROCESSING true
+#define BTA_USE_DEV_MEM_PROCESSING false
 #define BTA_USE_DEV_MEM_FOR_SCORES true
 #define BTA_USE_PREFETCH false
+#define BTA_MEM_MANAGED true
 
 template<class T>
 __global__ void aggregate(T *gdata, uint64_t n, uint64_t qq, T *gscores);
@@ -34,7 +35,9 @@ class BTA : public GAA<T,Z>{
 		~BTA(){
 			if(this->csvector) cutil::safeCudaFreeHost<T>(this->csvector,"free csvector");
 			if(this->csvector_out) cutil::safeCudaFreeHost<T>(this->csvector_out,"free csvector_out");
-			if(this->cdata) cutil::safeCudaFree<T>(this->cdata,"free BTA cdata");
+			#if BTA_MEM_MANAGED
+				if(this->cdata) cutil::safeCudaFree<T>(this->cdata,"free BTA cdata");
+			#endif
 			#if BTA_USE_DEV_MEM_PROCESSING
 				if(this->gsvector) cutil::safeCudaFree<T>(this->gsvector,"free gsvector");
 				if(this->gsvector_out) cutil::safeCudaFree<T>(this->gsvector_out,"free gsvector_out");
@@ -81,7 +84,11 @@ void BTA<T,Z>::gclear_driver(T *vec, uint64_t size){
 
 template<class T, class Z>
 void BTA<T,Z>::alloc(){
-	cutil::safeMallocManaged<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
+	#if BTA_MEM_MANAGED
+		cutil::safeMallocManaged<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
+	#else
+		cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
+	#endif
 	#if USE_DEVICE_MEM
 		cutil::safeMalloc<T,uint64_t>(&(this->gdata),sizeof(T)*this->n*this->d,"gdata alloc");//Allocate gpu data memory
 	#endif
@@ -159,8 +166,8 @@ void BTA<T,Z>::atm_16_driver(uint64_t k, uint64_t qq){
 	#if BTA_USE_PREFETCH
 		uint32_t ai = this->query[0];
 		std::cout << "CPU Device: " << cudaCpuDeviceId << std::endl;
-		cudaMemAdvise(&this->cdata[ai * this->n], sizeof(T) * qq, cudaMemAdviseSetReadMostly, 1);
-		cudaMemPrefetchAsync(&this->cdata[ai * this->n], sizeof(T) * qq, 1, cudaStreamLegacy);
+		cudaMemAdvise(&this->cdata[ai * this->n], sizeof(T) * qq, cudaMemAdviseSetReadMostly, 0);
+		cudaMemPrefetchAsync(&this->cdata[ai * this->n], sizeof(T) * qq, 0, cudaStreamLegacy);
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 	#endif
 

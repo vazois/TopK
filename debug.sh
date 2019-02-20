@@ -3,7 +3,7 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((32*1024*1024))
+START_N=$((1*1024*1024))
 END_N=$((32*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
@@ -61,7 +61,7 @@ QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
 IMP=1
 #ITER Testing iterations
-ITER=1
+ITER=10
 #Multiple Thread Count
 MQTHREADS=16
 #Gather object evaluation statistics
@@ -91,11 +91,11 @@ SLA_B=0
 
 ######CHOOSE GPU ALGORITHM######
 #BTA Benchmark
-BTA_B=1
+BTA_B=0
 #GVTA Benchmark
 GVTA_B=0
 #GPTA Benchmark
-GPTA_B=0
+GPTA_B=1
 #####################################################################################	
 
 
@@ -152,7 +152,10 @@ else
 			set -e
 			./gpu_run -f=data/$fname -n=$n -d=$DIMS
 			#nvprof --kernels "agg_lsort_geq_32|reduce_rebuild_qeq_32|agg_lsort_atm_16|reduce_rebuild_atm_16|gvta_atm_16|gpta_atm_16" --metrics branch_efficiency,dram_read_throughput,dram_write_throughput,dram_utilization,gld_throughput,gld_efficiency,gst_throughput,gst_efficiency,stall_inst_fetch,stall_memory_throttle,stall_memory_dependency,stall_sync,issued_ipc,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#nvprof --unified-memory-profiling per-process-device --log-file my.log ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 			#nvprof --print-gpu-trace --unified-memory-profiling per-process-device ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#nvprof --print-api-trace --unified-memory-profiling per-process-device ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#nvprof --unified-memory-profiling per-process-device ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 		fi
 		
 		if [ $? -eq 1 ]
