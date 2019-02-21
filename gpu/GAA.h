@@ -21,7 +21,7 @@
 
 #include <unistd.h>
 
-#define VALIDATE false//ENABLE RESULT VALIDATION//
+#define VALIDATE true//ENABLE RESULT VALIDATION//
 
 //VTA DEVICE MEMORY USAGE//
 #define USE_DEVICE_MEM true
@@ -42,17 +42,17 @@ __device__ inline void swap_shared(T &a, T &b, bool r)
 }
 
 template<class T>
-__device__ T swap(T a, uint32_t stride, int dir){
+__device__ inline T swap(T a, uint32_t stride, int dir){
 	T b = __shfl_xor_sync(0xFFFFFFFF,a,stride);
 	return ((a < b) == dir) ? b : a;
 }
 template<class T>
-__device__ T rswap(T a, uint32_t stride, int dir){
+__device__ inline T rswap(T a, uint32_t stride, int dir){
 	T b = __shfl_xor_sync(0xFFFFFFFF,a,stride);
 	return ((a > b) == dir) ? b : a;
 }
 
-__device__ uint32_t bfe(uint32_t a, uint32_t i){
+__device__ inline uint32_t bfe(uint32_t a, uint32_t i){
 	return (a >> i) & 0x1;
 }
 

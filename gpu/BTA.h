@@ -4,10 +4,10 @@
 #include "GAA.h"
 
 #define BTA_TUPLES_PER_BLOCK 4096
-#define BTA_USE_DEV_MEM_PROCESSING false
+#define BTA_USE_DEV_MEM_PROCESSING true
 #define BTA_USE_DEV_MEM_FOR_SCORES true
 #define BTA_USE_PREFETCH false
-#define BTA_MEM_MANAGED true
+#define BTA_MEM_MANAGED false
 
 template<class T>
 __global__ void aggregate(T *gdata, uint64_t n, uint64_t qq, T *gscores);
@@ -491,6 +491,11 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 	//Merge//
 	buffer[threadIdx.x] = v0;
 	__syncthreads();
+	//k=1, 	0x55555555
+	//k=2, 	0x33333333
+	//k=4, 	0x0F0F0F0F
+	//k=8, 	0x00FF00FF
+	//k=16, 0xFFFFFFFF
 	if(threadIdx.x < 32)
 	{
 		v0 = buffer[threadIdx.x];
@@ -505,17 +510,17 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		/*
 		 * 256->128
 		 */
-		for(step = level; step > 0; step = step >> 1){
-			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
-			v0 = swap(v0,step,dir);
-			v1 = swap(v1,step,dir);
-			v2 = swap(v2,step,dir);
-			v3 = swap(v3,step,dir);
-			v4 = swap(v4,step,dir);
-			v5 = swap(v5,step,dir);
-			v6 = swap(v6,step,dir);
-			v7 = swap(v7,step,dir);
-		}
+//		for(step = level; step > 0; step = step >> 1){
+//			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+//			v0 = swap(v0,step,dir);
+//			v1 = swap(v1,step,dir);
+//			v2 = swap(v2,step,dir);
+//			v3 = swap(v3,step,dir);
+//			v4 = swap(v4,step,dir);
+//			v5 = swap(v5,step,dir);
+//			v6 = swap(v6,step,dir);
+//			v7 = swap(v7,step,dir);
+//		}
 		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
 		v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
 		v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
@@ -525,9 +530,9 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
 		v7 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v7, k),v7);
 		v0 = (threadIdx.x & k) == 0 ? v0 : v1;
-		v2 = (threadIdx.x & k) == 0 ? v2 : v3;
-		v4 = (threadIdx.x & k) == 0 ? v4 : v5;
-		v6 = (threadIdx.x & k) == 0 ? v6 : v7;
+		v1 = (threadIdx.x & k) == 0 ? v2 : v3;
+		v2 = (threadIdx.x & k) == 0 ? v4 : v5;
+		v3 = (threadIdx.x & k) == 0 ? v6 : v7;
 
 		/*
 		 * 128->64
@@ -535,16 +540,16 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		for(step = level; step > 0; step = step >> 1){
 			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 			v0 = swap(v0,step,dir);
+			v1 = swap(v1,step,dir);
 			v2 = swap(v2,step,dir);
-			v4 = swap(v4,step,dir);
-			v6 = swap(v6,step,dir);
+			v3 = swap(v3,step,dir);
 		}
 		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
+		v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
 		v2 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v2, k),v2);
-		v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
-		v6 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v6, k),v6);
-		v0 = (threadIdx.x & k) == 0 ? v0 : v2;
-		v4 = (threadIdx.x & k) == 0 ? v4 : v6;
+		v3 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v3, k),v3);
+		v0 = (threadIdx.x & k) == 0 ? v0 : v1;
+		v1 = (threadIdx.x & k) == 0 ? v2 : v3;
 
 		/*
 		 * 64->32
@@ -552,11 +557,11 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 		for(step = level; step > 0; step = step >> 1){
 			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
 			v0 = swap(v0,step,dir);
-			v4 = swap(v4,step,dir);
+			v1 = swap(v1,step,dir);
 		}
 		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
-		v4 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v4, k),v4);
-		v0 = (threadIdx.x & k) == 0 ? v0 : v4;
+		v1 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v1, k),v1);
+		v0 = (threadIdx.x & k) == 0 ? v0 : v1;
 
 		/*
 		 * 32->16
@@ -566,17 +571,72 @@ __global__ void agg_lsort_atm_16(T *gdata, uint64_t n, uint64_t qq, uint64_t k, 
 			v0 = swap(v0,step,dir);
 		}
 		v0 = fmaxf(__shfl_xor_sync(0xFFFFFFFF, v0, k),v0);
-		v0 = (threadIdx.x & k) == 0 ? v0 : 0;
+		v0 = __shfl_sync(0x0000FFFF,v0,(threadIdx.x << 1) - (threadIdx.x & (k - 1)));
 
 		/*
-		 * Sort 16
+		 * 16
 		 */
-		for(level = k; level < 32; level = level << 1){
+		for(step = level; step > 0; step = step >> 1){
+			dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+			v0 = swap(v0,step,dir);
+		}
+
+		//8
+		if(k <= 8)
+		{
+			v0 = fmaxf(__shfl_xor_sync(0x0000FFFF, v0, k),v0);
+			v0 = __shfl_sync(0x000000FF,v0,(threadIdx.x << 1) - (threadIdx.x & (k - 1)));
+
 			for(step = level; step > 0; step = step >> 1){
 				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
-				v0 = rswap(v0,step,dir);
+				v0 = swap(v0,step,dir);
 			}
 		}
+
+		//4
+		if(k <= 4)
+		{
+			v0 = fmaxf(__shfl_xor_sync(0x000000FF, v0, k),v0);
+			v0 = __shfl_sync(0x0000000F,v0,(threadIdx.x << 1) - (threadIdx.x & (k - 1)));
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+			}
+		}
+
+		//2
+		if(k <= 2)
+		{
+			v0 = fmaxf(__shfl_xor_sync(0x0000000F, v0, k),v0);
+			v0 = __shfl_sync(0x00000003,v0,(threadIdx.x << 1) - (threadIdx.x & (k - 1)));
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+			}
+		}
+
+		//1
+		if(k <= 1)
+		{
+			v0 = fmaxf(__shfl_xor_sync(0x00000003, v0, k),v0);
+			v0 = __shfl_sync(0x00000001,v0,(threadIdx.x << 1) - (threadIdx.x & (k - 1)));
+			for(step = level; step > 0; step = step >> 1){
+				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+				v0 = swap(v0,step,dir);
+			}
+		}
+
+
+//		/*
+//		 * Sort 16
+//		 */
+//		v0 = (threadIdx.x & k) == 0 ? v0 : 0;
+//		for(level = k; level < 32; level = level << 1){
+//			for(step = level; step > 0; step = step >> 1){
+//				dir = bfe(threadIdx.x,__ffs(level))^bfe(threadIdx.x,__ffs(step>>1));
+//				v0 = rswap(v0,step,dir);
+//			}
+//		}
 
 		/*
 		 * Write-back heaps of each partition

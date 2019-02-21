@@ -4,11 +4,11 @@
 ###### DATA PARAMETERS ######
 #############################
 START_N=$((1*1024*1024))
-END_N=$((32*1024*1024))
+END_N=$((128*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=1
-KKE=256
+KKE=16
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
 LD=1
 
@@ -61,7 +61,7 @@ QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
 IMP=1
 #ITER Testing iterations
-ITER=10
+ITER=1
 #Multiple Thread Count
 MQTHREADS=16
 #Gather object evaluation statistics
