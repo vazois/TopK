@@ -15,7 +15,7 @@ for (( n=$START_YEAR; n<=$END_YEAR; n+=1 ))
 do
 	FILE=$n".csv.gz"
 	echo "Downloading "$FILE" ... "
-	wget -q --show-progress $URL$FILE
+	wget $URL$FILE
 	
 	echo "Unpacking "$FILE" ... "
 	gunzip $FILE
@@ -33,3 +33,5 @@ done
 n=($(wc -l $OUTPUT))
 echo $n
 mv $OUTPUT "w_"$n"_1"
+OUTPUT="w_"$n"_1"
+python extract.py $OUTPUT $D

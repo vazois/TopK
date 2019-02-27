@@ -3,17 +3,17 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((1*1024*1024))
-END_N=$((128*1024*1024))
+START_N=$((32*1024*1024))
+END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=1
-KKE=16
+KKE=256
 #LD 0:load from file, 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
 LD=1
 
 #distr c:correlated i:independent a:anticorrelated
-distr=i
+distr=a
 #randdataset3: higher precission , randdataset: lower precission
 script=randdataset
 
@@ -151,7 +151,14 @@ else
 			#echo "./gpu_run -f=data/$fname -n=$n -d=$DIMS"
 			set -e
 			./gpu_run -f=data/$fname -n=$n -d=$DIMS
-			#nvprof --kernels "agg_lsort_geq_32|reduce_rebuild_qeq_32|agg_lsort_atm_16|reduce_rebuild_atm_16|gvta_atm_16|gpta_atm_16" --metrics branch_efficiency,dram_read_throughput,dram_write_throughput,dram_utilization,gld_throughput,gld_efficiency,gst_throughput,gst_efficiency,stall_inst_fetch,stall_memory_throttle,stall_memory_dependency,stall_sync,issued_ipc,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#rm -rf *.log ; nvprof --print-gpu-trace --log-file my.log ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#nvprof --normalized-time-unit ms --log-file $n"_"$KKS"_"$KKE"_trace".log ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#nvprof --log-file $n"_"$KKS"_"$KKE"_metrics".log --kernels "agg_lsort_geq_32|agg_lsort_atm_16|gvta_atm_16|gpta_atm_16|gpta_atm_16x64" --metrics pcie_total_data_transmitted,dram_read_bytes,dram_read_throughput,dram_utilization,stall_memory_throttle,stall_sync,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#python prof.py $n"_"$KKS"_"$KKE"_trace".log $n"_"$KKS"_"$KKE"_metrics".log
+			#nvprof --kernels "agg_lsort_geq_32|reduce_rebuild_qeq_32|agg_lsort_atm_16|reduce_rebuild_atm_16|gvta_atm_16|gpta_atm_16|gpta_atm_16x64" --metrics dram_read_bytes,dram_read_throughput,dram_utilization,stall_memory_throttle,stall_sync,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#nvprof --kernels "agg_lsort_geq_32|reduce_rebuild_qeq_32|agg_lsort_atm_16|reduce_rebuild_atm_16|gvta_atm_16|gpta_atm_16|gpta_atm_16x64" --metrics branch_efficiency,dram_read_bytes,dram_read_throughput,dram_write_throughput,dram_utilization,gld_throughput,gld_efficiency,gst_throughput,gst_efficiency,stall_inst_fetch,stall_memory_throttle,stall_memory_dependency,stall_sync,issued_ipc,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+			#nvprof --kernels "agg_lsort_geq_32|reduce_rebuild_qeq_32|agg_lsort_atm_16|reduce_rebuild_atm_16|gvta_atm_16|gpta_atm_16|gpta_atm_16x64" --metrics dram_read_bytes,dram_read_throughput,dram_utilization,stall_memory_throttle,stall_sync,sm_efficiency,achieved_occupancy ./gpu_run -f=data/$fname -n=$n -d=$DIMS
+
 			#nvprof --unified-memory-profiling per-process-device --log-file my.log ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 			#nvprof --print-gpu-trace --unified-memory-profiling per-process-device ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 			#nvprof --print-api-trace --unified-memory-profiling per-process-device ./gpu_run -f=data/$fname -n=$n -d=$DIMS

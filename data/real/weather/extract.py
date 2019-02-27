@@ -46,6 +46,7 @@ def extract_csv(fname,d):
 
 if __name__ == "__main__":
 	if len(sys.argv) < 3:
+		print sys.argv
 		print "Usage:",sys.argv[0],"<input_file> <dimension>"
 		exit(1)
     
@@ -53,6 +54,10 @@ if __name__ == "__main__":
 	d = int(sys.argv[2])
 	print "Extract csv data:", fname
 	rows=extract_csv(fname,d)
+	pow2=1
+	while(pow2<<1 < rows):
+		pow2 = pow2 << 1
 	print ""
 	print rows,d
-	os.rename(OUTPUT,"wtuples_"+str(rows)+"_"+str(d))
+	print "pow2: ",pow2
+	os.rename(OUTPUT,"wtuples_"+str(pow2)+"_"+str(d))
