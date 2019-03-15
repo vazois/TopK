@@ -1,11 +1,11 @@
 #ifndef BENCH_COMMON_H
 #define BENCH_COMMON_H
 
-float weights[8] = { 1,1,1,1,1,1,1,1 };//Q0
+//float weights[8] = { 1,1,1,1,1,1,1,1 };//Q0
 //float weights[8] = { 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8 };//Q1
 //float weights[8] = { 0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1 };//Q2
 //float weights[8] = { 0.1,0.2,0.3,0.4,0.4,0.3,0.2,0.1 };//Q3
-//float weights[8] = { 0.4,0.3,0.2,0.1,0.1,0.2,0.3,0.4 };//Q4
+float weights[8] = { 0.4,0.3,0.2,0.1,0.1,0.2,0.3,0.4 };//Q4
 
 #if QM == 0
 	#if NUM_DIMS == 2

@@ -14,11 +14,11 @@
 #define USE_PART_REORDER_DEV_MEM true
 #define USE_BUILD_PART_DEV_MEM true
 #define USE_PTA_DEV_MEM_FOR_SCORES true
-#define USE_PTA_DEVICE_MEM false
+#define USE_PTA_DEVICE_MEM true
 
 //*ENABLE ONLY WHEN USE_PTA_DEVICE_MEM false
-#define USE_PTA_MEM_MANAGED true
-#define PTA_USE_PREFETCH true
+#define USE_PTA_MEM_MANAGED false
+#define PTA_USE_PREFETCH false
 #define PTA_PREFETCH_RATIO 2
 //
 
@@ -30,14 +30,15 @@
 #define GPTA_PARTS (((uint64_t)pow(GPTA_SPLITS,NUM_DIMS-1)))
 #define GPTA_PART_BITS ((uint64_t)log2f(GPTA_SPLITS))
 #define GPTA_BLOCK_SIZE 2048
+#define GPTA_REDUCE 1
 
 //Choose polar or random partitioning, configuration for random partitioning
-#define ENABLE_POLAR_PARTITIONING false
-#define GPTA_R_PARTITIONS 256 //at least 8 partitions//
+#define ENABLE_POLAR_PARTITIONING true
+#define GPTA_R_PARTITIONS 16 //at least 8 partitions//
 #define GPTA_R_BLOCK_SIZE 4096
 
 #if ENABLE_POLAR_PARTITIONING
-	#define PART_NUM (GPTA_PARTS)
+	#define PART_NUM (GPTA_PARTS/GPTA_REDUCE)
 	#define BLOCK_SIZE (GPTA_BLOCK_SIZE)
 #else
 	#define PART_NUM (GPTA_R_PARTITIONS)
@@ -70,6 +71,7 @@ template<class Z>
 __global__ void init_pos(Z *pos, uint64_t n);
 template<class Z>
 __global__ void init_tid_vec(Z *tid_vec, uint64_t n);
+__global__ void reduce(uint32_t *part, uint64_t n);
 __global__ void assign(uint32_t *keys, uint32_t *part, uint64_t n, uint32_t mul);
 __global__ void random_assign(uint32_t *part, uint32_t n, uint32_t part_num);
 __global__ void init_part(uint32_t *part, uint64_t n);
@@ -273,11 +275,11 @@ void GPTA<T,Z>::polar_partition()
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_part");
 	init_num_vec<T><<<polar_grid, polar_block>>>(this->cdata,this->n,this->d-1,num_vec);//initialize numerator vector
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_num_vec");
-	tt += this->t.lap();
+	tt += this->t.lap("init polar");
 	uint32_t mul = 1;
+	this->t.start();
 	for(int m = this->d-1; m > 0; m--)
 	{
-		this->t.start();
 		//a: calculate next angle
 		next_angle<T><<<polar_grid,polar_block>>>(this->cdata,this->n,m-1,num_vec,angle_vec);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_num_vec");
@@ -302,10 +304,14 @@ void GPTA<T,Z>::polar_partition()
 		//d: assign to partition by adding offset value
 		assign<<<polar_grid,polar_block>>>(keys_out,part,this->n,mul);
 		cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing assign");
-		tt += this->t.lap();
 
 		mul *= GPTA_SPLITS;
 	}
+	tt += this->t.lap("polar calculate");
+
+	//reduce
+//	reduce<<<polar_grid,polar_block>>>(part, this->n);
+//	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing reduce");
 
 	//Gather partition size information//
 	Z *cpart;
@@ -318,13 +324,14 @@ void GPTA<T,Z>::polar_partition()
 
 	this->t.start();
 	max_part_size = 0;
-	for(uint64_t i = 0; i < GPTA_PARTS; i++) part_size[i] = 0;
-	for(uint64_t i = 0; i<this->n; i++){
+	for(uint64_t i = 0; i < PART_NUM; i++) part_size[i] = 0;
+	for(uint64_t i = 0; i < this->n; i++){
 		part_size[cpart[i]]++;
 		max_part_size = std::max(max_part_size,part_size[cpart[i]]);
-		if(cpart[i]>=GPTA_PARTS){ std::cout << "ERROR (polar): " << i << "," << cpart[i] << std::endl;  exit(1); }
+		//if(cpart[i]>=GPTA_PARTS){ std::cout << "ERROR (polar): " << i << "," << cpart[i] << std::endl;  exit(1); }
 	}
-	tt += this->t.lap();
+	//for(uint64_t i = 0; i < PART_NUM; i++){ std::cout << i << "," << part_size[i] << std::endl; }
+	tt += this->t.lap("calculate part size cpu");
 
 	////////////////
 	//Free buffers//
@@ -366,7 +373,7 @@ void GPTA<T,Z>::polar_partition()
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_keys for sorting according to partition");
 	cub::DeviceRadixSort::SortPairs(d_temp_storage,temp_storage_bytes, part, part_out, tid_in, tid_out, this->n);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing SortPairs for sorting according to partition");
-	tt += this->t.lap();
+	tt += this->t.lap("sort cpu");
 
 	//Copy ordered tuple ids ordered by partition assignment
 	cutil::safeMallocHost<Z,uint64_t>(&this->part_tid,sizeof(Z)*this->n,"alloc part_tid");
@@ -395,6 +402,7 @@ void GPTA<T,Z>::random_partition()
 	dim3 random_block(256,1,1);
 	dim3 random_grid(((this->n - 1)/256) + 1, 1, 1);
 
+	this->t.start();
 	#if USE_RANDOM_DEV_MEM
 		cutil::safeMalloc<Z,uint64_t>(&part,sizeof(Z)*this->n,"part alloc"); mem+=this->n * sizeof(Z);
 	#else
@@ -413,7 +421,7 @@ void GPTA<T,Z>::random_partition()
 		cpart = part;
 	#endif
 
-	this->t.start();
+
 	max_part_size = 0;
 	for(uint64_t i = 0; i < GPTA_R_PARTITIONS; i++) part_size[i] = 0;
 	for(uint64_t i = 0; i<this->n; i++){
@@ -421,7 +429,7 @@ void GPTA<T,Z>::random_partition()
 		max_part_size = std::max(max_part_size,part_size[cpart[i]]);
 		if(cpart[i]>=GPTA_R_PARTITIONS){ std::cout << "ERROR (random): " << i << "," << cpart[i] << std::endl;  exit(1); }
 	}
-	tt += this->t.lap();
+	tt += this->t.lap("cpu random part size");
 
 	////////////////////////////////////
 	//Group tids in the same partition//
@@ -451,7 +459,7 @@ void GPTA<T,Z>::random_partition()
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing init_keys for sorting according to partition");
 	cub::DeviceRadixSort::SortPairs(d_temp_storage,temp_storage_bytes, part, part_out, tid_in, tid_out, this->n);
 	cutil::cudaCheckErr(cudaDeviceSynchronize(),"Error executing SortPairs for sorting according to partition");
-	tt += this->t.lap();
+	tt += this->t.lap("sort tuples for assignment");
 
 	//Copy ordered tuple ids ordered by partition assignment
 	cutil::safeMallocHost<Z,uint64_t>(&this->part_tid,sizeof(Z)*this->n,"alloc part_tid");
@@ -1785,6 +1793,15 @@ __global__ void init_tid_vec(Z *tid_vec, uint64_t n)
 {
 	uint64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 	if( i < n ) tid_vec[i] = i;
+}
+
+__global__ void reduce(uint32_t *part, uint64_t n)
+{
+	uint64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+	if( i < n )
+	{
+		part[i] = part[i] & (((uint32_t)PART_NUM) - 1);
+	}
 }
 
 __global__ void assign(uint32_t *keys_out, uint32_t *part, uint64_t n, uint32_t mul)
