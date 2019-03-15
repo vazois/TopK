@@ -1,0 +1,14 @@
+==11081== NVPROF is profiling process 11081, command: ./gpu_run -f=data/d_268435456_8_i -n=268435456 -d=8
+==11081== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==11081== Profiling application: ./gpu_run -f=data/d_268435456_8_i -n=268435456 -d=8
+==11081== Profiling result:
+==11081== Metric result:
+Invocations                               Metric Name                        Metric Description         Min         Max         Avg
+Device "TITAN V (0)"
+    Kernel: void gpta_atm_16<float, unsigned int>(gpta_part<float, unsigned int>*, unsigned long, unsigned long, float*)
+          7                      dram_read_throughput             Device Memory Read Throughput  332.91GB/s  576.16GB/s  563.74GB/s
+          7                          dram_utilization                 Device Memory Utilization     Mid (6)    Max (10)    High (9)
+          7                     stall_memory_throttle     Issue Stall Reasons (Memory Throttle)       0.08%       0.56%       0.18%
+          7                                stall_sync     Issue Stall Reasons (Synchronization)       9.02%      22.85%      14.93%
+          7                             sm_efficiency                   Multiprocessor Activity      81.03%      96.15%      92.20%
+          7                        achieved_occupancy                        Achieved Occupancy    0.374162    0.396535    0.389774

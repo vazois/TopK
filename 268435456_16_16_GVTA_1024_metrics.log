@@ -1,0 +1,5 @@
+==29348== NVPROF is profiling process 29348, command: ./gpu_run -f=data/d_268435456_8_i -n=268435456 -d=8
+==29348== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==29348== Profiling application: ./gpu_run -f=data/d_268435456_8_i -n=268435456 -d=8
+==29348== Profiling result:
+No events/metrics were profiled.

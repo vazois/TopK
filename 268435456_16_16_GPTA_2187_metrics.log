@@ -1,0 +1,14 @@
+==4073== NVPROF is profiling process 4073, command: ./gpu_run -f=data/d_268435456_8_i -n=268435456 -d=8
+==4073== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==4073== Profiling application: ./gpu_run -f=data/d_268435456_8_i -n=268435456 -d=8
+==4073== Profiling result:
+==4073== Metric result:
+Invocations                               Metric Name                        Metric Description         Min         Max         Avg
+Device "TITAN V (0)"
+    Kernel: void gpta_atm_16<float, unsigned int>(gpta_part<float, unsigned int>*, unsigned long, unsigned long, float*)
+          7                      dram_read_throughput             Device Memory Read Throughput  360.48GB/s  502.82GB/s  479.63GB/s
+          7                          dram_utilization                 Device Memory Utilization    High (7)    High (9)    High (8)
+          7                     stall_memory_throttle     Issue Stall Reasons (Memory Throttle)       0.15%       0.71%       0.34%
+          7                                stall_sync     Issue Stall Reasons (Synchronization)       8.92%      20.40%      13.55%
+          7                             sm_efficiency                   Multiprocessor Activity      85.73%      90.31%      88.33%
+          7                        achieved_occupancy                        Achieved Occupancy    0.668752    0.702087    0.692800

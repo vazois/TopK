@@ -1,0 +1,14 @@
+==14640== NVPROF is profiling process 14640, command: ./gpu_run -f=data/d_268435456_8_i -n=268435456 -d=8
+==14640== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==14640== Profiling application: ./gpu_run -f=data/d_268435456_8_i -n=268435456 -d=8
+==14640== Profiling result:
+==14640== Metric result:
+Invocations                               Metric Name                        Metric Description         Min         Max         Avg
+Device "TITAN V (0)"
+    Kernel: void gpta_atm_16<float, unsigned int>(gpta_part<float, unsigned int>*, unsigned long, unsigned long, float*)
+          7                      dram_read_throughput             Device Memory Read Throughput  48.808GB/s  188.42GB/s  160.53GB/s
+          7                          dram_utilization                 Device Memory Utilization     Low (2)     Mid (4)     Low (2)
+          7                     stall_memory_throttle     Issue Stall Reasons (Memory Throttle)       0.01%       0.06%       0.03%
+          7                                stall_sync     Issue Stall Reasons (Synchronization)      21.17%      24.84%      23.14%
+          7                             sm_efficiency                   Multiprocessor Activity      20.15%      51.20%      40.26%
+          7                        achieved_occupancy                        Achieved Occupancy    0.147878    0.195917    0.173572

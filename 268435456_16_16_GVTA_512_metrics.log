@@ -1,0 +1,14 @@
+==20354== NVPROF is profiling process 20354, command: ./gpu_run -f=data/d_268435456_8_i -n=268435456 -d=8
+==20354== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==20354== Profiling application: ./gpu_run -f=data/d_268435456_8_i -n=268435456 -d=8
+==20354== Profiling result:
+==20354== Metric result:
+Invocations                               Metric Name                        Metric Description         Min         Max         Avg
+Device "TITAN V (0)"
+    Kernel: void gpta_atm_16<float, unsigned int>(gpta_part<float, unsigned int>*, unsigned long, unsigned long, float*)
+          7                      dram_read_throughput             Device Memory Read Throughput  336.10GB/s  550.94GB/s  531.58GB/s
+          7                          dram_utilization                 Device Memory Utilization     Mid (6)    Max (10)    High (8)
+          7                     stall_memory_throttle     Issue Stall Reasons (Memory Throttle)       0.08%       2.21%       0.43%
+          7                                stall_sync     Issue Stall Reasons (Synchronization)       7.58%      17.67%      12.07%
+          7                             sm_efficiency                   Multiprocessor Activity      83.83%      88.39%      86.02%
+          7                        achieved_occupancy                        Achieved Occupancy    0.527744    0.570408    0.550127
