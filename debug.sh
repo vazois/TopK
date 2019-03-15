@@ -3,14 +3,14 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((1*1*1024))
-END_N=$((1*32*1024))
+START_N=$((1*1024*1024))
+END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
-KKS=128
-KKE=128
+KKS=16
+KKE=1024
 #LD 0:load from file(debugging), 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
-LD=0
+LD=1
 
 #distr c:correlated i:independent a:anticorrelated
 distr=i
@@ -76,7 +76,7 @@ fi
 
 ######CHOOSE CPU ALGORITHM######
 #TA Benchmark
-TA_B=1
+TA_B=0
 #NRA Benchmark
 NRA_B=0
 #BPA Benchmark
@@ -92,7 +92,7 @@ DL_B=1
 #LARA Benchnmark
 LARA_B=0
 #TPAc Benchmark
-TPAc_B=1
+TPAc_B=0
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark

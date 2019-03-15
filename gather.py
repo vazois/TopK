@@ -78,11 +78,18 @@ if __name__ == "__main__":
         print "candidate_count",
     print "" 
 
+    pp = False
 #    print "threshold tt_init tt_processing accesses tuple_count candidate_count"
     for i in range(len(mm["tt_init"])):
         if(mm["algo"][i] != algo):
             algo = mm["algo"][i]
+            #print algo
+            pp = True
+        #if algo != "DL":
+        #    continue
+        if pp:
             print algo
+            pp = False
         #print mm["tt_init"][i]
         #print mm["tt_procesing"][i],mm["tuple_count"][i],mm["tt_init"][i]
         #print mm["tuple_count"][i]
