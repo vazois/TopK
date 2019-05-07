@@ -9,12 +9,12 @@
 #include <map>
 
 //PTA DEVICE MEMORY USAGE//
-#define USE_POLAR_DEV_MEM true // USE DEVICE MEMORY TO COMPUTE POLAR COORDINATES
-#define USE_RANDOM_DEV_MEM true
-#define USE_PART_REORDER_DEV_MEM true
-#define USE_BUILD_PART_DEV_MEM true
-#define USE_PTA_DEV_MEM_FOR_SCORES true
-#define USE_PTA_DEVICE_MEM true
+#define USE_POLAR_DEV_MEM false // USE DEVICE MEMORY TO COMPUTE POLAR COORDINATES
+#define USE_RANDOM_DEV_MEM false
+#define USE_PART_REORDER_DEV_MEM false
+#define USE_BUILD_PART_DEV_MEM false
+#define USE_PTA_DEV_MEM_FOR_SCORES false
+#define USE_PTA_DEVICE_MEM false
 
 //*ENABLE ONLY WHEN USE_PTA_DEVICE_MEM false
 #define USE_PTA_MEM_MANAGED false
@@ -33,7 +33,7 @@
 #define GPTA_REDUCE 1
 
 //Choose polar or random partitioning, configuration for random partitioning
-#define ENABLE_POLAR_PARTITIONING true
+#define ENABLE_POLAR_PARTITIONING false
 #define GPTA_R_PARTITIONS 16 //at least 8 partitions//
 #define GPTA_R_BLOCK_SIZE 4096
 

@@ -4,10 +4,10 @@
 #include "GAA.h"
 
 #define BTA_TUPLES_PER_BLOCK 4096
-#define BTA_USE_DEV_MEM_PROCESSING true
-#define BTA_USE_DEV_MEM_FOR_SCORES true
-#define BTA_USE_PREFETCH false
-#define BTA_MEM_MANAGED false
+#define BTA_USE_DEV_MEM_PROCESSING false
+#define BTA_USE_DEV_MEM_FOR_SCORES false
+#define BTA_USE_PREFETCH true
+#define BTA_MEM_MANAGED true
 
 template<class T>
 __global__ void aggregate(T *gdata, uint64_t n, uint64_t qq, T *gscores);
@@ -89,7 +89,7 @@ void BTA<T,Z>::alloc(){
 	#else
 		cutil::safeMallocHost<T,uint64_t>(&(this->cdata),sizeof(T)*this->n*this->d,"cdata alloc");// Allocate cpu data memory
 	#endif
-	#if USE_DEVICE_MEM
+	#if BTA_USE_DEV_MEM_PROCESSING
 		cutil::safeMalloc<T,uint64_t>(&(this->gdata),sizeof(T)*this->n*this->d,"gdata alloc");//Allocate gpu data memory
 	#endif
 }
