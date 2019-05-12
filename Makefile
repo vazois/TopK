@@ -1,7 +1,7 @@
 CC=g++
 #CC=icpc
 NVCC=/usr/local/cuda-10.0/bin/nvcc
-NVCC_INCLUDE=-Icub-1.8.0/ -I/usr/local/cuda/include/
+NVCC_INCLUDE=-I../cub-1.8.0/ -I/usr/local/cuda/include/
 NVCC_LIBS=-L/usr/local/cuda-10.0/lib64/
 
 #REORDER APP

@@ -29,7 +29,6 @@
 __constant__ float gpu_weights[NUM_DIMS];
 __constant__ uint32_t gpu_query[NUM_DIMS];
 
-
 template<class T>
 __device__ inline void swap_shared(T &a, T &b, bool r)
 {

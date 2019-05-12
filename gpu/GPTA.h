@@ -33,7 +33,7 @@
 #define GPTA_REDUCE 1
 
 //Choose polar or random partitioning, configuration for random partitioning
-#define ENABLE_POLAR_PARTITIONING false
+#define ENABLE_POLAR_PARTITIONING true
 #define GPTA_R_PARTITIONS 16 //at least 8 partitions//
 #define GPTA_R_BLOCK_SIZE 4096
 
