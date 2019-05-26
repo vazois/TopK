@@ -3,17 +3,17 @@
 #############################
 ###### DATA PARAMETERS ######
 #############################
-START_N=$((1*1024*1024))
+START_N=$((256*1024*1024))
 END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=16
-KKE=1024
+KKE=8192
 #LD 0:load from file(debugging), 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
 LD=1
 
-#distr c:correlated i:independent a:anticorrelated
-distr=i
+#distr c:correlated i:independent a:anticorrelated, g: growing
+distr=g
 #randdaaset3: higher precission , randdataset: lower precission
 script=randdataset3
 
@@ -29,6 +29,9 @@ then
 elif [ $distr == "a" ]
 then
 	DSTR=2
+elif [ $distr == "g" ]
+then
+	DSTR=3
 else
 	echo "DSTR not valid option!!!!"
 	exit
@@ -36,7 +39,7 @@ fi
 ######################
 
 #REAL DATA PARAMETERS
-REAL_DATA_PATH=data/real/weather/wtuples_261552285_8
+REAL_DATA_PATH=data/real/weather/range100100wtuples_422743728_8
 #REAL_DATA_PATH=data/real/higgs/h_11000000_5
 #REAL_DATA_N=$START_N
 REAL_DATA_N=$(echo $REAL_DATA_PATH| cut -d'_' -f 2)
@@ -61,7 +64,7 @@ QD=1
 #IMP 0:Scalar, 1:SIMD, 2:Threads, 3:Multiple Queries (Random), 4: Multiple Queries (Same dimension)
 IMP=1
 #ITER Testing iterations
-ITER=1
+ITER=10
 #Multiple Thread Count
 MQTHREADS=4
 #Gather execution statistics
@@ -88,11 +91,11 @@ T2S_B=0
 #Onion Benchmark
 Onion_B=0
 #DL Benchmark
-DL_B=1
+DL_B=0
 #LARA Benchnmark
 LARA_B=0
 #TPAc Benchmark
-TPAc_B=0
+TPAc_B=1
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
@@ -165,3 +168,4 @@ else
 		#echo "<--------------------------------------------------->"
 	done
 fi
+

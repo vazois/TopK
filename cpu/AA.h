@@ -2,6 +2,11 @@
 #define AA_H
 
 #include "../common/common.h"
+#include <boost/heap/priority_queue.hpp>
+#include <boost/heap/binomial_heap.hpp>
+#include <boost/heap/fibonacci_heap.hpp>
+#include <boost/heap/pairing_heap.hpp>
+#include <boost/heap/skew_heap.hpp>
 #include <limits>
 #include <bitset>
 

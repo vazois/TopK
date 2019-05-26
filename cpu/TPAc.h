@@ -26,7 +26,7 @@ class  TPAc : public AA<T,Z>{
 
 template<class T, class Z>
 void TPAc<T,Z>::init(){
-	normalize_transpose<T,Z>(this->cdata, this->n, this->d);
+	//normalize_transpose<T,Z>(this->cdata, this->n, this->d);
 	this->t.start();
 	this->tt_init = this->t.lap();
 }
@@ -126,7 +126,12 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
 
-	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
+	//std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
+	//boost::heap::priority_queue<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
+	//boost::heap::binomial_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
+	//boost::heap::fibonacci_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
+	//boost::heap::pairing_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
+	boost::heap::skew_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
 	float score[32] __attribute__((aligned(32)));
 	this->t.start();
 	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);

@@ -68,6 +68,7 @@ KKE=16
 BENCH= -DTA_B=$(TA_B) -DNRA_B=$(NRA_B) -DBPA_B=$(BPA_B) -DHLi_B=$(HLi_B) -DT2S_B=$(T2S_B) -DOnion_B=$(Onion_B) -DDL_B=$(DL_B) -DLARA_B=$(LARA_B) -DTPAc_B=$(TPAc_B) -DTPAr_B=$(TPAr_B) -DVTA_B=$(VTA_B) -DPTA_B=$(PTA_B) -DSLA_B=$(SLA_B) -DMQTHREADS=$(MQTHREADS) -DSTATS_EFF=$(STATS_EFF) -DWORKLOAD=$(WORKLOAD)
 
 #CPU CONFIGURATION
+CC_INCLUDE=external/
 CC_MAIN=cpu/main.cpp skyline/hybrid/hybrid.cpp input/randdataset-1.1.0/src/randdataset.c
 CC_FLAGS=-std=c++11 -g
 CC_EXE=cpu_run
@@ -86,7 +87,7 @@ all: cpu_cc
 
 cpu_cc:
 ifeq ($(CC),g++)
-	$(CC) $(CC_FLAGS) $(CC_OPT_FLAGS_GNU) $(CC_MAIN) -o $(CC_EXE)
+	$(CC) $(CC_FLAGS) -I$(CC_INCLUDE) $(CC_OPT_FLAGS_GNU) $(CC_MAIN) -o $(CC_EXE)
 else
 	$(CC) $(CC_FLAGS) $(CC_OPT_FLAGS_INTEL) $(CC_MAIN) -o $(CC_EXE)
 endif

@@ -338,7 +338,7 @@ void File<T>::gen(T *&data, int8_t type){
 	}
 	this->data=data;
 
-	if(type < 0 || type > 2){
+	if(type < 0 || type > 3){
 		std::cout << "Type should be 0(correlated),1(independent),2(anticorrelated)!!!";
 		exit(1);
 	}
@@ -350,6 +350,10 @@ void File<T>::gen(T *&data, int8_t type){
 	}else if ( type == 2 ){
 		std::cout << "Anticorrelated\n";
 		generate_anti_inmem(this->data,this->n,this->d,this->transpose);
+	}else if (type == 3){
+		std::cout << "Growing\n";
+		for(uint64_t i = 0; i < this->n * this->d; i++)
+			this->data[i] = i + 1;
 	}
 }
 

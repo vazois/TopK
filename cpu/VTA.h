@@ -11,6 +11,7 @@
 #define VSPLITS 2
 //#define VPARTITIONS (IMP == 2 ? ((uint64_t)pow(VSPLITS,NUM_DIMS-1)) : 1)
 #define VPARTITIONS (IMP == 2 ? (THREADS) : 1)
+//#define VPARTITIONS 128
 //#define VPARTITIONS (1)
 
 template<class T, class Z>
@@ -237,12 +238,14 @@ void VTA<T,Z>::findTopKscalar(uint64_t k, uint8_t qq, T *weights, uint8_t *attr)
 
 template<class T, class Z>
 void VTA<T,Z>::findTopKsimd(uint64_t k, uint8_t qq, T *weights, uint8_t *attr){
-	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " simd (" << (int)qq << "D) ..." << "[" <<VPARTITIONS<<"]";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
 
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q;
+	//boost::heap::priority_queue<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
+
 	float score[32] __attribute__((aligned(32)));
 	__builtin_prefetch(score,1,3);
 	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
@@ -423,7 +426,7 @@ void VTA<T,Z>::findTopKthreads(uint64_t k, uint8_t qq, T *weights, uint8_t *attr
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, PQComparison<T,Z>> q[threads];
 	omp_set_num_threads(threads);
 
-	std::cout << this->algo << " find top-" << k << " threads x "<< threads <<" (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k << " threads x "<< threads <<" (" << (int)qq << "D) ..."<< "[" <<VPARTITIONS<<"]";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
