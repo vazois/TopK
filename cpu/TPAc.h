@@ -126,12 +126,12 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
 
-	//std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
+	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	//boost::heap::priority_queue<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
 	//boost::heap::binomial_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
 	//boost::heap::fibonacci_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
 	//boost::heap::pairing_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
-	boost::heap::skew_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
+	//boost::heap::skew_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
 	float score[32] __attribute__((aligned(32)));
 	this->t.start();
 	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
@@ -141,6 +141,7 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 		__m256 score01 = _mm256_setzero_ps();
 		__m256 score02 = _mm256_setzero_ps();
 		__m256 score03 = _mm256_setzero_ps();
+		this->t2.start();
 		for(uint8_t m = 0; m < qq; m++){
 			uint64_t offset00 = attr[m] * this->n + i;//M{1}
 			uint64_t offset01 = attr[m] * this->n + i + 8;//M{1}
@@ -159,6 +160,7 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 		_mm256_store_ps(&score[8],score01);
 		_mm256_store_ps(&score[16],score02);
 		_mm256_store_ps(&score[24],score03);
+		this->tt_aggregation += this->t2.lap();
 
 		for(uint8_t l = 0; l < 32; l++){
 			if(q.size() < k){//M{1}

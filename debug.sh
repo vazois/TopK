@@ -8,12 +8,12 @@ END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=16
-KKE=8192
+KKE=16
 #LD 0:load from file(debugging), 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
 LD=1
 
 #distr c:correlated i:independent a:anticorrelated, g: growing
-distr=g
+distr=i
 #randdaaset3: higher precission , randdataset: lower precission
 script=randdataset3
 
@@ -68,7 +68,7 @@ ITER=10
 #Multiple Thread Count
 MQTHREADS=4
 #Gather execution statistics
-STATS_EFF=true
+STATS_EFF=false
 #Choose workload for multi-query evaluation
 WORKLOAD=$((1024*128))
 

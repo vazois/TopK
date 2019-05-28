@@ -220,6 +220,7 @@ class AA{
 		Time<msecs> t;
 		Time<msecs> t2;
 		double tt_init;//initialization time
+		double tt_aggregation;
 		double tt_processing;//processing time
 		double tt_ranking;//Ranking time
 		uint32_t iter;
@@ -242,6 +243,7 @@ class AA{
 template<class T,class Z>
 AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->tt_init = 0;
+	this->tt_aggregation = 0;
 	this->tt_processing = 0;
 	this->tt_ranking = 0;
 	this->iter = 1;
@@ -321,6 +323,7 @@ void AA<T,Z>::benchmark(){
 	std::cout << "threshold: " << this->threshold << std::endl;
 	std::cout << "tt_init: " << this->tt_init << std::endl;
 	if(IMP < 3){
+		std::cout << "tt_aggregation: " << this->tt_aggregation/this->iter << std::endl;
 		std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
 	}else{
 		this->tt_processing = 0;
