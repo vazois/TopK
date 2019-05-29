@@ -199,6 +199,9 @@ class AA{
 		void set_qq(uint8_t qq){this->qq=qq;}
 		void set_stop_level(uint64_t lvl){this->lvl = lvl;}
 		void reset_clocks(){
+			this->cc_aggregation = 0;
+			this->cc_ranking = 0;
+			this->tt_aggregation = 0;
 			this->tt_processing = 0;
 			this->tt_ranking = 0;
 			for(int i = 0; i < MQTHREADS;i++){ this->tt_array[i] = 0; }
@@ -223,6 +226,8 @@ class AA{
 		double tt_aggregation;
 		double tt_processing;//processing time
 		double tt_ranking;//Ranking time
+		uint64_t cc_aggregation;
+		uint64_t cc_ranking;
 		uint32_t iter;
 		uint64_t pred_count;//count predicate evaluations
 		uint64_t tuple_count;//count predicate evaluations
@@ -246,6 +251,8 @@ AA<T,Z>::AA(uint64_t n, uint64_t d){
 	this->tt_aggregation = 0;
 	this->tt_processing = 0;
 	this->tt_ranking = 0;
+	this->cc_aggregation = 0;
+	this->cc_ranking = 0;
 	this->iter = 1;
 	this->pred_count = 0;
 	this->tuple_count = 0;
@@ -324,7 +331,10 @@ void AA<T,Z>::benchmark(){
 	std::cout << "tt_init: " << this->tt_init << std::endl;
 	if(IMP < 3){
 		std::cout << "tt_aggregation: " << this->tt_aggregation/this->iter << std::endl;
+		std::cout << "tt_ranking: " << this->tt_ranking/this->iter << std::endl;
 		std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
+		std::cout << "cc_aggregation: " << this->cc_aggregation / this->iter << std::endl;
+		std::cout << "cc_ranking: " << this->cc_ranking / this->iter << std::endl;
 	}else{
 		this->tt_processing = 0;
 		for(int i = 0; i < MQTHREADS;i++){
@@ -332,7 +342,11 @@ void AA<T,Z>::benchmark(){
 			//std::cout << i <<" : " << this->tt_array[i] << std::endl;
 		}
 		this->tt_processing=this->tt_processing/this->iter;
+		std::cout << "tt_aggregation: " << this->tt_aggregation/this->iter << std::endl;
+		std::cout << "tt_ranking: " << this->tt_ranking/this->iter << std::endl;
 		std::cout << "tt_procesing: " << this->tt_processing/this->iter << std::endl;
+		std::cout << "cc_aggregation: " << ((double)this->cc_aggregation) / this->iter << std::endl;
+		std::cout << "cc_ranking: " << ((double)this->cc_aggregation) / this->iter << std::endl;
 		std::cout << "tuples_per_second: " << WORKLOAD/(this->tt_processing/1000) << std::endl;
 	}
 	//std::cout << "tt_ranking: " << this->tt_ranking/this->iter << std::endl;

@@ -9,6 +9,8 @@ def gather(fname):
     mm["threshold"]=list()
     mm["stop_level"]=list()
     mm["tt_procesing"] = list()
+    mm["cc_ranking"] = list()
+    mm["cc_aggregation"] = list()
     mm["tuple_count"] = list()
     mm["accesses"] = list()
     mm["candidate_count"] = list()
@@ -20,6 +22,12 @@ def gather(fname):
             data = line.strip().split(" ")
             #print data[3]
             mm["algo"].append(data[3])
+        if line.startswith("cc_aggregation:"):
+            data = line.strip().split(":")
+            mm[data[0]].append(int(data[1]))
+        if line.startswith("cc_ranking:"):
+            data = line.strip().split(":")
+            mm[data[0]].append(int(data[1]))
         if line.startswith("threshold:"):
             data = line.strip().split(":")
             mm[data[0]].append(float(data[1]))
@@ -70,6 +78,10 @@ if __name__ == "__main__":
         print "tt_init",
     if len(mm["tt_procesing"]) > 0:
         print "tt_procesing",
+    if len(mm["cc_ranking"]) > 0:
+        print "cc_ranking",
+    if len(mm["cc_aggregation"]) > 0:
+        print "cc_aggregation",
     if len(mm["accesses"]) > 0:
         print "accesses",
     if len(mm["tuple_count"]):
@@ -103,6 +115,10 @@ if __name__ == "__main__":
             print "{0:0.4f}".format(mm["tt_init"][i]),
         if i < len(mm["tt_procesing"]):
             print "{0:0.4f}".format(mm["tt_procesing"][i]),
+        if i < len(mm["cc_ranking"]):
+            print "{0:0}".format(mm["cc_ranking"][i]),
+        if i < len(mm["cc_aggregation"]):
+            print "{0:0}".format(mm["cc_aggregation"][i]),
         if i < len(mm["accesses"]):
             print mm["accesses"][i],
         if i < len(mm["tuple_count"]):

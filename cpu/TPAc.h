@@ -26,7 +26,7 @@ class  TPAc : public AA<T,Z>{
 
 template<class T, class Z>
 void TPAc<T,Z>::init(){
-	//normalize_transpose<T,Z>(this->cdata, this->n, this->d);
+	normalize_transpose<T,Z>(this->cdata, this->n, this->d);
 	this->t.start();
 	this->tt_init = this->t.lap();
 }
@@ -41,6 +41,7 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 	std::priority_queue<T, std::vector<tuple_<T,Z>>, MaxCMP<T,Z>> q;
 	this->t.start();
 	for(uint64_t i = 0; i < this->n; i+=8){
+		this->t.rdtsc_start();
 		T score00 = 0;
 		T score01 = 0;
 		T score02 = 0;
@@ -82,6 +83,9 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 		}
 		if(STATS_EFF) this->accesses+=qq*8;
 		if(STATS_EFF) this->accesses+=1;
+		this->cc_aggregation += this->t.rdtsc_stop();
+
+		this->t.rdtsc_start();
 		if(q.size() < k){//M{1}
 			q.push(tuple_<T,Z>(i,score00));
 			q.push(tuple_<T,Z>(i+1,score01));
@@ -103,13 +107,14 @@ void TPAc<T,Z>::findTopKscalar(uint64_t k,uint8_t qq, T *weights, uint8_t *attr)
 			if(q.top().score < score07){ q.pop(); q.push(tuple_<T,Z>(i+7,score07)); }
 			if(STATS_EFF) this->accesses+=8*2;
 		}
+		this->cc_ranking += this->t.rdtsc_stop();
 	}
 	this->tt_processing += this->t.lap();
 	if(STATS_EFF) this->tuple_count=this->n;
 	if(STATS_EFF) this->candidate_count=k;
 
 	while(q.size() > k){ q.pop(); }
-	T threshold = q.top().score;
+	T threshold = q.size() > 0 ? q.top().score : 0;
 	while(!q.empty()){
 		this->res.push_back(q.top());
 		q.pop();
@@ -133,41 +138,64 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	//boost::heap::pairing_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
 	//boost::heap::skew_heap<tuple_<T,Z>,boost::heap::compare<MaxCMP<T,Z>>> q;
 	float score[32] __attribute__((aligned(32)));
-	this->t.start();
 	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	__builtin_prefetch(score,1,3);
+	this->t.start();
 	for(uint64_t i = 0; i < this->n; i+=32){
+		this->t.rdtsc_start();
 		__m256 score00 = _mm256_setzero_ps();
 		__m256 score01 = _mm256_setzero_ps();
 		__m256 score02 = _mm256_setzero_ps();
 		__m256 score03 = _mm256_setzero_ps();
-		this->t2.start();
+//		__m256 score04 = _mm256_setzero_ps();
+//		__m256 score05 = _mm256_setzero_ps();
+//		__m256 score06 = _mm256_setzero_ps();
+//		__m256 score07 = _mm256_setzero_ps();
+
 		for(uint8_t m = 0; m < qq; m++){
 			uint64_t offset00 = attr[m] * this->n + i;//M{1}
 			uint64_t offset01 = attr[m] * this->n + i + 8;//M{1}
 			uint64_t offset02 = attr[m] * this->n + i + 16;//M{1}
 			uint64_t offset03 = attr[m] * this->n + i + 24;//M{1}
+//			uint64_t offset04 = attr[m] * this->n + i + 32;//M{1}
+//			uint64_t offset05 = attr[m] * this->n + i + 40;//M{1}
+//			uint64_t offset06 = attr[m] * this->n + i + 48;//M{1}
+//			uint64_t offset07 = attr[m] * this->n + i + 56;//M{1}
+
 			T weight = weights[attr[m]];//M{2}
 			__m256 _weight = _mm256_set_ps(weight,weight,weight,weight,weight,weight,weight,weight);
+
+//			score00 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_castsi256_ps(_mm256_stream_load_si256((const __m256i *)(this->cdata + offset00))),_weight));//M{8}
+//			score01 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_castsi256_ps(_mm256_stream_load_si256((const __m256i *)(this->cdata + offset01))),_weight));//M{8}
+//			score02 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_castsi256_ps(_mm256_stream_load_si256((const __m256i *)(this->cdata + offset02))),_weight));//M{8}
+//			score03 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_castsi256_ps(_mm256_stream_load_si256((const __m256i *)(this->cdata + offset03))),_weight));//M{8}
 
 			score00 = _mm256_add_ps(score00,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset00]),_weight));//M{8}
 			score01 = _mm256_add_ps(score01,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset01]),_weight));//M{8}
 			score02 = _mm256_add_ps(score02,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset02]),_weight));//M{8}
 			score03 = _mm256_add_ps(score03,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset03]),_weight));//M{8}
+//			score04 = _mm256_add_ps(score04,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset04]),_weight));//M{8}
+//			score05 = _mm256_add_ps(score05,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset05]),_weight));//M{8}
+//			score06 = _mm256_add_ps(score06,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset06]),_weight));//M{8}
+//			score07 = _mm256_add_ps(score07,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset07]),_weight));//M{8}
 		}
 		if(STATS_EFF) this->accesses+=(6+32)*qq;
 		_mm256_store_ps(&score[0],score00);
 		_mm256_store_ps(&score[8],score01);
 		_mm256_store_ps(&score[16],score02);
 		_mm256_store_ps(&score[24],score03);
-		this->tt_aggregation += this->t2.lap();
+		this->cc_aggregation += this->t.rdtsc_stop();
 
 		for(uint8_t l = 0; l < 32; l++){
 			if(q.size() < k){//M{1}
+				this->t.rdtsc_start();
 				q.push(tuple_<T,Z>(i,score[l]));//M{1}
+				this->cc_ranking += this->t.rdtsc_stop();
 				if(STATS_EFF) this->accesses+=1;
 			}else if(q.top().score < score[l]){//M{1}
+				this->t.rdtsc_start();
 				q.pop(); q.push(tuple_<T,Z>(i,score[l]));//M{2}
+				this->cc_ranking += this->t.rdtsc_stop();
 				if(STATS_EFF) this->accesses+=2;
 			}
 			if(STATS_EFF) this->accesses+=1;
@@ -178,7 +206,7 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 	if(STATS_EFF) this->candidate_count=k;
 
 	while(q.size() > k){ q.pop(); }
-	T threshold = q.top().score;
+	T threshold = q.size() > 0 ? q.top().score : 0;
 	while(!q.empty()){
 		this->res.push_back(q.top());
 		q.pop();

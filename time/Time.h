@@ -32,15 +32,27 @@ typedef std::chrono::duration<double, std::ratio<60 * 60 * 24 * 30, 1> > months;
 template<class M>
 class Time{
 public:
-	Time(){};
+	Time(){
+		this->lap_rdtsc = 0;
+	};
 	~Time(){};
 	void start();
 	void reset();
 	double lap(std::string);
 	double lap();
+
+	void rdtsc_start();
+	uint64_t rdtsc_stop();
+	uint64_t rdtsc_lap();
+	void rdtsc_clear(){ this->lap_rdtsc = 0; }
+	void rdtsc_print(){ std::cout << "\n { rdtsc }:" << this->lap_rdtsc << std::endl; }
+
 private:
 	std::chrono::high_resolution_clock::time_point tp1;
 	std::chrono::high_resolution_clock::time_point tp2;
+	uint64_t start_rdtsc;
+	uint64_t end_rdtsc;
+	uint64_t lap_rdtsc;
 };
 
 template<class M>
@@ -69,6 +81,42 @@ double Time<M>::lap(std::string comment){
 	this->tp1 = std::chrono::high_resolution_clock::now();
 
 	return tt;
+}
+
+template<class M>
+void Time<M>::rdtsc_start()
+{
+	uint32_t hi, lo;
+
+	__asm volatile
+	    ("rdtsc" : "=a" (lo), "=d" (hi));
+
+	this->start_rdtsc = ((uint64_t)hi << 32) | lo;
+}
+
+template<class M>
+uint64_t Time<M>::rdtsc_stop()
+{
+	uint32_t hi, lo;
+
+	__asm volatile
+	    ("rdtsc" : "=a" (lo), "=d" (hi));
+
+	this->end_rdtsc = ((uint64_t)hi << 32) | lo;
+	return this->end_rdtsc - this->start_rdtsc;
+}
+
+template<class M>
+uint64_t Time<M>::rdtsc_lap()
+{
+	uint32_t hi, lo;
+
+	__asm volatile
+	    ("rdtsc" : "=a" (lo), "=d" (hi));
+
+	this->end_rdtsc = ((uint64_t)hi << 32) | lo;
+	this->lap_rdtsc += this->end_rdtsc - this->start_rdtsc;
+	return this->end_rdtsc - this->start_rdtsc;
 }
 
 #ifdef _WIN32
@@ -115,5 +163,7 @@ static double get_cpu_time(){
 	return (double)clock() / CLOCKS_PER_SEC;
 }
 #endif
+
+
 
 #endif
