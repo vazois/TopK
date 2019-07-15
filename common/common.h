@@ -16,7 +16,7 @@
 #endif
 
 //#define MQTHREADS 1
-#define THREADS 16
+#define THREADS 32
 #define ITHREADS 32 //INITIALIZATION THREADS
 //#define STATS_EFF true
 //#define WORKLOAD 1024*128

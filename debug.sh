@@ -8,7 +8,7 @@ END_N=$((256*1024*1024))
 DIMS=8
 #Top-K Range in power of 2 (i.e. KKS = 16 , KKS = 128 .. k=16,32,64,128)
 KKS=16
-KKE=16
+KKE=1024
 #LD 0:load from file(debugging), 1: generate in memory, 2: Load real data (set REAL_DATA_PATH)
 LD=1
 
@@ -66,7 +66,7 @@ IMP=1
 #ITER Testing iterations
 ITER=1
 #Multiple Thread Count
-MQTHREADS=4
+MQTHREADS=32
 #Gather execution statistics
 STATS_EFF=false
 #Choose workload for multi-query evaluation
@@ -93,9 +93,9 @@ Onion_B=0
 #DL Benchmark
 DL_B=0
 #LARA Benchnmark
-LARA_B=0
+LARA_B=1
 #TPAc Benchmark
-TPAc_B=1
+TPAc_B=0
 #TPAr Benchmark
 TPAr_B=0
 #VTA Benhmark
@@ -127,7 +127,8 @@ then
 	if [ $device -eq 0 ]
 	then
 		echo "./cpu_run -f=$REAL_DATA_PATH -n=$REAL_DATA_N -d=$DIMS"
-  		./cpu_run -f=$REAL_DATA_PATH -n=$REAL_DATA_N -d=$DIMS
+  		#./cpu_run -f=$REAL_DATA_PATH -n=$REAL_DATA_N -d=$DIMS
+		perf record -e LLC-loads,LLC-load-misses ./cpu_run -f=$REAL_DATA_PATH -n=$REAL_DATA_N -d=$DIMS
 	else
   		./gpu_run -f=$REAL_DATA_PATH -n=$REAL_DATA_N -d=$DIMS
 	fi
@@ -153,6 +154,9 @@ else
 		then
 			echo "./cpu_run -f=data/$fname -n=$n -d=$DIMS"
   			./cpu_run -f=data/$fname -n=$n -d=$DIMS
+			#perf record -e mem_load_uops_retired.l1_hit,mem_load_uops_retired.l1_miss,mem_load_uops_retired.l2_hit,mem_load_uops_retired.l2_miss,mem_load_uops_retired.l3_hit,mem_load_uops_retired.l3_miss,longest_lat_cache.miss,mem_uops_retired.all_loads ./cpu_run -f=data/$fname -n=$n -d=$DIMS
+			#perf annotate -e mem_load_uops_retired.l1_hit,mem_load_uops_retired.l1_miss,mem_load_uops_retired.l2_hit,mem_load_uops_retired.l2_miss,mem_load_uops_retired.l3_hit,mem_load_uops_retired.l3_miss,longest_lat_cache.miss,mem_uops_retired.all_loads ./cpu_run -f=data/$fname -n=$n -d=$DIMS
+			#perf stat -e mem_load_uops_retired.l1_hit,mem_load_uops_retired.l1_miss,mem_load_uops_retired.l2_hit,mem_load_uops_retired.l2_miss,mem_load_uops_retired.l3_hit,mem_load_uops_retired.l3_miss,longest_lat_cache.miss,mem_uops_retired.all_loads ./cpu_run -f=data/$fname -n=$n -d=$DIMS
 		else
   			#nvprof ./gpu_run -f=data/$fname -n=$n -d=$DIMS
 			./gpu_run -f=data/$fname -n=$n -d=$DIMS

@@ -26,7 +26,7 @@ class  TPAc : public AA<T,Z>{
 
 template<class T, class Z>
 void TPAc<T,Z>::init(){
-	normalize_transpose<T,Z>(this->cdata, this->n, this->d);
+	//normalize_transpose<T,Z>(this->cdata, this->n, this->d);
 	this->t.start();
 	this->tt_init = this->t.lap();
 }
@@ -179,26 +179,40 @@ void TPAc<T,Z>::findTopKsimd(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
 //			score06 = _mm256_add_ps(score06,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset06]),_weight));//M{8}
 //			score07 = _mm256_add_ps(score07,_mm256_mul_ps(_mm256_load_ps(&this->cdata[offset07]),_weight));//M{8}
 		}
-		if(STATS_EFF) this->accesses+=(6+32)*qq;
+		#if STATS_EFF == true
+			this->accesses+=(6+32)*qq;
+		#endif
 		_mm256_store_ps(&score[0],score00);
 		_mm256_store_ps(&score[8],score01);
 		_mm256_store_ps(&score[16],score02);
 		_mm256_store_ps(&score[24],score03);
-		this->cc_aggregation += this->t.rdtsc_stop();
+		#if STATS_EFF == true
+			this->cc_aggregation += this->t.rdtsc_stop();
+		#endif
 
 		for(uint8_t l = 0; l < 32; l++){
 			if(q.size() < k){//M{1}
-				this->t.rdtsc_start();
+				#if STATS_EFF == true
+					this->t.rdtsc_start();
+				#endif
 				q.push(tuple_<T,Z>(i,score[l]));//M{1}
-				this->cc_ranking += this->t.rdtsc_stop();
-				if(STATS_EFF) this->accesses+=1;
+				#if STATS_EFF == true
+					this->cc_ranking += this->t.rdtsc_stop();
+					this->accesses+=1;
+				#endif
 			}else if(q.top().score < score[l]){//M{1}
-				this->t.rdtsc_start();
+				#if STATS_EFF == true
+					this->t.rdtsc_start();
+				#endif
 				q.pop(); q.push(tuple_<T,Z>(i,score[l]));//M{2}
-				this->cc_ranking += this->t.rdtsc_stop();
-				if(STATS_EFF) this->accesses+=2;
+				#if STATS_EFF == true
+					this->cc_ranking += this->t.rdtsc_stop();
+					this->accesses+=2;
+				#endif
 			}
-			if(STATS_EFF) this->accesses+=1;
+			#if STATS_EFF == true
+				this->accesses+=1;
+			#endif
 		}
 	}
 	this->tt_processing += this->t.lap();
@@ -265,7 +279,7 @@ void TPAc<T,Z>::findTopKsimdMQ(uint64_t k,uint8_t qq, T *weights, uint8_t *attr,
 
 template<class T, class Z>
 void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr){
-	std::cout << this->algo << " find top-" << k << " threads (" << (int)qq << "D) ...";
+	std::cout << this->algo << " find top-" << k <<  " | " << THREADS << " X threads (" << (int)qq << "D) ...";
 	if(STATS_EFF) this->tuple_count = 0;
 	if(STATS_EFF) this->pop_count=0;
 	if(this->res.size() > 0) this->res.clear();
@@ -281,6 +295,8 @@ void TPAc<T,Z>::findTopKthreads(uint64_t k,uint8_t qq, T *weights, uint8_t *attr
 	__builtin_prefetch(score,1,3);
 	uint64_t start = ((uint64_t)thread_id)*(this->n)/THREADS;
 	uint64_t end = ((uint64_t)(thread_id+1))*(this->n)/THREADS;
+
+	//std::cout << "\n Thread #" << thread_id << ": on CPU " << sched_getcpu() << "\n";
 
 	__m256 dim_num = _mm256_set_ps(qq,qq,qq,qq,qq,qq,qq,qq);
 	for(uint64_t i = start; i < end; i+=16){
