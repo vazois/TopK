@@ -1,4 +1,5 @@
 # TopK Algorithms Benchmark #
+###### Note: switch to the appropriate branch to run the algorithms (cpu\_ks for CPUs, gpu\_topk for GPUs)
 
 This repository contains the source code for a collection of efficient parallel in-memory Top-k selection algorithms.
 CPU-only versions are verified and tested for correctness. GPU-only implementations are still under development.
