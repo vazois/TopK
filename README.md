@@ -1,4 +1,5 @@
 # TopK Algorithms Benchmark #
+###### Note: switch to the appropriate branch to run the algorithms (cpu\_ks for CPUs, gpu\_topk for GPUs)
 
 This repository contains the source code for a collection of efficient parallel in-memory Top-k selection algorithms.
 CPU-only versions are verified and tested for correctness. GPU-only implementations are still under development.
@@ -8,24 +9,6 @@ The following is a short description of each CPU algorithm:
 * cpu/TA.h
 	<br /> - Scalar implementation of the Threshold Algorithm using standard C++ library.
 
-* cpu/NRA.h
-	<br /> - Scalar implementation of the No Random Access Algorithm using standard C++ library.
-	
-* cpu/HLi.h
-	<br /> - Scalar implementation of the Hybrid Layer Index Algorithm using standard C++ library.
-	
-* cpu/T2S.h
-	<br /> - Scalar implementation of the T2S Algorithm using standard C++ library.
-	
-* cpu/DL.h
-	<br /> - Scalar implementation of the DL Algorithm using standard C++ library.
-	
-* cpu/BPA.h
-	<br /> - Scalar implementation of the Best Position Algorithm using standard C++ library.
-
-* cpu/LARA.h
-	<br /> - Scalar implementation of the LARA using standard C++ library.
-	
 * cpu/TPAc.h
 	<br /> - Scalar, SIMD, SIMD + multi-threaded, and multi-query implementation of Full Table Evaluation (FTE) using column major order.
 	
